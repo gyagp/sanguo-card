@@ -1,13 +1,12 @@
 # Autopo test Session
 
 ## Work Unit
-Card destruction shatter effect — replace fadeOutDeath with a shatter/fragment animation using CSS clip-path or multiple divs
+Legendary card entrance animation — golden glow burst and dramatic scale-in when a legendary rarity minion is played
 
 ## Acceptance Criteria
-- Dying minions break into 4-6 fragments that fly outward
-- Fragments fade and rotate as they disperse
-- Animation completes in ~600ms
-- Snapshot-before-mutation pattern preserved per learned rules
+- Legendary minions have a distinct entrance with golden particle glow
+- Animation is visually different from common/rare/epic card plays
+- Golden shimmer persists briefly (~1s) after placement
 
 ## Rules
 # Rules

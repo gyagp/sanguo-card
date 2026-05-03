@@ -22,13 +22,53 @@ describe("Animation acceptance criteria", () => {
       expect(pageContent).toMatch(/useRef/);
     });
 
-    it("triggers popIn animation when board length increases", () => {
-      expect(pageContent).toMatch(/triggerAnim\(setPlayerAnims,\s*newLen\s*-\s*1,\s*"popIn"/);
+    it("triggers popIn animation for non-legendary minions when board length increases", () => {
+      expect(pageContent).toMatch(/triggerAnim\(setPlayerAnims,\s*idx,\s*"popIn"/);
+    });
+
+    it("triggers legendaryEntrance animation for legendary minions", () => {
+      expect(pageContent).toMatch(/rarity\s*===\s*"legendary"/);
+      expect(pageContent).toMatch(/triggerAnim\(setPlayerAnims,\s*idx,\s*"legendaryEntrance"/);
     });
 
     it("BoardMinionCard applies popIn animation style", () => {
       expect(pageContent).toMatch(/animation === "popIn"/);
       expect(pageContent).toMatch(/popIn 0\.4s/);
+    });
+
+    it("BoardMinionCard applies legendaryEntrance animation style", () => {
+      expect(pageContent).toMatch(/animation === "legendaryEntrance"/);
+      expect(pageContent).toMatch(/legendaryEntrance 0\.7s/);
+    });
+
+    it("CSS defines legendaryEntrance keyframe", () => {
+      expect(cssContent).toContain("@keyframes legendaryEntrance");
+    });
+
+    it("CSS defines legendaryGlow keyframe for golden glow burst", () => {
+      expect(cssContent).toContain("@keyframes legendaryGlow");
+    });
+
+    it("CSS defines legendaryParticle keyframe for golden particles", () => {
+      expect(cssContent).toContain("@keyframes legendaryParticle");
+    });
+
+    it("CSS defines legendaryShimmer keyframe that persists ~1s", () => {
+      expect(cssContent).toContain("@keyframes legendaryShimmer");
+    });
+
+    it("golden shimmer is cleaned up after ~1.2s", () => {
+      expect(pageContent).toMatch(/shimmerSetter.*1200/);
+    });
+
+    it("legendary particles use gold colors", () => {
+      expect(pageContent).toMatch(/#ffd700/);
+      expect(pageContent).toMatch(/#ffaa00/);
+    });
+
+    it("legendaryEntrance animation is visually different from popIn", () => {
+      expect(cssContent).toMatch(/@keyframes legendaryEntrance[\s\S]*scale\(0\)/);
+      expect(cssContent).toMatch(/@keyframes legendaryEntrance[\s\S]*brightness\(3\)/);
     });
   });
 

@@ -6,7 +6,7 @@ import { cards } from "../../game/cards";
 import { createDeck, BoardMinion, PlayerState, Card as CardType, MAX_BOARD_SIZE } from "../../game/types";
 import { useMemo, useState, useEffect, useRef, useCallback, forwardRef } from "react";
 
-type AnimKind = "popIn" | "lunge" | "shake" | "death";
+type AnimKind = "popIn" | "legendaryEntrance" | "lunge" | "shake" | "death";
 
 interface Particle { px: number; py: number; color: string; }
 
@@ -89,6 +89,45 @@ function SpellBurst({ particles, origin }: { particles: SpellTrailParticle[]; or
   );
 }
 
+const GOLD_COLORS = ["#ffd700", "#ffaa00", "#fff5a0", "#ff8c00", "#ffe066"];
+
+interface LegendaryParticle { x: number; y: number; color: string; delay: number; size: number; }
+
+function makeLegendaryParticles(): LegendaryParticle[] {
+  return Array.from({ length: 14 }, (_, i) => {
+    const angle = Math.random() * Math.PI * 2;
+    const dist = 25 + Math.random() * 30;
+    return {
+      x: Math.cos(angle) * dist,
+      y: Math.sin(angle) * dist,
+      color: GOLD_COLORS[Math.floor(Math.random() * GOLD_COLORS.length)],
+      delay: i * 40,
+      size: 3 + Math.random() * 5,
+    };
+  });
+}
+
+function LegendaryBurst({ particles }: { particles: LegendaryParticle[] }) {
+  return (
+    <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 20 }}>
+      {particles.map((p, i) => (
+        <div
+          key={i}
+          className="absolute left-1/2 top-1/2 rounded-full"
+          style={{
+            width: p.size, height: p.size,
+            backgroundColor: p.color,
+            boxShadow: `0 0 4px ${p.color}`,
+            marginLeft: -p.size / 2, marginTop: -p.size / 2,
+            animation: `legendaryParticle 0.8s ease-out ${p.delay}ms forwards`,
+            "--lp-x": `${p.x}px`, "--lp-y": `${p.y}px`,
+          } as React.CSSProperties}
+        />
+      ))}
+    </div>
+  );
+}
+
 interface DyingMinion {
   minion: BoardMinion;
   boardIndex: number;
@@ -138,7 +177,7 @@ function HeroPortrait({ player, onClick, targetable }: { player: PlayerState; on
   );
 }
 
-function BoardMinionCard({ minion, onClick, selected, exhausted, targetable, animation, damageNumber, dying, impactParticles }: {
+function BoardMinionCard({ minion, onClick, selected, exhausted, targetable, animation, damageNumber, dying, impactParticles, legendaryParticles, legendaryShimmer }: {
   minion: BoardMinion;
   onClick?: () => void;
   selected?: boolean;
@@ -148,6 +187,8 @@ function BoardMinionCard({ minion, onClick, selected, exhausted, targetable, ani
   damageNumber?: number | null;
   dying?: boolean;
   impactParticles?: Particle[] | null;
+  legendaryParticles?: LegendaryParticle[] | null;
+  legendaryShimmer?: boolean;
 }) {
   const borderColor = selected
     ? "border-yellow-300 ring-2 ring-yellow-400"
@@ -160,8 +201,12 @@ function BoardMinionCard({ minion, onClick, selected, exhausted, targetable, ani
   const animStyle: React.CSSProperties = {};
   if (!dying) {
     if (animation === "popIn") Object.assign(animStyle, { animation: "popIn 0.4s ease-out forwards" });
+    else if (animation === "legendaryEntrance") Object.assign(animStyle, { animation: "legendaryEntrance 0.7s ease-out forwards, legendaryGlow 1.2s ease-out forwards" });
     else if (animation === "lunge") Object.assign(animStyle, { animation: "lunge 0.3s ease-in-out" });
     else if (animation === "shake") Object.assign(animStyle, { animation: "shake 0.3s ease-in-out" });
+  }
+  if (legendaryShimmer) {
+    animStyle.boxShadow = "0 0 12px 4px rgba(255, 215, 0, 0.4), 0 0 24px 8px rgba(255, 165, 0, 0.2)";
   }
 
   const SHARD_CLIPS = [
@@ -231,6 +276,17 @@ function BoardMinionCard({ minion, onClick, selected, exhausted, targetable, ani
         </div>
       )}
       {impactParticles && <ImpactBurst particles={impactParticles} />}
+      {legendaryParticles && <LegendaryBurst particles={legendaryParticles} />}
+      {legendaryShimmer && (
+        <div
+          className="absolute inset-0 rounded-lg pointer-events-none"
+          style={{
+            background: "linear-gradient(135deg, rgba(255,215,0,0.3) 0%, transparent 50%, rgba(255,165,0,0.3) 100%)",
+            animation: "legendaryShimmer 1s ease-out forwards",
+            zIndex: 15,
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -247,7 +303,9 @@ const BoardZone = forwardRef<HTMLDivElement, {
   damageNumbers?: Map<number, number>;
   dyingMinions?: DyingMinion[];
   impactParticles?: Map<number, Particle[]>;
-}>(function BoardZone({ minions, label, onDrop, onMinionClick, selectedIndex, isEnemy, hasAttackerSelected, animations, damageNumbers, dyingMinions, impactParticles }, ref) {
+  legendaryParticles?: Map<number, LegendaryParticle[]>;
+  legendaryShimmer?: Set<number>;
+}>(function BoardZone({ minions, label, onDrop, onMinionClick, selectedIndex, isEnemy, hasAttackerSelected, animations, damageNumbers, dyingMinions, impactParticles, legendaryParticles, legendaryShimmer }, ref) {
   const [dragOver, setDragOver] = useState(false);
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -312,6 +370,8 @@ const BoardZone = forwardRef<HTMLDivElement, {
                   animation={animations?.get(i)}
                   damageNumber={damageNumbers?.get(i) ?? null}
                   impactParticles={impactParticles?.get(i) ?? null}
+                  legendaryParticles={legendaryParticles?.get(i) ?? null}
+                  legendaryShimmer={legendaryShimmer?.has(i)}
                 />
               );
             }
@@ -329,6 +389,8 @@ const BoardZone = forwardRef<HTMLDivElement, {
                 animation={animations?.get(i)}
                 damageNumber={damageNumbers?.get(i) ?? null}
                 impactParticles={impactParticles?.get(i) ?? null}
+                legendaryParticles={legendaryParticles?.get(i) ?? null}
+                legendaryShimmer={legendaryShimmer?.has(i)}
               />
             );
           }
@@ -363,6 +425,10 @@ export default function GamePage() {
   const [dyingMinions, setDyingMinions] = useState<DyingMinion[]>([]);
   const [enemyImpacts, setEnemyImpacts] = useState<Map<number, Particle[]>>(new Map());
   const [heroImpact, setHeroImpact] = useState<Particle[] | null>(null);
+  const [playerLegendaryParticles, setPlayerLegendaryParticles] = useState<Map<number, LegendaryParticle[]>>(new Map());
+  const [enemyLegendaryParticles, setEnemyLegendaryParticles] = useState<Map<number, LegendaryParticle[]>>(new Map());
+  const [playerLegendaryShimmer, setPlayerLegendaryShimmer] = useState<Set<number>>(new Set());
+  const [enemyLegendaryShimmer, setEnemyLegendaryShimmer] = useState<Set<number>>(new Set());
 
   interface SpellEffect { particles: SpellTrailParticle[]; origin: { x: number; y: number }; key: number; }
   const [spellEffects, setSpellEffects] = useState<SpellEffect[]>([]);
@@ -456,21 +522,47 @@ export default function GamePage() {
     }
   }, [player.hand, playCard, safeTimeout]);
 
+  const triggerLegendaryEffects = useCallback((
+    particleSetter: typeof setPlayerLegendaryParticles,
+    shimmerSetter: typeof setPlayerLegendaryShimmer,
+    index: number,
+  ) => {
+    const particles = makeLegendaryParticles();
+    particleSetter(prev => new Map(prev).set(index, particles));
+    shimmerSetter(prev => new Set(prev).add(index));
+    safeTimeout(() => particleSetter(prev => { const m = new Map(prev); m.delete(index); return m; }), 900);
+    safeTimeout(() => shimmerSetter(prev => { const s = new Set(prev); s.delete(index); return s; }), 1200);
+  }, [safeTimeout]);
+
   useEffect(() => {
     const newLen = player.board.length;
     if (newLen > prevPlayerBoardLen.current) {
-      triggerAnim(setPlayerAnims, newLen - 1, "popIn", 400);
+      const idx = newLen - 1;
+      const minion = player.board[idx];
+      if (minion.rarity === "legendary") {
+        triggerAnim(setPlayerAnims, idx, "legendaryEntrance", 700);
+        triggerLegendaryEffects(setPlayerLegendaryParticles, setPlayerLegendaryShimmer, idx);
+      } else {
+        triggerAnim(setPlayerAnims, idx, "popIn", 400);
+      }
     }
     prevPlayerBoardLen.current = newLen;
-  }, [player.board.length, triggerAnim]);
+  }, [player.board.length, player.board, triggerAnim, triggerLegendaryEffects]);
 
   useEffect(() => {
     const newLen = opponent.board.length;
     if (newLen > prevEnemyBoardLen.current) {
-      triggerAnim(setEnemyAnims, newLen - 1, "popIn", 400);
+      const idx = newLen - 1;
+      const minion = opponent.board[idx];
+      if (minion.rarity === "legendary") {
+        triggerAnim(setEnemyAnims, idx, "legendaryEntrance", 700);
+        triggerLegendaryEffects(setEnemyLegendaryParticles, setEnemyLegendaryShimmer, idx);
+      } else {
+        triggerAnim(setEnemyAnims, idx, "popIn", 400);
+      }
     }
     prevEnemyBoardLen.current = newLen;
-  }, [opponent.board.length, triggerAnim]);
+  }, [opponent.board.length, opponent.board, triggerAnim, triggerLegendaryEffects]);
 
   const handleFriendlyMinionClick = (index: number) => {
     if (winner !== null) return;
@@ -580,7 +672,7 @@ export default function GamePage() {
       </div>
 
       {/* Opponent board */}
-      <BoardZone minions={opponent.board} label="对方战场" isEnemy hasAttackerSelected={selectedAttacker !== null} onMinionClick={handleEnemyMinionClick} animations={enemyAnims} damageNumbers={enemyDmg} dyingMinions={enemyDying} impactParticles={enemyImpacts} />
+      <BoardZone minions={opponent.board} label="对方战场" isEnemy hasAttackerSelected={selectedAttacker !== null} onMinionClick={handleEnemyMinionClick} animations={enemyAnims} damageNumbers={enemyDmg} dyingMinions={enemyDying} impactParticles={enemyImpacts} legendaryParticles={enemyLegendaryParticles} legendaryShimmer={enemyLegendaryShimmer} />
 
       {/* Turn indicator */}
       <div className="flex items-center justify-center py-0.5">
@@ -614,7 +706,7 @@ export default function GamePage() {
       )}
 
       {/* Player board */}
-      <BoardZone ref={boardZoneRef} minions={player.board} label="我方战场" onDrop={(i) => handlePlayCard(i)} onMinionClick={handleFriendlyMinionClick} selectedIndex={selectedAttacker} animations={playerAnims} damageNumbers={playerDmg} dyingMinions={playerDying} />
+      <BoardZone ref={boardZoneRef} minions={player.board} label="我方战场" onDrop={(i) => handlePlayCard(i)} onMinionClick={handleFriendlyMinionClick} selectedIndex={selectedAttacker} animations={playerAnims} damageNumbers={playerDmg} dyingMinions={playerDying} legendaryParticles={playerLegendaryParticles} legendaryShimmer={playerLegendaryShimmer} />
 
       {/* Player hand */}
       <div className="flex items-center justify-center gap-2 py-2 min-h-[8rem] overflow-x-auto">
