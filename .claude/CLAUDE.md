@@ -1,17 +1,12 @@
 # Autopo test Session
 
 ## Work Unit
-Create Card component with cartoon-style visual design, rarity frame colors, mana crystal, attack/health values, name/description, and faction colors
+Create a card gallery preview page to showcase all card designs
 
 ## Acceptance Criteria
-- Card component exists at src/components/Card.tsx
-- Card displays mana cost crystal in top-left corner
-- Card displays attack value at bottom-left and health at bottom-right
-- Card displays name and description text
-- Card frame color changes by rarity: common (gray), rare (blue), epic (purple), legendary (orange)
-- 5 faction background colors: Wei (blue), Shu (green), Wu (red), Qun (yellow), neutral (gray)
-- Different visual treatment for minion, spell, and weapon card types
-- Card hover animation: enlarge (scale) and glow effect using Tailwind CSS
+- Gallery page at src/app/cards/page.tsx displays sample cards
+- Shows cards across all rarities, factions, and types
+- Cards are interactive with hover animations visible
 
 ## Rules
 # Rules
