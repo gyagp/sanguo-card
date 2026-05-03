@@ -1,12 +1,12 @@
 # Autopo test Session
 
 ## Work Unit
-Attack impact effect — add particle burst (CSS-based) at point of impact when a minion attacks another minion or hero
+Spell casting visual effects — add particle trail and flash effect when a spell card is played
 
 ## Acceptance Criteria
-- Impact sparks/burst appear at the defender's position on hit
-- Particles fade out within 400ms
-- Works for both minion-vs-minion and minion-vs-hero attacks
+- Spell cards trigger a distinct visual effect (not the minion popIn)
+- Particle trail or burst effect plays on the spell target area
+- Effect includes a screen flash or glow overlay lasting ~600ms
 
 ## Rules
 # Rules

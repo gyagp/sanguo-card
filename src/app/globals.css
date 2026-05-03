@@ -70,3 +70,15 @@ body {
   0% { opacity: 1; transform: translate(0, 0) scale(1); }
   100% { opacity: 0; transform: translate(var(--px), var(--py)) scale(0.3); }
 }
+
+@keyframes spellTrail {
+  0% { opacity: 1; transform: translate(0, 0) scale(0.5); }
+  50% { opacity: 1; transform: translate(var(--tx), var(--ty)) scale(1.2); }
+  100% { opacity: 0; transform: translate(var(--tx), var(--ty)) scale(0.2); }
+}
+
+@keyframes spellFlash {
+  0% { opacity: 0; }
+  15% { opacity: 0.35; }
+  100% { opacity: 0; }
+}

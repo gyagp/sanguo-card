@@ -11,6 +11,7 @@ type AnimKind = "popIn" | "lunge" | "shake" | "death";
 interface Particle { px: number; py: number; color: string; }
 
 const PARTICLE_COLORS = ["#ff6b35", "#ffd700", "#ff4444", "#ffaa00", "#ffffff"];
+const SPELL_COLORS = ["#7b68ee", "#9370db", "#6a5acd", "#ba55d3", "#dda0dd", "#ffffff"];
 
 function makeParticles(): Particle[] {
   return Array.from({ length: 8 }, () => {
@@ -37,6 +38,50 @@ function ImpactBurst({ particles }: { particles: Particle[] }) {
             marginLeft: -3, marginTop: -3,
             animation: "impactParticle 0.4s ease-out forwards",
             "--px": `${p.px}px`, "--py": `${p.py}px`,
+          } as React.CSSProperties}
+        />
+      ))}
+    </div>
+  );
+}
+
+interface SpellTrailParticle { tx: number; ty: number; color: string; delay: number; size: number; }
+
+function makeSpellParticles(startRect: DOMRect, targetY: number): SpellTrailParticle[] {
+  const cx = startRect.left + startRect.width / 2;
+  const cy = startRect.top + startRect.height / 2;
+  return Array.from({ length: 12 }, (_, i) => {
+    const spread = (Math.random() - 0.5) * 80;
+    const targetCenterX = window.innerWidth / 2;
+    return {
+      tx: targetCenterX - cx + spread,
+      ty: targetY - cy + (Math.random() - 0.5) * 40,
+      color: SPELL_COLORS[Math.floor(Math.random() * SPELL_COLORS.length)],
+      delay: i * 30,
+      size: 4 + Math.random() * 6,
+    };
+  });
+}
+
+function SpellBurst({ particles, origin }: { particles: SpellTrailParticle[]; origin: { x: number; y: number } }) {
+  return (
+    <div className="fixed inset-0 pointer-events-none" style={{ zIndex: 55 }}>
+      {particles.map((p, i) => (
+        <div
+          key={i}
+          className="absolute rounded-full"
+          style={{
+            left: origin.x,
+            top: origin.y,
+            width: p.size,
+            height: p.size,
+            backgroundColor: p.color,
+            boxShadow: `0 0 6px ${p.color}`,
+            animation: `spellTrail 0.5s ease-out ${p.delay}ms forwards`,
+            "--tx": `${p.tx}px`,
+            "--ty": `${p.ty}px`,
+            opacity: 0,
+            animationFillMode: "forwards",
           } as React.CSSProperties}
         />
       ))}
@@ -273,6 +318,11 @@ export default function GamePage() {
   const [enemyImpacts, setEnemyImpacts] = useState<Map<number, Particle[]>>(new Map());
   const [heroImpact, setHeroImpact] = useState<Particle[] | null>(null);
 
+  interface SpellEffect { particles: SpellTrailParticle[]; origin: { x: number; y: number }; key: number; }
+  const [spellEffects, setSpellEffects] = useState<SpellEffect[]>([]);
+  const [spellFlash, setSpellFlash] = useState(false);
+  const spellKeyRef = useRef(0);
+
   interface FlyingCard { card: CardType; startRect: DOMRect; key: number; }
   const [flyingCards, setFlyingCards] = useState<FlyingCard[]>([]);
   const flyKeyRef = useRef(0);
@@ -342,6 +392,21 @@ export default function GamePage() {
       const key = flyKeyRef.current++;
       setFlyingCards(prev => [...prev, { card, startRect, key }]);
       safeTimeout(() => setFlyingCards(prev => prev.filter(f => f.key !== key)), 500);
+
+      if (card.type === "spell") {
+        const boardRect = boardZoneRef.current?.getBoundingClientRect();
+        const targetY = boardRect ? boardRect.top + boardRect.height / 2 : startRect.top - 200;
+        const origin = { x: startRect.left + startRect.width / 2, y: startRect.top + startRect.height / 2 };
+        const particles = makeSpellParticles(startRect, targetY);
+        const spellKey = spellKeyRef.current++;
+        setSpellEffects(prev => [...prev, { particles, origin, key: spellKey }]);
+        safeTimeout(() => setSpellEffects(prev => prev.filter(e => e.key !== spellKey)), 700);
+
+        safeTimeout(() => {
+          setSpellFlash(true);
+          safeTimeout(() => setSpellFlash(false), 600);
+        }, 200);
+      }
     }
   }, [player.hand, playCard, safeTimeout]);
 
@@ -558,6 +623,23 @@ export default function GamePage() {
           </div>
         );
       })}
+
+      {/* Spell particle trail effects */}
+      {spellEffects.map(se => (
+        <SpellBurst key={se.key} particles={se.particles} origin={se.origin} />
+      ))}
+
+      {/* Spell screen flash overlay */}
+      {spellFlash && (
+        <div
+          className="fixed inset-0 pointer-events-none"
+          style={{
+            zIndex: 60,
+            background: "radial-gradient(circle, rgba(123,104,238,0.4) 0%, rgba(75,0,130,0.2) 60%, transparent 100%)",
+            animation: "spellFlash 0.6s ease-out forwards",
+          }}
+        />
+      )}
     </div>
   );
 }
