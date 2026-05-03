@@ -1,15 +1,13 @@
-# Autopo execute Session
+# Autopo test Session
 
 ## Work Unit
-Set up test infrastructure (vitest) and write tests for Card component
+Create useGameState hook to connect game engine to React UI state
 
 ## Acceptance Criteria
-- Vitest configured and a trivial test passes before writing real tests
-- Tests verify rarity frame colors render correctly
-- Tests verify faction colors render correctly
-- Tests verify minion/spell/weapon types render differently
-- Tests verify mana, attack, health values display
-- All tests pass via npm run test
+- useGameState hook initializes a GameState from the engine
+- Hook exposes playCard, attack, endTurn, useHeroPower actions
+- Hook re-renders UI on state changes
+- Importing and calling useGameState in a component works without errors
 
 ## Rules
 # Rules
