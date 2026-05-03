@@ -1,13 +1,12 @@
 # Autopo test Session
 
 ## Work Unit
-Create main menu page with Play, Deck Builder, and Settings navigation — replace boilerplate page.tsx with styled Chinese-themed menu
+Add SEO meta tags, Open Graph data, and favicon to layout.tsx
 
 ## Acceptance Criteria
-- src/app/page.tsx renders main menu with Play, Deck Builder, Settings buttons
-- Navigation links to /game, /deck-builder, /settings
-- Styled with Tailwind matching game theme
-- No console errors
+- layout.tsx has custom title, description, OG tags
+- favicon.ico exists in public/ or app/
+- Meta tags visible in page source
 
 ## Rules
 # Rules
