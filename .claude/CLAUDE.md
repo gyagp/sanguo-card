@@ -1,14 +1,13 @@
-# Autopo test Session
+# Autopo execute Session
 
 ## Work Unit
-Create volume control and mute toggle UI component — slider for volume, mute button, persistent state in localStorage
+Write unit tests for VolumeControl component — verify slider, mute toggle, localStorage persistence
 
 ## Acceptance Criteria
-- VolumeControl React component exists
-- Slider adjusts master volume 0-100%
-- Mute button toggles all audio
-- Volume preference persists in localStorage
-- Component styled with Tailwind CSS
+- Tests verify slider changes volume
+- Tests verify mute button toggles audio
+- Tests verify localStorage read/write
+- All tests pass via npm run test
 
 ## Rules
 # Rules
