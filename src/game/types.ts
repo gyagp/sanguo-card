@@ -91,6 +91,7 @@ export interface BoardMinion extends Card {
   currentAttack: number;
   currentHealth: number;
   summoningSickness: boolean;
+  hasAttacked: boolean;
 }
 
 export interface Weapon {
@@ -106,6 +107,7 @@ export interface PlayerState {
   board: BoardMinion[];
   maxMana: number;
   weapon: Weapon | null;
+  heroPowerUsed: boolean;
 }
 
 export type TurnPhase = "start" | "play" | "combat" | "end";
@@ -135,6 +137,7 @@ export function createPlayerState(deck: Deck): PlayerState {
     board: [],
     maxMana: 0,
     weapon: null,
+    heroPowerUsed: false,
   };
 }
 
@@ -162,7 +165,10 @@ export function startTurn(state: GameState): DrawResult {
 
   for (const minion of player.board) {
     minion.summoningSickness = false;
+    minion.hasAttacked = false;
   }
+
+  player.heroPowerUsed = false;
 
   const result = drawCard(player);
 
@@ -207,6 +213,7 @@ export function playCard(
       currentAttack: card.attack,
       currentHealth: card.health,
       summoningSickness: true,
+      hasAttacked: false,
     };
     player.board.push(minion);
     return { success: true };
@@ -230,4 +237,116 @@ export function playCard(
   }
 
   return { success: false, error: "Unknown card type" };
+}
+
+export interface AttackResult {
+  success: boolean;
+  error?: string;
+}
+
+export function removeDeadMinions(state: GameState): void {
+  for (const player of state.players) {
+    player.board = player.board.filter((m) => m.currentHealth > 0);
+  }
+}
+
+export function checkWinCondition(state: GameState): 0 | 1 | "draw" | null {
+  const p1Dead = state.players[0].hero.health <= 0;
+  const p2Dead = state.players[1].hero.health <= 0;
+  if (p1Dead && p2Dead) return "draw";
+  if (p1Dead) return 1;
+  if (p2Dead) return 0;
+  return null;
+}
+
+export function attackMinion(
+  state: GameState,
+  attackerIndex: number,
+  defenderIndex: number,
+): AttackResult {
+  const attacker = state.players[state.activePlayer];
+  const defender = state.players[state.activePlayer === 0 ? 1 : 0];
+
+  if (attackerIndex < 0 || attackerIndex >= attacker.board.length) {
+    return { success: false, error: "Invalid attacker index" };
+  }
+  if (defenderIndex < 0 || defenderIndex >= defender.board.length) {
+    return { success: false, error: "Invalid defender index" };
+  }
+
+  const attackingMinion = attacker.board[attackerIndex];
+
+  if (attackingMinion.summoningSickness) {
+    return { success: false, error: "Minion has summoning sickness" };
+  }
+  if (attackingMinion.hasAttacked) {
+    return { success: false, error: "Minion has already attacked this turn" };
+  }
+
+  const defendingMinion = defender.board[defenderIndex];
+
+  attackingMinion.currentHealth -= defendingMinion.currentAttack;
+  defendingMinion.currentHealth -= attackingMinion.currentAttack;
+  attackingMinion.hasAttacked = true;
+
+  removeDeadMinions(state);
+
+  return { success: true };
+}
+
+export function attackHero(
+  state: GameState,
+  attackerIndex: number,
+): AttackResult {
+  const attacker = state.players[state.activePlayer];
+  const defender = state.players[state.activePlayer === 0 ? 1 : 0];
+
+  if (attackerIndex < 0 || attackerIndex >= attacker.board.length) {
+    return { success: false, error: "Invalid attacker index" };
+  }
+
+  const attackingMinion = attacker.board[attackerIndex];
+
+  if (attackingMinion.summoningSickness) {
+    return { success: false, error: "Minion has summoning sickness" };
+  }
+  if (attackingMinion.hasAttacked) {
+    return { success: false, error: "Minion has already attacked this turn" };
+  }
+  if (attackingMinion.currentAttack <= 0) {
+    return { success: false, error: "Minion has 0 attack" };
+  }
+
+  defender.hero.health -= attackingMinion.currentAttack;
+  attackingMinion.hasAttacked = true;
+
+  const result3 = checkWinCondition(state);
+  if (result3 !== null) {
+    state.phase = "ended";
+  }
+
+  return { success: true };
+}
+
+export interface HeroPowerResult {
+  success: boolean;
+  error?: string;
+}
+
+export function useHeroPower(state: GameState): HeroPowerResult {
+  const player = state.players[state.activePlayer];
+
+  if (player.heroPowerUsed) {
+    return { success: false, error: "Hero power already used this turn" };
+  }
+
+  const cost = player.hero.heroPower.cost;
+  if (player.hero.mana < cost) {
+    return { success: false, error: "Not enough mana" };
+  }
+
+  player.hero.mana -= cost;
+  player.heroPowerUsed = true;
+
+  return { success: true };
 }

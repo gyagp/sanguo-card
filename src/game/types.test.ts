@@ -26,6 +26,11 @@ import {
   startTurn,
   endTurn,
   playCard,
+  attackMinion,
+  attackHero,
+  useHeroPower,
+  removeDeadMinions,
+  checkWinCondition,
 } from "./types";
 
 function makeCard(overrides: Partial<Card> = {}): Card {
@@ -61,6 +66,7 @@ function makePlayerState(): PlayerState {
     board: [],
     maxMana: 0,
     weapon: null,
+    heroPowerUsed: false,
   };
 }
 
@@ -400,6 +406,7 @@ describe("playCard", () => {
       currentAttack: 1,
       currentHealth: 1,
       summoningSickness: false,
+      hasAttacked: false,
     }));
     const result = playCard(state, 0);
     expect(result.success).toBe(false);
@@ -434,5 +441,173 @@ describe("playCard", () => {
 
   it("MAX_BOARD_SIZE is 7", () => {
     expect(MAX_BOARD_SIZE).toBe(7);
+  });
+});
+
+function makeBoardMinion(overrides: Partial<BoardMinion> = {}): BoardMinion {
+  return {
+    ...makeCard({ type: "minion" }),
+    currentAttack: 2,
+    currentHealth: 3,
+    summoningSickness: false,
+    hasAttacked: false,
+    ...overrides,
+  };
+}
+
+describe("attackMinion", () => {
+  function setupCombat(): GameState {
+    const state = initializeGame(makeDeck(), makeDeck());
+    state.players[0].board = [makeBoardMinion({ name: "Attacker", currentAttack: 3, currentHealth: 4 })];
+    state.players[1].board = [makeBoardMinion({ name: "Defender", currentAttack: 2, currentHealth: 3 })];
+    return state;
+  }
+
+  it("both minions take damage equal to opponent's attack", () => {
+    const state = setupCombat();
+    const result = attackMinion(state, 0, 0);
+    expect(result.success).toBe(true);
+    expect(state.players[0].board[0].currentHealth).toBe(2); // 4 - 2
+    expect(state.players[1].board).toHaveLength(0); // 3 - 3 = 0, removed
+  });
+
+  it("removes minions with 0 or less health", () => {
+    const state = initializeGame(makeDeck(), makeDeck());
+    state.players[0].board = [makeBoardMinion({ currentAttack: 5, currentHealth: 1 })];
+    state.players[1].board = [makeBoardMinion({ currentAttack: 5, currentHealth: 1 })];
+    attackMinion(state, 0, 0);
+    expect(state.players[0].board).toHaveLength(0);
+    expect(state.players[1].board).toHaveLength(0);
+  });
+
+  it("rejects attack with summoning sickness", () => {
+    const state = setupCombat();
+    state.players[0].board[0].summoningSickness = true;
+    const result = attackMinion(state, 0, 0);
+    expect(result.success).toBe(false);
+    expect(result.error).toBe("Minion has summoning sickness");
+  });
+
+  it("rejects attack if minion already attacked", () => {
+    const state = setupCombat();
+    state.players[0].board[0].hasAttacked = true;
+    const result = attackMinion(state, 0, 0);
+    expect(result.success).toBe(false);
+    expect(result.error).toBe("Minion has already attacked this turn");
+  });
+
+  it("rejects invalid attacker index", () => {
+    const state = setupCombat();
+    expect(attackMinion(state, 5, 0).success).toBe(false);
+  });
+
+  it("rejects invalid defender index", () => {
+    const state = setupCombat();
+    expect(attackMinion(state, 0, 5).success).toBe(false);
+  });
+});
+
+describe("attackHero", () => {
+  it("deals damage to enemy hero", () => {
+    const state = initializeGame(makeDeck(), makeDeck());
+    state.players[0].board = [makeBoardMinion({ currentAttack: 5 })];
+    const result = attackHero(state, 0);
+    expect(result.success).toBe(true);
+    expect(state.players[1].hero.health).toBe(25);
+  });
+
+  it("rejects attack with summoning sickness", () => {
+    const state = initializeGame(makeDeck(), makeDeck());
+    state.players[0].board = [makeBoardMinion({ summoningSickness: true })];
+    const result = attackHero(state, 0);
+    expect(result.success).toBe(false);
+  });
+
+  it("sets game to ended when hero health reaches 0", () => {
+    const state = initializeGame(makeDeck(), makeDeck());
+    state.players[0].board = [makeBoardMinion({ currentAttack: 30 })];
+    attackHero(state, 0);
+    expect(state.players[1].hero.health).toBe(0);
+    expect(state.phase).toBe("ended");
+  });
+
+  it("rejects attack from minion with 0 attack", () => {
+    const state = initializeGame(makeDeck(), makeDeck());
+    state.players[0].board = [makeBoardMinion({ currentAttack: 0 })];
+    const result = attackHero(state, 0);
+    expect(result.success).toBe(false);
+    expect(result.error).toBe("Minion has 0 attack");
+  });
+
+  it("marks minion as having attacked", () => {
+    const state = initializeGame(makeDeck(), makeDeck());
+    state.players[0].board = [makeBoardMinion({ currentAttack: 1 })];
+    attackHero(state, 0);
+    expect(state.players[0].board[0].hasAttacked).toBe(true);
+  });
+});
+
+describe("checkWinCondition", () => {
+  it("returns null when both heroes alive", () => {
+    const state = initializeGame(makeDeck(), makeDeck());
+    expect(checkWinCondition(state)).toBeNull();
+  });
+
+  it("returns 0 when player 2 hero dies", () => {
+    const state = initializeGame(makeDeck(), makeDeck());
+    state.players[1].hero.health = 0;
+    expect(checkWinCondition(state)).toBe(0);
+  });
+
+  it("returns 1 when player 1 hero dies", () => {
+    const state = initializeGame(makeDeck(), makeDeck());
+    state.players[0].hero.health = 0;
+    expect(checkWinCondition(state)).toBe(1);
+  });
+
+  it("returns 'draw' when both heroes die simultaneously", () => {
+    const state = initializeGame(makeDeck(), makeDeck());
+    state.players[0].hero.health = 0;
+    state.players[1].hero.health = 0;
+    expect(checkWinCondition(state)).toBe("draw");
+  });
+});
+
+describe("useHeroPower", () => {
+  it("costs 2 mana by default", () => {
+    const state = initializeGame(makeDeck(), makeDeck());
+    state.players[0].hero.mana = 5;
+    const result = useHeroPower(state);
+    expect(result.success).toBe(true);
+    expect(state.players[0].hero.mana).toBe(3);
+  });
+
+  it("cannot be used twice per turn", () => {
+    const state = initializeGame(makeDeck(), makeDeck());
+    state.players[0].hero.mana = 5;
+    useHeroPower(state);
+    const result = useHeroPower(state);
+    expect(result.success).toBe(false);
+    expect(result.error).toBe("Hero power already used this turn");
+  });
+
+  it("rejects when not enough mana", () => {
+    const state = initializeGame(makeDeck(), makeDeck());
+    state.players[0].hero.mana = 1;
+    const result = useHeroPower(state);
+    expect(result.success).toBe(false);
+    expect(result.error).toBe("Not enough mana");
+  });
+
+  it("resets at start of turn", () => {
+    const state = initializeGame(makeDeck(), makeDeck());
+    state.players[0].hero.mana = 5;
+    useHeroPower(state);
+    expect(state.players[0].heroPowerUsed).toBe(true);
+    endTurn(state);
+    startTurn(state);
+    endTurn(state);
+    startTurn(state);
+    expect(state.players[0].heroPowerUsed).toBe(false);
   });
 });
