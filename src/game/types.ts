@@ -30,11 +30,61 @@ export type Deck = Card[] & { readonly __brand: "Deck" };
 
 export const MAX_DECK_SIZE = 30;
 
-export function createDeck(cards: Card[]): Deck {
+export const MAX_COPIES_PER_CARD = 2;
+export const MAX_COPIES_LEGENDARY = 1;
+export const MAX_HAND_SIZE = 10;
+
+export interface DrawResult {
+  drawn: Card | null;
+  burned: Card | null;
+}
+
+export function validateDeckCards(cards: Card[]): void {
   if (cards.length !== MAX_DECK_SIZE) {
     throw new Error(`Deck must contain exactly ${MAX_DECK_SIZE} cards, got ${cards.length}`);
   }
-  return cards as Deck;
+  const counts = new Map<string, { count: number; rarity: Rarity }>();
+  for (const card of cards) {
+    const entry = counts.get(card.name);
+    if (entry) {
+      entry.count++;
+    } else {
+      counts.set(card.name, { count: 1, rarity: card.rarity });
+    }
+  }
+  for (const [name, { count, rarity }] of counts) {
+    const max = rarity === "legendary" ? MAX_COPIES_LEGENDARY : MAX_COPIES_PER_CARD;
+    if (count > max) {
+      throw new Error(`Card "${name}" appears ${count} times (max ${max} for ${rarity})`);
+    }
+  }
+}
+
+export function createDeck(cards: Card[]): Deck {
+  validateDeckCards(cards);
+  return [...cards] as unknown as Deck;
+}
+
+export function shuffleDeck(deck: Deck): Deck {
+  const shuffled = [...deck];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled as unknown as Deck;
+}
+
+export function drawCard(player: PlayerState): DrawResult {
+  if (player.deck.length === 0) {
+    return { drawn: null, burned: null };
+  }
+  const deck = player.deck as unknown as Card[];
+  const card = deck.shift()!;
+  if (player.hand.length >= MAX_HAND_SIZE) {
+    return { drawn: null, burned: card };
+  }
+  player.hand.push(card);
+  return { drawn: card, burned: null };
 }
 
 export interface BoardMinion extends Card {

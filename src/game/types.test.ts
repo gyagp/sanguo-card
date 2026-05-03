@@ -11,7 +11,13 @@ import {
   Rarity,
   CardType,
   createDeck,
+  shuffleDeck,
+  drawCard,
   MAX_DECK_SIZE,
+  MAX_COPIES_PER_CARD,
+  MAX_COPIES_LEGENDARY,
+  MAX_HAND_SIZE,
+  DrawResult,
 } from "./types";
 
 function makeCard(overrides: Partial<Card> = {}): Card {
@@ -139,8 +145,101 @@ describe("GameState interface", () => {
 describe("All types exported from src/game/types.ts", () => {
   it("exports all required types and interfaces", () => {
     expect(createDeck).toBeTypeOf("function");
+    expect(shuffleDeck).toBeTypeOf("function");
+    expect(drawCard).toBeTypeOf("function");
     expect(MAX_DECK_SIZE).toBeTypeOf("number");
-    // Type-only exports (Card, Hero, GameState, etc.) are verified
-    // by the TypeScript compiler through usage above.
+    expect(MAX_COPIES_PER_CARD).toBe(2);
+    expect(MAX_COPIES_LEGENDARY).toBe(1);
+    expect(MAX_HAND_SIZE).toBe(10);
+  });
+});
+
+describe("Deck copy validation", () => {
+  it("allows 2 copies of non-legendary cards", () => {
+    const cards: Card[] = [];
+    for (let i = 0; i < 15; i++) {
+      cards.push(makeCard({ name: `Card ${i}`, rarity: "common" }));
+      cards.push(makeCard({ name: `Card ${i}`, rarity: "common" }));
+    }
+    expect(() => createDeck(cards)).not.toThrow();
+  });
+
+  it("rejects 3 copies of a non-legendary card", () => {
+    const cards: Card[] = [];
+    cards.push(makeCard({ name: "Dup", rarity: "common" }));
+    cards.push(makeCard({ name: "Dup", rarity: "common" }));
+    cards.push(makeCard({ name: "Dup", rarity: "common" }));
+    for (let i = 0; i < 27; i++) {
+      cards.push(makeCard({ name: `Filler ${i}` }));
+    }
+    expect(() => createDeck(cards)).toThrow('Card "Dup" appears 3 times (max 2 for common)');
+  });
+
+  it("allows 1 copy of a legendary card", () => {
+    const cards: Card[] = [];
+    cards.push(makeCard({ name: "Legend", rarity: "legendary" }));
+    for (let i = 0; i < 29; i++) {
+      cards.push(makeCard({ name: `Card ${i}` }));
+    }
+    expect(() => createDeck(cards)).not.toThrow();
+  });
+
+  it("rejects 2 copies of a legendary card", () => {
+    const cards: Card[] = [];
+    cards.push(makeCard({ name: "Legend", rarity: "legendary" }));
+    cards.push(makeCard({ name: "Legend", rarity: "legendary" }));
+    for (let i = 0; i < 28; i++) {
+      cards.push(makeCard({ name: `Card ${i}` }));
+    }
+    expect(() => createDeck(cards)).toThrow('Card "Legend" appears 2 times (max 1 for legendary)');
+  });
+});
+
+describe("shuffleDeck", () => {
+  it("returns a deck with the same cards", () => {
+    const deck = makeDeck();
+    const shuffled = shuffleDeck(deck);
+    expect(shuffled).toHaveLength(30);
+    const originalNames = [...deck].map((c) => c.name).sort();
+    const shuffledNames = [...shuffled].map((c) => c.name).sort();
+    expect(shuffledNames).toEqual(originalNames);
+  });
+
+  it("does not mutate the original deck", () => {
+    const deck = makeDeck();
+    const originalFirst = deck[0].name;
+    shuffleDeck(deck);
+    expect(deck[0].name).toBe(originalFirst);
+  });
+});
+
+describe("drawCard", () => {
+  it("draws the top card from deck to hand", () => {
+    const player = makePlayerState();
+    const topCard = player.deck[0];
+    const result = drawCard(player);
+    expect(result.drawn).toBe(topCard);
+    expect(result.burned).toBeNull();
+    expect(player.hand).toContain(topCard);
+    expect(player.deck).toHaveLength(29);
+  });
+
+  it("returns null when deck is empty", () => {
+    const player = makePlayerState();
+    (player.deck as unknown as Card[]).length = 0;
+    const result = drawCard(player);
+    expect(result.drawn).toBeNull();
+    expect(result.burned).toBeNull();
+  });
+
+  it("burns the card when hand is full (10 cards)", () => {
+    const player = makePlayerState();
+    player.hand = Array.from({ length: 10 }, (_, i) => makeCard({ name: `Hand ${i}` }));
+    const topCard = player.deck[0];
+    const result = drawCard(player);
+    expect(result.drawn).toBeNull();
+    expect(result.burned).toBe(topCard);
+    expect(player.hand).toHaveLength(10);
+    expect(player.deck).toHaveLength(29);
   });
 });
