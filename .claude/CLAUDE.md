@@ -1,13 +1,13 @@
 # Autopo test Session
 
 ## Work Unit
-Create beautiful loading screen component with Chinese-themed animation
+Create Settings page with volume controls and game preferences
 
 ## Acceptance Criteria
-- src/app/loading.tsx exists with styled loading animation
-- src/app/game/loading.tsx exists for game page
-- Loading screen displays during page transitions
-- 60fps animation with no jank
+- src/app/settings/page.tsx renders settings UI
+- Integrates existing VolumeControl component
+- Settings persist to localStorage
+- Back navigation to main menu
 
 ## Rules
 # Rules
