@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { evaluateBoard, getPlayableCards, getBestManaUsage, AIDecision, findLethal, evaluateTrade, getAIAttackDecisions } from './ai';
+import { evaluateBoard, getPlayableCards, getBestManaUsage, AIDecision, findLethal, evaluateTrade, getAIAttackDecisions, createAI, AIDifficulty, AIStrategy } from './ai';
 import { GameState, PlayerState, Card, BoardMinion, Deck } from './types';
 
 function makeCard(overrides: Partial<Card> = {}): Card {
@@ -320,5 +320,92 @@ describe('getAIAttackDecisions', () => {
     const state = makeGameState({}, {});
     state.activePlayer = 0;
     expect(getAIAttackDecisions(state)).toEqual([]);
+  });
+});
+
+describe('createAI', () => {
+  it('creates an AI for each difficulty level', () => {
+    const difficulties: AIDifficulty[] = ['easy', 'normal', 'hard'];
+    for (const d of difficulties) {
+      const ai = createAI(d);
+      expect(ai.difficulty).toBe(d);
+      expect(ai.getPlayDecisions).toBeDefined();
+      expect(ai.getAttackDecisions).toBeDefined();
+      expect(ai.shouldUseHeroPower).toBeDefined();
+    }
+  });
+
+  it('easy AI returns valid play decisions', () => {
+    const ai = createAI('easy');
+    const state = makeGameState(
+      { hand: [makeCard({ cost: 1 }), makeCard({ cost: 2 })], hero: { health: 30, mana: 3, heroPower: { name: '', cost: 2, description: '' } } },
+      {},
+    );
+    const decisions = ai.getPlayDecisions(state);
+    expect(decisions.every(d => d.type === 'playCard')).toBe(true);
+    const totalCost = decisions.reduce((s, d) => s + state.players[0].hand[d.cardIndex].cost, 0);
+    expect(totalCost).toBeLessThanOrEqual(3);
+  });
+
+  it('easy AI returns valid attack decisions', () => {
+    const ai = createAI('easy');
+    const state = makeGameState(
+      { board: [makeMinion({ currentAttack: 3, currentHealth: 2 })] },
+      { board: [makeMinion({ currentAttack: 2, currentHealth: 2 })] },
+    );
+    const decisions = ai.getAttackDecisions(state);
+    expect(decisions.every(d => d.type === 'attack')).toBe(true);
+  });
+
+  it('normal AI plays on-curve (highest cost first)', () => {
+    const ai = createAI('normal');
+    const state = makeGameState(
+      { hand: [makeCard({ cost: 1 }), makeCard({ cost: 3 }), makeCard({ cost: 2 })], hero: { health: 30, mana: 3, heroPower: { name: '', cost: 2, description: '' } } },
+      {},
+    );
+    const decisions = ai.getPlayDecisions(state);
+    expect(decisions.length).toBeGreaterThan(0);
+    expect(decisions[0].cardIndex).toBe(1);
+  });
+
+  it('hard AI uses optimal mana', () => {
+    const ai = createAI('hard');
+    const state = makeGameState(
+      { hand: [makeCard({ cost: 2 }), makeCard({ cost: 3 }), makeCard({ cost: 4 })], hero: { health: 30, mana: 5, heroPower: { name: '', cost: 2, description: '' } } },
+      {},
+    );
+    const decisions = ai.getPlayDecisions(state);
+    const totalCost = decisions.reduce((s, d) => s + state.players[0].hand[d.cardIndex].cost, 0);
+    expect(totalCost).toBe(5);
+  });
+
+  it('hard AI uses hero power when it fits mana curve', () => {
+    const ai = createAI('hard');
+    const state = makeGameState(
+      { hand: [makeCard({ cost: 1 })], hero: { health: 30, mana: 3, heroPower: { name: 'Ping', cost: 2, description: '' } }, heroPowerUsed: false },
+      {},
+    );
+    expect(ai.shouldUseHeroPower(state)).toBe(true);
+  });
+
+  it('hard AI skips hero power when already used', () => {
+    const ai = createAI('hard');
+    const state = makeGameState(
+      { hand: [], hero: { health: 30, mana: 5, heroPower: { name: 'Ping', cost: 2, description: '' } }, heroPowerUsed: true },
+      {},
+    );
+    expect(ai.shouldUseHeroPower(state)).toBe(false);
+  });
+
+  it('normal/hard AI uses smart attack decisions (lethal detection)', () => {
+    for (const d of ['normal', 'hard'] as AIDifficulty[]) {
+      const ai = createAI(d);
+      const state = makeGameState(
+        { board: [makeMinion({ currentAttack: 10, currentHealth: 5 })] },
+        { hero: { health: 5, mana: 0, heroPower: { name: '', cost: 2, description: '' } }, board: [makeMinion({ currentAttack: 2, currentHealth: 2 })] },
+      );
+      const decisions = ai.getAttackDecisions(state);
+      expect(decisions.every(d => d.targetIndex === 'hero')).toBe(true);
+    }
   });
 });

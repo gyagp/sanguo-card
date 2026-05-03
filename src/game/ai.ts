@@ -1,5 +1,7 @@
 import { GameState, PlayerState, Card, BoardMinion } from './types';
 
+export type AIDifficulty = 'easy' | 'normal' | 'hard';
+
 export type AIDecisionType = 'playCard' | 'attack' | 'useHeroPower' | 'endTurn';
 
 export interface PlayCardDecision {
@@ -203,4 +205,135 @@ export function getAIAttackDecisions(state: GameState): AttackDecision[] {
   }
 
   return decisions;
+}
+
+export interface AIStrategy {
+  difficulty: AIDifficulty;
+  getPlayDecisions(state: GameState): PlayCardDecision[];
+  getAttackDecisions(state: GameState): AttackDecision[];
+  shouldUseHeroPower(state: GameState): boolean;
+}
+
+function getRandomPlayDecisions(state: GameState): PlayCardDecision[] {
+  const player = state.players[state.activePlayer];
+  const playable = getPlayableCards(player.hand, player.hero.mana);
+  if (playable.length === 0) return [];
+  const shuffled = [...playable].sort(() => Math.random() - 0.5);
+  const decisions: PlayCardDecision[] = [];
+  let mana = player.hero.mana;
+  for (const idx of shuffled) {
+    if (player.hand[idx].cost <= mana) {
+      decisions.push({ type: 'playCard', cardIndex: idx });
+      mana -= player.hand[idx].cost;
+    }
+  }
+  return decisions;
+}
+
+function getRandomAttackDecisions(state: GameState): AttackDecision[] {
+  const aiIndex = state.activePlayer;
+  const opponentIndex = aiIndex === 0 ? 1 : 0;
+  const aiBoard = state.players[aiIndex].board;
+  const opponentBoard = state.players[opponentIndex].board;
+  const decisions: AttackDecision[] = [];
+
+  for (let a = 0; a < aiBoard.length; a++) {
+    const minion = aiBoard[a];
+    if (minion.summoningSickness || minion.hasAttacked) continue;
+    if (opponentBoard.length > 0 && Math.random() < 0.5) {
+      const targetIdx = Math.floor(Math.random() * opponentBoard.length);
+      decisions.push({ type: 'attack', attackerIndex: a, targetIndex: targetIdx });
+    } else {
+      decisions.push({ type: 'attack', attackerIndex: a, targetIndex: 'hero' });
+    }
+  }
+  return decisions;
+}
+
+function getOnCurvePlayDecisions(state: GameState): PlayCardDecision[] {
+  const player = state.players[state.activePlayer];
+  const playable = getPlayableCards(player.hand, player.hero.mana);
+  if (playable.length === 0) return [];
+
+  const sorted = [...playable].sort((a, b) => player.hand[b].cost - player.hand[a].cost);
+  const decisions: PlayCardDecision[] = [];
+  let mana = player.hero.mana;
+  for (const idx of sorted) {
+    if (player.hand[idx].cost <= mana) {
+      decisions.push({ type: 'playCard', cardIndex: idx });
+      mana -= player.hand[idx].cost;
+    }
+  }
+  return decisions;
+}
+
+function getOptimalPlayDecisions(state: GameState): PlayCardDecision[] {
+  const player = state.players[state.activePlayer];
+  const bestCombo = getBestManaUsage(player.hand, player.hero.mana);
+  return bestCombo.map(idx => ({ type: 'playCard' as const, cardIndex: idx }));
+}
+
+class EasyAI implements AIStrategy {
+  difficulty: AIDifficulty = 'easy';
+
+  getPlayDecisions(state: GameState): PlayCardDecision[] {
+    return getRandomPlayDecisions(state);
+  }
+
+  getAttackDecisions(state: GameState): AttackDecision[] {
+    return getRandomAttackDecisions(state);
+  }
+
+  shouldUseHeroPower(): boolean {
+    return Math.random() < 0.3;
+  }
+}
+
+class NormalAI implements AIStrategy {
+  difficulty: AIDifficulty = 'normal';
+
+  getPlayDecisions(state: GameState): PlayCardDecision[] {
+    return getOnCurvePlayDecisions(state);
+  }
+
+  getAttackDecisions(state: GameState): AttackDecision[] {
+    return getAIAttackDecisions(state);
+  }
+
+  shouldUseHeroPower(state: GameState): boolean {
+    const player = state.players[state.activePlayer];
+    return !player.heroPowerUsed && player.hero.mana >= player.hero.heroPower.cost;
+  }
+}
+
+class HardAI implements AIStrategy {
+  difficulty: AIDifficulty = 'hard';
+
+  getPlayDecisions(state: GameState): PlayCardDecision[] {
+    return getOptimalPlayDecisions(state);
+  }
+
+  getAttackDecisions(state: GameState): AttackDecision[] {
+    return getAIAttackDecisions(state);
+  }
+
+  shouldUseHeroPower(state: GameState): boolean {
+    const player = state.players[state.activePlayer];
+    if (player.heroPowerUsed || player.hero.mana < player.hero.heroPower.cost) return false;
+    const manaAfter = player.hero.mana - player.hero.heroPower.cost;
+    const playable = getPlayableCards(player.hand, manaAfter);
+    const bestWithout = getBestManaUsage(player.hand, player.hero.mana);
+    const bestWith = getBestManaUsage(player.hand, manaAfter);
+    const manaUsedWithout = bestWithout.reduce((s, i) => s + player.hand[i].cost, 0);
+    const manaUsedWith = bestWith.reduce((s, i) => s + player.hand[i].cost, 0) + player.hero.heroPower.cost;
+    return manaUsedWith >= manaUsedWithout;
+  }
+}
+
+export function createAI(difficulty: AIDifficulty): AIStrategy {
+  switch (difficulty) {
+    case 'easy': return new EasyAI();
+    case 'normal': return new NormalAI();
+    case 'hard': return new HardAI();
+  }
 }

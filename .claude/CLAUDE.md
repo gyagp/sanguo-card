@@ -1,13 +1,14 @@
 # Autopo test Session
 
 ## Work Unit
-Implement AI combat logic — minion trading evaluator and lethal detection
+Implement three difficulty levels (Easy, Normal, Hard) with distinct play styles
 
 ## Acceptance Criteria
-- findLethal returns true when available attacks can kill opponent hero
-- evaluateTrade scores minion-vs-minion trades by value exchange
-- AI attacks face when lethal is detected
-- AI prioritizes efficient trades when no lethal
+- AIDifficulty type = 'easy' | 'normal' | 'hard'
+- Easy: plays random valid cards, attacks randomly
+- Normal: plays on-curve, trades efficiently
+- Hard: optimal mana usage, lethal detection, smart hero power usage
+- createAI(difficulty) factory function exported
 
 ## Rules
 # Rules
