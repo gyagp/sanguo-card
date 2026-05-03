@@ -1,14 +1,14 @@
-# Autopo execute Session
+# Autopo test Session
 
 ## Work Unit
-Write unit tests for difficulty levels — verify Easy randomness, Normal on-curve play, Hard optimal play
+Create AudioManager service with Web Audio API — singleton class managing AudioContext, master GainNode, lazy initialization on first user interaction
 
 ## Acceptance Criteria
-- Tests verify Easy makes valid but suboptimal plays
-- Tests verify Normal plays on-curve (uses most mana)
-- Tests verify Hard detects lethal and uses hero power
-- Tests verify AI responds within 2-second budget
-- All tests pass via npm run test
+- src/app/game/audio-manager.ts exists
+- AudioManager class exports singleton with lazy AudioContext creation
+- Master volume control via GainNode (0-1 range)
+- Mute toggle method
+- Does not create AudioContext until first play() call
 
 ## Rules
 # Rules
