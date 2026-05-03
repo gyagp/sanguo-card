@@ -4,7 +4,7 @@ import { useGameState } from "../../hooks/useGameState";
 import Card from "../../components/Card";
 import { cards } from "../../game/cards";
 import { createDeck, BoardMinion, PlayerState, Card as CardType, MAX_BOARD_SIZE } from "../../game/types";
-import { useMemo, useState, useEffect, useRef, useCallback } from "react";
+import { useMemo, useState, useEffect, useRef, useCallback, forwardRef } from "react";
 
 type AnimKind = "popIn" | "lunge" | "shake" | "death";
 
@@ -106,7 +106,7 @@ function BoardMinionCard({ minion, onClick, selected, exhausted, targetable, ani
   );
 }
 
-function BoardZone({ minions, label, onDrop, onMinionClick, selectedIndex, isEnemy, hasAttackerSelected, animations, damageNumbers, dyingMinions }: {
+const BoardZone = forwardRef<HTMLDivElement, {
   minions: BoardMinion[];
   label: string;
   onDrop?: (handIndex: number) => void;
@@ -117,7 +117,7 @@ function BoardZone({ minions, label, onDrop, onMinionClick, selectedIndex, isEne
   animations?: Map<number, AnimKind>;
   damageNumbers?: Map<number, number>;
   dyingMinions?: DyingMinion[];
-}) {
+}>(function BoardZone({ minions, label, onDrop, onMinionClick, selectedIndex, isEnemy, hasAttackerSelected, animations, damageNumbers, dyingMinions }, ref) {
   const [dragOver, setDragOver] = useState(false);
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -139,6 +139,7 @@ function BoardZone({ minions, label, onDrop, onMinionClick, selectedIndex, isEne
 
   return (
     <div
+      ref={ref}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
@@ -211,7 +212,7 @@ function BoardZone({ minions, label, onDrop, onMinionClick, selectedIndex, isEne
       )}
     </div>
   );
-}
+});
 
 export default function GamePage() {
   const [deck1, deck2] = useMemo(() => {
@@ -228,6 +229,13 @@ export default function GamePage() {
   const [enemyDmg, setEnemyDmg] = useState<Map<number, number>>(new Map());
   const [heroDmg, setHeroDmg] = useState<number | null>(null);
   const [dyingMinions, setDyingMinions] = useState<DyingMinion[]>([]);
+
+  interface FlyingCard { card: CardType; startRect: DOMRect; key: number; }
+  const [flyingCards, setFlyingCards] = useState<FlyingCard[]>([]);
+  const flyKeyRef = useRef(0);
+  const boardZoneRef = useRef<HTMLDivElement>(null);
+
+  const handCardRefs = useRef<Map<number, HTMLDivElement>>(new Map());
 
   const timeoutIds = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
 
@@ -268,6 +276,19 @@ export default function GamePage() {
 
   const player = gameState.players[0];
   const opponent = gameState.players[1];
+
+  const handlePlayCard = useCallback((handIndex: number, cardEl?: HTMLElement | null) => {
+    const card = player.hand[handIndex];
+    if (!card) return;
+    const el = cardEl ?? handCardRefs.current.get(handIndex);
+    const startRect = el?.getBoundingClientRect();
+    const result = playCard(handIndex);
+    if (result.success && startRect) {
+      const key = flyKeyRef.current++;
+      setFlyingCards(prev => [...prev, { card, startRect, key }]);
+      safeTimeout(() => setFlyingCards(prev => prev.filter(f => f.key !== key)), 500);
+    }
+  }, [player.hand, playCard, safeTimeout]);
 
   useEffect(() => {
     const newLen = player.board.length;
@@ -424,15 +445,15 @@ export default function GamePage() {
       )}
 
       {/* Player board */}
-      <BoardZone minions={player.board} label="我方战场" onDrop={(i) => playCard(i)} onMinionClick={handleFriendlyMinionClick} selectedIndex={selectedAttacker} animations={playerAnims} damageNumbers={playerDmg} dyingMinions={playerDying} />
+      <BoardZone ref={boardZoneRef} minions={player.board} label="我方战场" onDrop={(i) => handlePlayCard(i)} onMinionClick={handleFriendlyMinionClick} selectedIndex={selectedAttacker} animations={playerAnims} damageNumbers={playerDmg} dyingMinions={playerDying} />
 
       {/* Player hand */}
       <div className="flex items-center justify-center gap-2 py-2 min-h-[8rem] overflow-x-auto">
         {player.hand.map((card, i) => (
-          <div key={i} className="shrink-0 scale-50 origin-bottom -mx-5">
+          <div key={i} className="shrink-0 scale-50 origin-bottom -mx-5" ref={el => { if (el) handCardRefs.current.set(i, el); else handCardRefs.current.delete(i); }}>
             <Card
               card={card}
-              onClick={() => playCard(i)}
+              onClick={(e) => handlePlayCard(i, (e.currentTarget as HTMLElement))}
               draggable
               handIndex={i}
               insufficientMana={card.cost > player.hero.mana || player.board.length >= MAX_BOARD_SIZE}
@@ -456,6 +477,29 @@ export default function GamePage() {
           {player.hero.heroPower.cost}
         </button>
       </div>
+
+      {/* Flying card animation overlay */}
+      {flyingCards.map(fc => {
+        const boardRect = boardZoneRef.current?.getBoundingClientRect();
+        const targetY = boardRect ? boardRect.top + boardRect.height / 2 : fc.startRect.top - 200;
+        const dy = targetY - fc.startRect.top - fc.startRect.height / 2;
+        return (
+          <div
+            key={fc.key}
+            className="fixed pointer-events-none z-50"
+            style={{
+              left: fc.startRect.left,
+              top: fc.startRect.top,
+              width: fc.startRect.width,
+              height: fc.startRect.height,
+              ["--fly-dy" as string]: `${dy}px`,
+              animation: "cardFly 500ms ease-in-out forwards",
+            }}
+          >
+            <Card card={fc.card} className="!w-full !h-full" />
+          </div>
+        );
+      })}
     </div>
   );
 }

@@ -77,7 +77,7 @@ describe("Drag-and-drop: dropping a card calls playCard", () => {
   });
 
   it("player board zone passes playCard as onDrop", () => {
-    expect(pageContent).toMatch(/onDrop=\{.*playCard/);
+    expect(pageContent).toMatch(/onDrop=\{.*handlePlayCard/);
   });
 
   it("opponent board zone does not accept drops", () => {

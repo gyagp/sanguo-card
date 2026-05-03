@@ -45,7 +45,7 @@ describe("Game page acceptance criteria", () => {
 
     it("passes card data and onClick to Card", () => {
       expect(pageContent).toMatch(/card=\{card\}/);
-      expect(pageContent).toMatch(/onClick=\{.*playCard/);
+      expect(pageContent).toMatch(/onClick=\{.*handlePlayCard/);
     });
   });
 

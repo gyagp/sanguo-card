@@ -1,15 +1,12 @@
-# Autopo execute Session
+# Autopo test Session
 
 ## Work Unit
-Write tests for useGameState hook and game board interactions
+Card play animation — animate card flying from hand position to board slot using CSS keyframes with translate coordinates
 
 ## Acceptance Criteria
-- Vitest can run a trivial test first to confirm setup
-- Tests verify useGameState initializes correctly
-- Tests verify playCard updates hand and board
-- Tests verify attack resolves damage
-- Tests verify endTurn cycles turns and draws a card
-- All tests pass via npm run test
+- Playing a card shows it moving from hand area to board position
+- Animation lasts ~500ms with easing
+- Card scales down from hand size to board minion size during flight
 
 ## Rules
 # Rules

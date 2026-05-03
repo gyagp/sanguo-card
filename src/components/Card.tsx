@@ -30,7 +30,7 @@ const typeIcon: Record<CardData["type"], string> = {
 
 interface CardProps {
   card: CardData;
-  onClick?: () => void;
+  onClick?: (e: React.MouseEvent<HTMLDivElement>) => void;
   className?: string;
   draggable?: boolean;
   handIndex?: number;
