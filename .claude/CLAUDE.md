@@ -1,12 +1,13 @@
 # Autopo test Session
 
 ## Work Unit
-Create Settings page with volume controls and game preferences
+Implement deck builder UI — create, edit, save custom decks to localStorage
 
 ## Acceptance Criteria
-- src/app/settings/page.tsx renders settings UI
-- Integrates existing VolumeControl component
-- Settings persist to localStorage
+- src/app/deck-builder/page.tsx renders deck builder
+- Can browse available cards and add/remove from deck
+- Deck saved to localStorage with name
+- Can manage multiple saved decks
 - Back navigation to main menu
 
 ## Rules
