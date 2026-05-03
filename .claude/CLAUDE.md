@@ -1,15 +1,14 @@
-# Autopo execute Session
+# Autopo test Session
 
 ## Work Unit
-Write tests for all new animation systems — verify animation triggers, cleanup, and snapshot-before-mutation
+Create AI decision engine module with core interfaces and utility helpers (evaluate board state, calculate available plays, mana curve logic)
 
 ## Acceptance Criteria
-- Tests verify card play animation triggers on playCard
-- Tests verify shatter effect uses pre-mutation snapshot
-- Tests verify turn banner appears on turn change
-- Tests verify victory/defeat screen renders on win condition
-- Tests verify all timeouts are cleaned up on unmount
-- All tests pass via npm run test
+- src/game/ai.ts exists
+- AIDecision type defined (playCard, attack, useHeroPower, endTurn)
+- evaluateBoard function scores board advantage
+- getPlayableCards returns cards affordable by current mana
+- getBestManaUsage selects combination maximizing mana spent
 
 ## Rules
 # Rules
