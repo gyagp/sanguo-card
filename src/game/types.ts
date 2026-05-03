@@ -100,9 +100,63 @@ export interface PlayerState {
   maxMana: number;
 }
 
+export type TurnPhase = "start" | "play" | "combat" | "end";
+
 export interface GameState {
   players: [PlayerState, PlayerState];
   board: [BoardMinion[], BoardMinion[]];
   turn: number;
   phase: GamePhase;
+  turnPhase: TurnPhase;
+  activePlayer: 0 | 1;
+}
+
+export const MAX_MANA = 10;
+export const STARTING_HP = 30;
+
+export function createPlayerState(deck: Deck): PlayerState {
+  return {
+    hero: {
+      health: STARTING_HP,
+      mana: 0,
+      heroPower: { name: "", cost: 2, description: "" },
+    },
+    deck,
+    hand: [],
+    board: [],
+    maxMana: 0,
+  };
+}
+
+export function initializeGame(deck1: Deck, deck2: Deck): GameState {
+  return {
+    players: [createPlayerState(deck1), createPlayerState(deck2)],
+    board: [[], []],
+    turn: 0,
+    phase: "playing",
+    turnPhase: "start",
+    activePlayer: 0,
+  };
+}
+
+export function startTurn(state: GameState): DrawResult {
+  state.turn++;
+  state.turnPhase = "start";
+
+  const player = state.players[state.activePlayer];
+
+  if (player.maxMana < MAX_MANA) {
+    player.maxMana++;
+  }
+  player.hero.mana = player.maxMana;
+
+  const result = drawCard(player);
+
+  state.turnPhase = "play";
+  return result;
+}
+
+export function endTurn(state: GameState): void {
+  state.turnPhase = "end";
+  state.activePlayer = state.activePlayer === 0 ? 1 : 0;
 }

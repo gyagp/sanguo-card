@@ -17,7 +17,13 @@ import {
   MAX_COPIES_PER_CARD,
   MAX_COPIES_LEGENDARY,
   MAX_HAND_SIZE,
+  MAX_MANA,
+  STARTING_HP,
   DrawResult,
+  createPlayerState,
+  initializeGame,
+  startTurn,
+  endTurn,
 } from "./types";
 
 function makeCard(overrides: Partial<Card> = {}): Card {
@@ -121,6 +127,8 @@ describe("GameState interface", () => {
       board: [[], []],
       turn: 1,
       phase: "playing",
+      turnPhase: "play",
+      activePlayer: 0,
     };
     expect(state.players).toHaveLength(2);
     expect(state.board).toHaveLength(2);
@@ -136,6 +144,8 @@ describe("GameState interface", () => {
         board: [[], []],
         turn: 1,
         phase,
+        turnPhase: "play",
+        activePlayer: 0,
       };
       expect(state.phase).toBe(phase);
     });
@@ -241,5 +251,90 @@ describe("drawCard", () => {
     expect(result.burned).toBe(topCard);
     expect(player.hand).toHaveLength(10);
     expect(player.deck).toHaveLength(29);
+  });
+});
+
+describe("initializeGame", () => {
+  it("creates game with both players at 30 HP and 0 mana crystals", () => {
+    const state = initializeGame(makeDeck(), makeDeck());
+    expect(state.players[0].hero.health).toBe(STARTING_HP);
+    expect(state.players[1].hero.health).toBe(STARTING_HP);
+    expect(state.players[0].maxMana).toBe(0);
+    expect(state.players[1].maxMana).toBe(0);
+    expect(state.players[0].hero.mana).toBe(0);
+    expect(state.players[1].hero.mana).toBe(0);
+    expect(state.turn).toBe(0);
+    expect(state.phase).toBe("playing");
+  });
+});
+
+describe("startTurn", () => {
+  it("increases maxMana by 1 and refills mana", () => {
+    const state = initializeGame(makeDeck(), makeDeck());
+    startTurn(state);
+    const player = state.players[0];
+    expect(player.maxMana).toBe(1);
+    expect(player.hero.mana).toBe(1);
+  });
+
+  it("increments turn counter", () => {
+    const state = initializeGame(makeDeck(), makeDeck());
+    startTurn(state);
+    expect(state.turn).toBe(1);
+  });
+
+  it("draws a card", () => {
+    const state = initializeGame(makeDeck(), makeDeck());
+    const result = startTurn(state);
+    expect(result.drawn).not.toBeNull();
+    expect(state.players[0].hand).toHaveLength(1);
+  });
+
+  it("sets turnPhase to play after start", () => {
+    const state = initializeGame(makeDeck(), makeDeck());
+    startTurn(state);
+    expect(state.turnPhase).toBe("play");
+  });
+
+  it("caps mana at 10", () => {
+    const state = initializeGame(makeDeck(), makeDeck());
+    state.players[0].maxMana = 10;
+    startTurn(state);
+    expect(state.players[0].maxMana).toBe(10);
+    expect(state.players[0].hero.mana).toBe(10);
+  });
+
+  it("mana increases each turn up to 10", () => {
+    const state = initializeGame(makeDeck(), makeDeck());
+    for (let i = 1; i <= 12; i++) {
+      startTurn(state);
+      const expected = Math.min(i, MAX_MANA);
+      expect(state.players[0].maxMana).toBe(expected);
+      expect(state.players[0].hero.mana).toBe(expected);
+      endTurn(state);
+      // Skip opponent turn
+      startTurn(state);
+      endTurn(state);
+    }
+  });
+});
+
+describe("endTurn", () => {
+  it("switches active player", () => {
+    const state = initializeGame(makeDeck(), makeDeck());
+    expect(state.activePlayer).toBe(0);
+    startTurn(state);
+    endTurn(state);
+    expect(state.activePlayer).toBe(1);
+    startTurn(state);
+    endTurn(state);
+    expect(state.activePlayer).toBe(0);
+  });
+
+  it("sets turnPhase to end", () => {
+    const state = initializeGame(makeDeck(), makeDeck());
+    startTurn(state);
+    endTurn(state);
+    expect(state.turnPhase).toBe("end");
   });
 });
