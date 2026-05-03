@@ -52,7 +52,7 @@ describe("Click-to-attack: clicking enemy minion triggers attack", () => {
   });
 
   it("calls attack with selectedAttacker and target index", () => {
-    expect(pageContent).toMatch(/attack\(selectedAttacker,\s*index\)/);
+    expect(pageContent).toMatch(/attack\(attackerIdx,\s*index\)/);
   });
 
   it("clears selectedAttacker after attacking a minion", () => {
@@ -90,7 +90,7 @@ describe("Click-to-attack: clicking enemy hero triggers attackHero", () => {
   });
 
   it("calls attackHero with selectedAttacker", () => {
-    expect(pageContent).toMatch(/attackHero\(selectedAttacker\)/);
+    expect(pageContent).toMatch(/attackHero\(attackerIdx\)/);
   });
 
   it("clears selectedAttacker after attacking hero", () => {
@@ -148,7 +148,7 @@ describe("Click-to-attack: exhausted minions are dimmed and not selectable", () 
 
   it("friendly minions pass exhausted based on hasAttacked or summoningSickness", () => {
     expect(pageContent).toMatch(
-      /exhausted=\{!isEnemy\s*&&\s*\(m\.hasAttacked\s*\|\|\s*m\.summoningSickness\)\}/
+      /exhausted=\{!isEnemy\s*&&\s*\(minions\[i\]\.hasAttacked\s*\|\|\s*minions\[i\]\.summoningSickness\)\}/
     );
   });
 

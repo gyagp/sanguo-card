@@ -4,7 +4,16 @@ import { useGameState } from "../../hooks/useGameState";
 import Card from "../../components/Card";
 import { cards } from "../../game/cards";
 import { createDeck, BoardMinion, PlayerState, Card as CardType, MAX_BOARD_SIZE } from "../../game/types";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect, useRef, useCallback } from "react";
+
+type AnimKind = "popIn" | "lunge" | "shake" | "death";
+
+interface DyingMinion {
+  minion: BoardMinion;
+  boardIndex: number;
+  side: "player" | "enemy";
+  expiry: number;
+}
 
 function buildDeck(): CardType[] {
   const pool = [...cards];
@@ -48,12 +57,15 @@ function HeroPortrait({ player, onClick, targetable }: { player: PlayerState; on
   );
 }
 
-function BoardMinionCard({ minion, onClick, selected, exhausted, targetable }: {
+function BoardMinionCard({ minion, onClick, selected, exhausted, targetable, animation, damageNumber, dying }: {
   minion: BoardMinion;
   onClick?: () => void;
   selected?: boolean;
   exhausted?: boolean;
   targetable?: boolean;
+  animation?: AnimKind;
+  damageNumber?: number | null;
+  dying?: boolean;
 }) {
   const borderColor = selected
     ? "border-yellow-300 ring-2 ring-yellow-400"
@@ -61,12 +73,19 @@ function BoardMinionCard({ minion, onClick, selected, exhausted, targetable }: {
       ? "border-red-400 hover:border-red-300"
       : "border-amber-600 hover:border-yellow-400";
   const opacity = exhausted ? "opacity-50" : "";
-  const cursor = exhausted ? "cursor-not-allowed" : "cursor-pointer";
+  const cursor = dying ? "pointer-events-none" : exhausted ? "cursor-not-allowed" : "cursor-pointer";
+
+  const animStyle: React.CSSProperties = {};
+  if (dying) Object.assign(animStyle, { animation: "fadeOutDeath 0.5s ease-in forwards" });
+  else if (animation === "popIn") Object.assign(animStyle, { animation: "popIn 0.4s ease-out forwards" });
+  else if (animation === "lunge") Object.assign(animStyle, { animation: "lunge 0.3s ease-in-out" });
+  else if (animation === "shake") Object.assign(animStyle, { animation: "shake 0.3s ease-in-out" });
 
   return (
     <div
       onClick={(e) => { e.stopPropagation(); onClick?.(); }}
-      className={`w-20 h-28 sm:w-24 sm:h-32 bg-amber-900 border-2 ${borderColor} rounded-lg flex flex-col items-center justify-between p-1 text-white text-xs sm:text-sm shadow-md transition-colors ${cursor} ${opacity}`}
+      className={`relative w-20 h-28 sm:w-24 sm:h-32 bg-amber-900 border-2 ${borderColor} rounded-lg flex flex-col items-center justify-between p-1 text-white text-xs sm:text-sm shadow-md transition-colors ${cursor} ${opacity}`}
+      style={animStyle}
     >
       <span className="bg-blue-700 rounded-full w-5 h-5 flex items-center justify-center font-bold text-[10px]">
         {minion.cost}
@@ -76,11 +95,18 @@ function BoardMinionCard({ minion, onClick, selected, exhausted, targetable }: {
         <span className="bg-yellow-600 rounded px-1 font-bold">{minion.currentAttack}</span>
         <span className="bg-red-700 rounded px-1 font-bold">{minion.currentHealth}</span>
       </div>
+      {damageNumber != null && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <span className="text-2xl font-black text-red-400 drop-shadow-lg" style={{ animation: "floatDamage 0.8s ease-out forwards" }}>
+            -{damageNumber}
+          </span>
+        </div>
+      )}
     </div>
   );
 }
 
-function BoardZone({ minions, label, onDrop, onMinionClick, selectedIndex, isEnemy, hasAttackerSelected }: {
+function BoardZone({ minions, label, onDrop, onMinionClick, selectedIndex, isEnemy, hasAttackerSelected, animations, damageNumbers, dyingMinions }: {
   minions: BoardMinion[];
   label: string;
   onDrop?: (handIndex: number) => void;
@@ -88,6 +114,9 @@ function BoardZone({ minions, label, onDrop, onMinionClick, selectedIndex, isEne
   selectedIndex?: number | null;
   isEnemy?: boolean;
   hasAttackerSelected?: boolean;
+  animations?: Map<number, AnimKind>;
+  damageNumbers?: Map<number, number>;
+  dyingMinions?: DyingMinion[];
 }) {
   const [dragOver, setDragOver] = useState(false);
 
@@ -117,19 +146,68 @@ function BoardZone({ minions, label, onDrop, onMinionClick, selectedIndex, isEne
         dragOver ? "bg-green-800/40 border-2 border-dashed border-green-400" : "border-2 border-transparent"
       }`}
     >
-      {minions.length === 0 ? (
+      {minions.length === 0 && (!dyingMinions || dyingMinions.length === 0) ? (
         <span className="text-gray-500 text-sm italic">{label}</span>
       ) : (
-        minions.map((m, i) => (
-          <BoardMinionCard
-            key={i}
-            minion={m}
-            onClick={() => onMinionClick?.(i)}
-            selected={!isEnemy && selectedIndex === i}
-            exhausted={!isEnemy && (m.hasAttacked || m.summoningSickness)}
-            targetable={isEnemy && !!hasAttackerSelected}
-          />
-        ))
+        (() => {
+          const slots: React.ReactNode[] = [];
+          const dyingByIndex = new Map<number, DyingMinion[]>();
+          dyingMinions?.forEach(dm => {
+            const arr = dyingByIndex.get(dm.boardIndex) ?? [];
+            arr.push(dm);
+            dyingByIndex.set(dm.boardIndex, arr);
+          });
+          let liveIdx = 0;
+          const totalSlots = minions.length + (dyingMinions?.length ?? 0);
+          for (let slot = 0; slot < totalSlots; slot++) {
+            const dying = dyingByIndex.get(slot);
+            if (dying) {
+              dying.forEach((dm, di) => {
+                slots.push(
+                  <BoardMinionCard key={`dying-${dm.boardIndex}-${di}`} minion={dm.minion} dying />
+                );
+              });
+              dyingByIndex.delete(slot);
+            } else if (liveIdx < minions.length) {
+              const i = liveIdx++;
+              slots.push(
+                <BoardMinionCard
+                  key={`live-${i}`}
+                  minion={minions[i]}
+                  onClick={() => onMinionClick?.(i)}
+                  selected={!isEnemy && selectedIndex === i}
+                  exhausted={!isEnemy && (minions[i].hasAttacked || minions[i].summoningSickness)}
+                  targetable={isEnemy && !!hasAttackerSelected}
+                  animation={animations?.get(i)}
+                  damageNumber={damageNumbers?.get(i) ?? null}
+                />
+              );
+            }
+          }
+          while (liveIdx < minions.length) {
+            const i = liveIdx++;
+            slots.push(
+              <BoardMinionCard
+                key={`live-${i}`}
+                minion={minions[i]}
+                onClick={() => onMinionClick?.(i)}
+                selected={!isEnemy && selectedIndex === i}
+                exhausted={!isEnemy && (minions[i].hasAttacked || minions[i].summoningSickness)}
+                targetable={isEnemy && !!hasAttackerSelected}
+                animation={animations?.get(i)}
+                damageNumber={damageNumbers?.get(i) ?? null}
+              />
+            );
+          }
+          dyingByIndex.forEach((dms, idx) => {
+            dms.forEach((dm, di) => {
+              slots.push(
+                <BoardMinionCard key={`dying-${idx}-${di}`} minion={dm.minion} dying />
+              );
+            });
+          });
+          return slots;
+        })()
       )}
     </div>
   );
@@ -144,8 +222,68 @@ export default function GamePage() {
 
   const [selectedAttacker, setSelectedAttacker] = useState<number | null>(null);
 
+  const [playerAnims, setPlayerAnims] = useState<Map<number, AnimKind>>(new Map());
+  const [enemyAnims, setEnemyAnims] = useState<Map<number, AnimKind>>(new Map());
+  const [playerDmg, setPlayerDmg] = useState<Map<number, number>>(new Map());
+  const [enemyDmg, setEnemyDmg] = useState<Map<number, number>>(new Map());
+  const [heroDmg, setHeroDmg] = useState<number | null>(null);
+  const [dyingMinions, setDyingMinions] = useState<DyingMinion[]>([]);
+
+  const timeoutIds = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
+
+  useEffect(() => {
+    return () => {
+      timeoutIds.current.forEach(id => clearTimeout(id));
+    };
+  }, []);
+
+  const safeTimeout = useCallback((fn: () => void, delay: number) => {
+    const id = setTimeout(() => {
+      timeoutIds.current.delete(id);
+      fn();
+    }, delay);
+    timeoutIds.current.add(id);
+  }, []);
+
+  const prevPlayerBoardLen = useRef(gameState.players[0].board.length);
+  const prevEnemyBoardLen = useRef(gameState.players[1].board.length);
+
+  const triggerAnim = useCallback((setter: typeof setPlayerAnims, index: number, kind: AnimKind, duration: number) => {
+    setter(prev => new Map(prev).set(index, kind));
+    safeTimeout(() => setter(prev => { const m = new Map(prev); m.delete(index); return m; }), duration);
+  }, [safeTimeout]);
+
+  const triggerDmg = useCallback((setter: typeof setPlayerDmg, index: number, amount: number) => {
+    setter(prev => new Map(prev).set(index, amount));
+    safeTimeout(() => setter(prev => { const m = new Map(prev); m.delete(index); return m; }), 800);
+  }, [safeTimeout]);
+
+  const addDyingMinion = useCallback((minion: BoardMinion, boardIndex: number, side: "player" | "enemy") => {
+    const dm: DyingMinion = { minion: { ...minion }, boardIndex, side, expiry: Date.now() + 500 };
+    setDyingMinions(prev => [...prev, dm]);
+    safeTimeout(() => {
+      setDyingMinions(prev => prev.filter(d => d !== dm));
+    }, 500);
+  }, [safeTimeout]);
+
   const player = gameState.players[0];
   const opponent = gameState.players[1];
+
+  useEffect(() => {
+    const newLen = player.board.length;
+    if (newLen > prevPlayerBoardLen.current) {
+      triggerAnim(setPlayerAnims, newLen - 1, "popIn", 400);
+    }
+    prevPlayerBoardLen.current = newLen;
+  }, [player.board.length, triggerAnim]);
+
+  useEffect(() => {
+    const newLen = opponent.board.length;
+    if (newLen > prevEnemyBoardLen.current) {
+      triggerAnim(setEnemyAnims, newLen - 1, "popIn", 400);
+    }
+    prevEnemyBoardLen.current = newLen;
+  }, [opponent.board.length, triggerAnim]);
 
   const handleFriendlyMinionClick = (index: number) => {
     if (winner !== null) return;
@@ -158,19 +296,65 @@ export default function GamePage() {
 
   const handleEnemyMinionClick = (index: number) => {
     if (selectedAttacker === null) return;
-    attack(selectedAttacker, index);
+    const attackerIdx = selectedAttacker;
+
+    // Snapshot stats before attack() mutates state via clone
+    const attackerAtk = player.board[attackerIdx]?.currentAttack ?? 0;
+    const defenderAtk = opponent.board[index]?.currentAttack ?? 0;
+    const defenderHealth = opponent.board[index]?.currentHealth ?? 0;
+    const attackerHealth = player.board[attackerIdx]?.currentHealth ?? 0;
+    const attackerMinion = player.board[attackerIdx];
+    const defenderMinion = opponent.board[index];
+
+    const result = attack(attackerIdx, index);
     setSelectedAttacker(null);
+
+    if (result.success) {
+      triggerAnim(setPlayerAnims, attackerIdx, "lunge", 300);
+      safeTimeout(() => triggerAnim(setEnemyAnims, index, "shake", 300), 150);
+
+      if (attackerAtk > 0) {
+        safeTimeout(() => triggerDmg(setEnemyDmg, index, attackerAtk), 150);
+      }
+      if (defenderAtk > 0) {
+        triggerDmg(setPlayerDmg, attackerIdx, defenderAtk);
+      }
+
+      if (defenderMinion && defenderHealth - attackerAtk <= 0) {
+        safeTimeout(() => addDyingMinion(defenderMinion, index, "enemy"), 350);
+      }
+      if (attackerMinion && attackerHealth - defenderAtk <= 0) {
+        safeTimeout(() => addDyingMinion(attackerMinion, attackerIdx, "player"), 350);
+      }
+    }
   };
 
   const handleEnemyHeroClick = () => {
     if (selectedAttacker === null) return;
-    attackHero(selectedAttacker);
+    const attackerIdx = selectedAttacker;
+    const attackerAtk = player.board[attackerIdx]?.currentAttack ?? 0;
+
+    const result = attackHero(attackerIdx);
     setSelectedAttacker(null);
+
+    if (result.success) {
+      triggerAnim(setPlayerAnims, attackerIdx, "lunge", 300);
+
+      if (attackerAtk > 0) {
+        safeTimeout(() => {
+          setHeroDmg(attackerAtk);
+          safeTimeout(() => setHeroDmg(null), 800);
+        }, 150);
+      }
+    }
   };
 
   const handleBoardClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) setSelectedAttacker(null);
   };
+
+  const playerDying = dyingMinions.filter(d => d.side === "player");
+  const enemyDying = dyingMinions.filter(d => d.side === "enemy");
 
   return (
     <div className="flex flex-col h-screen bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 select-none" onClick={handleBoardClick}>
@@ -184,7 +368,16 @@ export default function GamePage() {
       )}
 
       {/* Opponent hero */}
-      <HeroPortrait player={opponent} onClick={handleEnemyHeroClick} targetable={selectedAttacker !== null} />
+      <div className="relative">
+        <HeroPortrait player={opponent} onClick={handleEnemyHeroClick} targetable={selectedAttacker !== null} />
+        {heroDmg != null && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <span className="text-3xl font-black text-red-400 drop-shadow-lg" style={{ animation: "floatDamage 0.8s ease-out forwards" }}>
+              -{heroDmg}
+            </span>
+          </div>
+        )}
+      </div>
 
       {/* Opponent hand (face down) */}
       <div className="flex items-center justify-center gap-2 py-1 min-h-[5rem]" onClick={handleBoardClick}>
@@ -197,7 +390,7 @@ export default function GamePage() {
       </div>
 
       {/* Opponent board */}
-      <BoardZone minions={opponent.board} label="对方战场" isEnemy hasAttackerSelected={selectedAttacker !== null} onMinionClick={handleEnemyMinionClick} />
+      <BoardZone minions={opponent.board} label="对方战场" isEnemy hasAttackerSelected={selectedAttacker !== null} onMinionClick={handleEnemyMinionClick} animations={enemyAnims} damageNumbers={enemyDmg} dyingMinions={enemyDying} />
 
       {/* Turn indicator */}
       <div className="flex items-center justify-center py-0.5">
@@ -231,7 +424,7 @@ export default function GamePage() {
       )}
 
       {/* Player board */}
-      <BoardZone minions={player.board} label="我方战场" onDrop={(i) => playCard(i)} onMinionClick={handleFriendlyMinionClick} selectedIndex={selectedAttacker} />
+      <BoardZone minions={player.board} label="我方战场" onDrop={(i) => playCard(i)} onMinionClick={handleFriendlyMinionClick} selectedIndex={selectedAttacker} animations={playerAnims} damageNumbers={playerDmg} dyingMinions={playerDying} />
 
       {/* Player hand */}
       <div className="flex items-center justify-center gap-2 py-2 min-h-[8rem] overflow-x-auto">
