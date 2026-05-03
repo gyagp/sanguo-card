@@ -1,12 +1,13 @@
 # Autopo execute Session
 
 ## Work Unit
-Write unit tests for AI decision engine — board evaluation, playable cards, mana curve
+Write unit tests for AI combat logic — trading evaluation and lethal detection
 
 ## Acceptance Criteria
-- Tests verify getPlayableCards filters by mana correctly
-- Tests verify getBestManaUsage maximizes mana spent
-- Tests verify evaluateBoard scores advantage correctly
+- Tests verify findLethal detects exact lethal scenarios
+- Tests verify findLethal returns false when no lethal exists
+- Tests verify evaluateTrade prefers value trades
+- Tests verify AI attacks face when lethal is available
 - All tests pass via npm run test
 
 ## Rules
