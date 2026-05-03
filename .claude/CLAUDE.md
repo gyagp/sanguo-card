@@ -1,13 +1,14 @@
 # Autopo test Session
 
 ## Work Unit
-Implement procedural sound effect generators — short synthesized sounds for card play, attack, damage, hero power, turn start, card draw using OscillatorNode and envelope shaping
+Implement procedural Chinese-themed background music using Web Audio API — pentatonic scale loop with multiple oscillators
 
 ## Acceptance Criteria
-- AudioManager has methods: playCardPlay(), playAttack(), playDamage(), playHeroPower(), playTurnStart(), playCardDraw()
-- Each sound is distinct and < 1 second
-- Sounds are procedurally generated (no audio file dependencies)
-- All methods are no-ops if AudioContext not yet initialized
+- AudioManager has startBGM() and stopBGM() methods
+- BGM uses Chinese pentatonic scale (C-D-E-G-A)
+- BGM loops continuously until stopped
+- BGM volume is lower than sound effects
+- BGM stops cleanly without audio glitches
 
 ## Rules
 # Rules

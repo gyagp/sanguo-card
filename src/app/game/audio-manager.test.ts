@@ -25,6 +25,7 @@ function createMockGain() {
   return {
     gain: { value: 1, setValueAtTime: vi.fn(), linearRampToValueAtTime: vi.fn(), exponentialRampToValueAtTime: vi.fn() },
     connect: vi.fn(),
+    disconnect: vi.fn(),
   };
 }
 
@@ -209,5 +210,169 @@ describe("AudioManager", () => {
         expect(mockAudioContext.createGain).toHaveBeenCalledTimes(1);
       });
     }
+
+    it("playVictory() is a no-op when AudioContext not initialized", () => {
+      const mgr = AudioManager.getInstance();
+      expect(mgr.getContext()).toBeNull();
+      expect(() => mgr.playVictory()).not.toThrow();
+      expect(mockAudioContext.createOscillator).not.toHaveBeenCalled();
+    });
+
+    it("playVictory() creates 9 oscillators when context exists (5 ascending notes + 4 chord)", () => {
+      const mgr = AudioManager.getInstance();
+      mgr.play({} as AudioBuffer);
+      vi.clearAllMocks();
+      mockAudioContext.createGain.mockImplementation(() => createMockGain());
+
+      mgr.playVictory();
+
+      expect(mockAudioContext.createOscillator).toHaveBeenCalledTimes(9);
+      expect(mockAudioContext.createGain).toHaveBeenCalledTimes(9);
+    });
+
+    it("playDefeat() is a no-op when AudioContext not initialized", () => {
+      const mgr = AudioManager.getInstance();
+      expect(mgr.getContext()).toBeNull();
+      expect(() => mgr.playDefeat()).not.toThrow();
+      expect(mockAudioContext.createOscillator).not.toHaveBeenCalled();
+    });
+
+    it("playDefeat() creates 6 oscillators when context exists (5 descending notes + 1 drone)", () => {
+      const mgr = AudioManager.getInstance();
+      mgr.play({} as AudioBuffer);
+      vi.clearAllMocks();
+      mockAudioContext.createGain.mockImplementation(() => createMockGain());
+
+      mgr.playDefeat();
+
+      expect(mockAudioContext.createOscillator).toHaveBeenCalledTimes(6);
+      expect(mockAudioContext.createGain).toHaveBeenCalledTimes(6);
+    });
+  });
+
+  describe("BGM", () => {
+    it("startBGM() initializes context and sets bgmPlaying", () => {
+      const mgr = AudioManager.getInstance();
+      mgr.startBGM();
+      expect(mgr.isBGMPlaying()).toBe(true);
+      expect(mgr.getContext()).toBe(mockAudioContext);
+    });
+
+    it("startBGM() is idempotent when already playing", () => {
+      const mgr = AudioManager.getInstance();
+      mgr.startBGM();
+      vi.clearAllMocks();
+      mgr.startBGM();
+      expect(mockAudioContext.createGain).not.toHaveBeenCalled();
+    });
+
+    it("startBGM() creates oscillators for melody and drone", () => {
+      const mgr = AudioManager.getInstance();
+      mockAudioContext.createGain.mockImplementation(() => createMockGain());
+      mgr.startBGM();
+      // 32 melody notes + 1 drone = 33
+      expect(mockAudioContext.createOscillator).toHaveBeenCalledTimes(33);
+    });
+
+    it("stopBGM() sets bgmPlaying to false", () => {
+      const mgr = AudioManager.getInstance();
+      mgr.startBGM();
+      mgr.stopBGM();
+      expect(mgr.isBGMPlaying()).toBe(false);
+    });
+
+    it("stopBGM() is safe to call when not playing", () => {
+      const mgr = AudioManager.getInstance();
+      expect(() => mgr.stopBGM()).not.toThrow();
+    });
+
+    it("isBGMPlaying() returns false initially", () => {
+      const mgr = AudioManager.getInstance();
+      expect(mgr.isBGMPlaying()).toBe(false);
+    });
+
+    it("BGM uses Chinese pentatonic scale frequencies (C-D-E-G-A)", () => {
+      const pentatonic = [261.63, 293.66, 329.63, 392.00, 440.00];
+      const scale = (AudioManager as any).PENTATONIC as number[];
+      for (const freq of pentatonic) {
+        expect(scale).toContain(freq);
+      }
+    });
+
+    it("BGM volume is lower than sound effects (master gain defaults to 1)", () => {
+      const bgmVol = (AudioManager as any).BGM_VOLUME as number;
+      expect(bgmVol).toBeLessThan(1);
+      expect(bgmVol).toBeGreaterThan(0);
+      expect(bgmVol).toBeLessThanOrEqual(0.15);
+    });
+
+    it("BGM creates a dedicated gain node with reduced volume", () => {
+      const mgr = AudioManager.getInstance();
+      const gains: any[] = [];
+      mockAudioContext.createGain.mockReset();
+      mockAudioContext.createGain.mockImplementation(() => {
+        const g = createMockGain();
+        gains.push(g);
+        return g;
+      });
+      mgr.startBGM();
+      // First gain is master, second is BGM gain
+      expect(gains.length).toBeGreaterThanOrEqual(2);
+      const bgmGain = gains[1];
+      expect(bgmGain.gain.value).toBe(0.12);
+    });
+
+    it("BGM schedules next phrase via setTimeout for looping", () => {
+      vi.useFakeTimers();
+      const mgr = AudioManager.getInstance();
+      mockAudioContext.createGain.mockImplementation(() => createMockGain());
+      mgr.startBGM();
+      const initialCalls = mockAudioContext.createOscillator.mock.calls.length;
+
+      // Advance past phrase duration to trigger next scheduling
+      vi.advanceTimersByTime(12000);
+      expect(mockAudioContext.createOscillator.mock.calls.length).toBeGreaterThan(initialCalls);
+
+      mgr.stopBGM();
+      vi.useRealTimers();
+    });
+
+    it("stopBGM() applies fade-out ramp before disconnecting", () => {
+      vi.useFakeTimers();
+      const bgmGainNode = createMockGain();
+      let gainCallCount = 0;
+      mockAudioContext.createGain.mockImplementation(() => {
+        gainCallCount++;
+        if (gainCallCount === 2) return bgmGainNode;
+        return createMockGain();
+      });
+
+      const mgr = AudioManager.getInstance();
+      mgr.startBGM();
+      mgr.stopBGM();
+
+      // Should apply exponential ramp for fade-out
+      expect(bgmGainNode.gain.exponentialRampToValueAtTime).toHaveBeenCalledWith(0.001, expect.any(Number));
+
+      // Oscillators cleaned up after delay
+      vi.advanceTimersByTime(400);
+      expect(bgmGainNode.connect).toHaveBeenCalled();
+      vi.useRealTimers();
+    });
+
+    it("stopBGM() prevents further phrase scheduling", () => {
+      vi.useFakeTimers();
+      const mgr = AudioManager.getInstance();
+      mockAudioContext.createGain.mockImplementation(() => createMockGain());
+      mgr.startBGM();
+      mgr.stopBGM();
+
+      const callsAfterStop = mockAudioContext.createOscillator.mock.calls.length;
+      vi.advanceTimersByTime(20000);
+      // No new oscillators should be created after stop
+      expect(mockAudioContext.createOscillator.mock.calls.length).toBe(callsAfterStop);
+
+      vi.useRealTimers();
+    });
   });
 });
