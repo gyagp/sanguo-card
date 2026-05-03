@@ -1,14 +1,14 @@
-# Autopo execute Session
+# Autopo test Session
 
 ## Work Unit
-Create Next.js project with TypeScript and Tailwind CSS using create-next-app
+Define card and game data models with TypeScript types and interfaces
 
 ## Acceptance Criteria
-- package.json exists with next, react, typescript dependencies
-- tsconfig.json exists
-- tailwind.config.ts exists
-- npm run build succeeds
-- npm run dev starts dev server
+- Card interface with name, cost, attack, health, description, rarity, type fields
+- Hero interface with health, mana, heroPower
+- GameState interface with players, board, turn, phase
+- Deck type as array of cards with 30-card constraint
+- All types exported from src/game/types.ts
 
 ## Rules
 # Rules
