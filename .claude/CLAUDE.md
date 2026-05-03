@@ -1,12 +1,12 @@
 # Autopo test Session
 
 ## Work Unit
-Legendary card entrance animation — golden glow burst and dramatic scale-in when a legendary rarity minion is played
+Turn start/end transition effects — add a banner or overlay that announces turn changes with slide-in animation
 
 ## Acceptance Criteria
-- Legendary minions have a distinct entrance with golden particle glow
-- Animation is visually different from common/rare/epic card plays
-- Golden shimmer persists briefly (~1s) after placement
+- 'Your Turn' banner slides in at start of player turn
+- 'Enemy Turn' banner slides in at start of opponent turn
+- Banner auto-dismisses after ~1.5s with fade-out
 
 ## Rules
 # Rules

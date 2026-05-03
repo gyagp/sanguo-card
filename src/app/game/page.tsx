@@ -431,6 +431,29 @@ export default function GamePage() {
   const [enemyLegendaryShimmer, setEnemyLegendaryShimmer] = useState<Set<number>>(new Set());
 
   interface SpellEffect { particles: SpellTrailParticle[]; origin: { x: number; y: number }; key: number; }
+  const [turnBanner, setTurnBanner] = useState<"your" | "enemy" | null>(null);
+  const turnBannerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isFirstRender = useRef(true);
+
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    setTurnBanner(isOpponentTurn ? "enemy" : "your");
+    if (turnBannerTimerRef.current) clearTimeout(turnBannerTimerRef.current);
+    turnBannerTimerRef.current = setTimeout(() => {
+      setTurnBanner(null);
+      turnBannerTimerRef.current = null;
+    }, 1500);
+  }, [isOpponentTurn]);
+
+  useEffect(() => {
+    return () => {
+      if (turnBannerTimerRef.current) clearTimeout(turnBannerTimerRef.current);
+    };
+  }, []);
+
   const [spellEffects, setSpellEffects] = useState<SpellEffect[]>([]);
   const [spellFlash, setSpellFlash] = useState(false);
   const spellKeyRef = useRef(0);
@@ -673,6 +696,22 @@ export default function GamePage() {
 
       {/* Opponent board */}
       <BoardZone minions={opponent.board} label="对方战场" isEnemy hasAttackerSelected={selectedAttacker !== null} onMinionClick={handleEnemyMinionClick} animations={enemyAnims} damageNumbers={enemyDmg} dyingMinions={enemyDying} impactParticles={enemyImpacts} legendaryParticles={enemyLegendaryParticles} legendaryShimmer={enemyLegendaryShimmer} />
+
+      {/* Turn banner overlay */}
+      {turnBanner && (
+        <div className="fixed inset-0 flex items-center justify-center pointer-events-none" style={{ zIndex: 50 }}>
+          <div
+            className={`px-12 py-4 rounded-lg text-3xl font-bold tracking-widest shadow-2xl ${
+              turnBanner === "your"
+                ? "bg-green-800/90 text-green-100 border-2 border-green-400"
+                : "bg-red-800/90 text-red-100 border-2 border-red-400"
+            }`}
+            style={{ animation: "turnBannerIn 1.5s ease-out forwards" }}
+          >
+            {turnBanner === "your" ? "你的回合" : "对手回合"}
+          </div>
+        </div>
+      )}
 
       {/* Turn indicator */}
       <div className="flex items-center justify-center py-0.5">

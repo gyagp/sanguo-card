@@ -111,3 +111,10 @@ body {
   50% { opacity: 0.3; }
   100% { opacity: 0; }
 }
+
+@keyframes turnBannerIn {
+  0% { transform: translateX(-100%); opacity: 0; }
+  15% { transform: translateX(0); opacity: 1; }
+  70% { transform: translateX(0); opacity: 1; }
+  100% { transform: translateX(0); opacity: 0; }
+}
