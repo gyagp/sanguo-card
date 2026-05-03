@@ -1,12 +1,15 @@
-# Autopo test Session
+# Autopo execute Session
 
 ## Work Unit
-Create a card gallery preview page to showcase all card designs
+Set up test infrastructure (vitest) and write tests for Card component
 
 ## Acceptance Criteria
-- Gallery page at src/app/cards/page.tsx displays sample cards
-- Shows cards across all rarities, factions, and types
-- Cards are interactive with hover animations visible
+- Vitest configured and a trivial test passes before writing real tests
+- Tests verify rarity frame colors render correctly
+- Tests verify faction colors render correctly
+- Tests verify minion/spell/weapon types render differently
+- Tests verify mana, attack, health values display
+- All tests pass via npm run test
 
 ## Rules
 # Rules
