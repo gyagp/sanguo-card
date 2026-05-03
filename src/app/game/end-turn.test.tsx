@@ -9,18 +9,20 @@ const mockState = {
   gameState: {
     players: [
       {
-        hero: { health: 30, mana: 3, armor: 0, heroPowerUsed: false },
+        hero: { health: 30, mana: 3, armor: 0, heroPower: { name: "", cost: 2, description: "" } },
         hand: [{ name: "Card1", cost: 1, attack: 2, health: 3, description: "", rarity: "common", type: "minion", faction: "neutral" }],
         board: [],
         deck: { cards: [] },
         maxMana: 3,
+        heroPowerUsed: false,
       },
       {
-        hero: { health: 30, mana: 0, armor: 0, heroPowerUsed: false },
+        hero: { health: 30, mana: 0, armor: 0, heroPower: { name: "", cost: 2, description: "" } },
         hand: [{ name: "Card2", cost: 1, attack: 1, health: 1, description: "", rarity: "common", type: "minion", faction: "neutral" }],
         board: [],
         deck: { cards: [] },
         maxMana: 0,
+        heroPowerUsed: false,
       },
     ],
     activePlayer: 0,

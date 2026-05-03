@@ -140,7 +140,7 @@ export default function GamePage() {
     return [createDeck(buildDeck()), createDeck(buildDeck())];
   }, []);
 
-  const { gameState, winner, playCard, endTurn, attack, attackHero, isOpponentTurn } = useGameState(deck1, deck2);
+  const { gameState, winner, playCard, endTurn, attack, attackHero, useHeroPower, isOpponentTurn } = useGameState(deck1, deck2);
 
   const [selectedAttacker, setSelectedAttacker] = useState<number | null>(null);
 
@@ -248,8 +248,21 @@ export default function GamePage() {
         ))}
       </div>
 
-      {/* Player hero */}
-      <HeroPortrait player={player} />
+      {/* Player hero + hero power */}
+      <div className="flex items-center justify-center gap-2">
+        <HeroPortrait player={player} />
+        <button
+          onClick={() => useHeroPower()}
+          disabled={isOpponentTurn || winner !== null || player.heroPowerUsed || player.hero.mana < player.hero.heroPower.cost}
+          className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full border-2 font-bold text-sm flex items-center justify-center transition-colors ${
+            isOpponentTurn || winner !== null || player.heroPowerUsed || player.hero.mana < player.hero.heroPower.cost
+              ? "bg-gray-700 border-gray-600 text-gray-500 cursor-not-allowed"
+              : "bg-purple-700 border-purple-400 text-white hover:bg-purple-600 cursor-pointer"
+          }`}
+        >
+          {player.hero.heroPower.cost}
+        </button>
+      </div>
     </div>
   );
 }

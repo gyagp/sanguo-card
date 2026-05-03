@@ -1,13 +1,13 @@
 # Autopo test Session
 
 ## Work Unit
-Add End Turn button with visual feedback and turn indicator
+Add hero power button and opponent hand face-down display
 
 ## Acceptance Criteria
-- End Turn button calls endTurn and starts opponent simulated turn
-- Button shows active/disabled state based on whose turn it is
-- Turn indicator displays whose turn it is (Player/Opponent)
-- Visual turn timer bar animates during the turn
+- Hero power button is displayed near the hero portrait
+- Clicking hero power calls useHeroPower and deducts mana
+- Hero power button is grayed out when already used this turn or insufficient mana
+- Opponent hand shows correct number of face-down cards matching their hand size
 
 ## Rules
 # Rules
