@@ -2,6 +2,7 @@
 
 import { useGameState } from "../../hooks/useGameState";
 import Card from "../../components/Card";
+import VolumeControl from "../../components/VolumeControl";
 import { cards } from "../../game/cards";
 import { createDeck, BoardMinion, PlayerState, Card as CardType, MAX_BOARD_SIZE } from "../../game/types";
 import { useMemo, useState, useEffect, useRef, useCallback, forwardRef } from "react";
@@ -794,6 +795,10 @@ export default function GamePage() {
 
   return (
     <div className="flex flex-col h-screen bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 select-none" onClick={handleBoardClick}>
+      <div className="absolute top-2 right-2 z-50">
+        <VolumeControl />
+      </div>
+
       {/* Victory/Defeat overlay */}
       {winner !== null && (
         <VictoryDefeatOverlay winner={winner} onPlayAgain={resetGame} />

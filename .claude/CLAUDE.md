@@ -1,14 +1,14 @@
 # Autopo test Session
 
 ## Work Unit
-Implement procedural Chinese-themed background music using Web Audio API — pentatonic scale loop with multiple oscillators
+Create volume control and mute toggle UI component — slider for volume, mute button, persistent state in localStorage
 
 ## Acceptance Criteria
-- AudioManager has startBGM() and stopBGM() methods
-- BGM uses Chinese pentatonic scale (C-D-E-G-A)
-- BGM loops continuously until stopped
-- BGM volume is lower than sound effects
-- BGM stops cleanly without audio glitches
+- VolumeControl React component exists
+- Slider adjusts master volume 0-100%
+- Mute button toggles all audio
+- Volume preference persists in localStorage
+- Component styled with Tailwind CSS
 
 ## Rules
 # Rules
