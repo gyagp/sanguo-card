@@ -409,3 +409,179 @@ describe('createAI', () => {
     }
   });
 });
+
+describe('Easy AI — valid but suboptimal plays', () => {
+  it('plays valid cards that stay within mana budget', () => {
+    const ai = createAI('easy');
+    const hand = [makeCard({ cost: 1 }), makeCard({ cost: 2 }), makeCard({ cost: 3 })];
+    const state = makeGameState(
+      { hand, hero: { health: 30, mana: 5, heroPower: { name: '', cost: 2, description: '' } } },
+      {},
+    );
+    const decisions = ai.getPlayDecisions(state);
+    const totalCost = decisions.reduce((s, d) => s + hand[d.cardIndex].cost, 0);
+    expect(totalCost).toBeLessThanOrEqual(5);
+    for (const d of decisions) {
+      expect(d.cardIndex).toBeGreaterThanOrEqual(0);
+      expect(d.cardIndex).toBeLessThan(hand.length);
+    }
+  });
+
+  it('does not always pick the optimal mana combo (randomness)', () => {
+    const ai = createAI('easy');
+    const hand = [makeCard({ cost: 2 }), makeCard({ cost: 3 }), makeCard({ cost: 4 })];
+    const state = makeGameState(
+      { hand, hero: { health: 30, mana: 5, heroPower: { name: '', cost: 2, description: '' } } },
+      {},
+    );
+    const combos = new Set<string>();
+    for (let i = 0; i < 50; i++) {
+      const decisions = ai.getPlayDecisions(state);
+      const key = decisions.map(d => d.cardIndex).sort().join(',');
+      combos.add(key);
+    }
+    expect(combos.size).toBeGreaterThan(1);
+  });
+
+  it('attacks randomly — does not always pick optimal trades', () => {
+    const ai = createAI('easy');
+    const state = makeGameState(
+      { board: [makeMinion({ currentAttack: 3, currentHealth: 5 }), makeMinion({ currentAttack: 2, currentHealth: 3 })] },
+      { hero: { health: 30, mana: 0, heroPower: { name: '', cost: 2, description: '' } }, board: [makeMinion({ currentAttack: 1, currentHealth: 1 })] },
+    );
+    const targets = new Set<string>();
+    for (let i = 0; i < 50; i++) {
+      const decisions = ai.getAttackDecisions(state);
+      const key = decisions.map(d => `${d.attackerIndex}->${d.targetIndex}`).join(';');
+      targets.add(key);
+    }
+    expect(targets.size).toBeGreaterThan(1);
+  });
+
+  it('hero power usage is probabilistic (not always on)', () => {
+    const ai = createAI('easy');
+    const state = makeGameState(
+      { hero: { health: 30, mana: 5, heroPower: { name: 'Ping', cost: 2, description: '' } }, heroPowerUsed: false },
+      {},
+    );
+    let trueCount = 0;
+    for (let i = 0; i < 100; i++) {
+      if (ai.shouldUseHeroPower(state)) trueCount++;
+    }
+    expect(trueCount).toBeGreaterThan(5);
+    expect(trueCount).toBeLessThan(95);
+  });
+});
+
+describe('Normal AI — on-curve play (uses most mana greedily)', () => {
+  it('plays highest cost card first', () => {
+    const ai = createAI('normal');
+    const hand = [makeCard({ cost: 1 }), makeCard({ cost: 4 }), makeCard({ cost: 2 })];
+    const state = makeGameState(
+      { hand, hero: { health: 30, mana: 4, heroPower: { name: '', cost: 2, description: '' } } },
+      {},
+    );
+    const decisions = ai.getPlayDecisions(state);
+    expect(decisions[0].cardIndex).toBe(1);
+  });
+
+  it('fills remaining mana after big card', () => {
+    const ai = createAI('normal');
+    const hand = [makeCard({ cost: 1 }), makeCard({ cost: 3 }), makeCard({ cost: 2 })];
+    const state = makeGameState(
+      { hand, hero: { health: 30, mana: 5, heroPower: { name: '', cost: 2, description: '' } } },
+      {},
+    );
+    const decisions = ai.getPlayDecisions(state);
+    const totalCost = decisions.reduce((s, d) => s + hand[d.cardIndex].cost, 0);
+    expect(totalCost).toBe(5);
+  });
+
+  it('uses hero power when mana is available and not yet used', () => {
+    const ai = createAI('normal');
+    const state = makeGameState(
+      { hand: [], hero: { health: 30, mana: 3, heroPower: { name: 'Ping', cost: 2, description: '' } }, heroPowerUsed: false },
+      {},
+    );
+    expect(ai.shouldUseHeroPower(state)).toBe(true);
+  });
+
+  it('skips hero power when already used', () => {
+    const ai = createAI('normal');
+    const state = makeGameState(
+      { hand: [], hero: { health: 30, mana: 3, heroPower: { name: 'Ping', cost: 2, description: '' } }, heroPowerUsed: true },
+      {},
+    );
+    expect(ai.shouldUseHeroPower(state)).toBe(false);
+  });
+});
+
+describe('Hard AI — optimal play and lethal detection', () => {
+  it('finds exact mana combo over greedy approach', () => {
+    const ai = createAI('hard');
+    const hand = [makeCard({ cost: 3 }), makeCard({ cost: 3 }), makeCard({ cost: 1 })];
+    const state = makeGameState(
+      { hand, hero: { health: 30, mana: 4, heroPower: { name: '', cost: 2, description: '' } } },
+      {},
+    );
+    const decisions = ai.getPlayDecisions(state);
+    const totalCost = decisions.reduce((s, d) => s + hand[d.cardIndex].cost, 0);
+    expect(totalCost).toBe(4);
+    const indices = decisions.map(d => d.cardIndex).sort();
+    expect(indices).toEqual([0, 2]);
+  });
+
+  it('detects lethal and sends all minions face', () => {
+    const ai = createAI('hard');
+    const state = makeGameState(
+      { board: [makeMinion({ currentAttack: 4 }), makeMinion({ currentAttack: 3 })] },
+      { hero: { health: 7, mana: 0, heroPower: { name: '', cost: 2, description: '' } }, board: [makeMinion({ currentAttack: 5, currentHealth: 5 })] },
+    );
+    const decisions = ai.getAttackDecisions(state);
+    expect(decisions.every(d => d.targetIndex === 'hero')).toBe(true);
+    expect(decisions.length).toBe(2);
+  });
+
+  it('uses hero power when it fits mana curve without reducing card plays', () => {
+    const ai = createAI('hard');
+    const state = makeGameState(
+      { hand: [makeCard({ cost: 3 })], hero: { health: 30, mana: 5, heroPower: { name: 'Ping', cost: 2, description: '' } }, heroPowerUsed: false },
+      {},
+    );
+    expect(ai.shouldUseHeroPower(state)).toBe(true);
+  });
+
+  it('skips hero power when it would reduce mana efficiency', () => {
+    const ai = createAI('hard');
+    const state = makeGameState(
+      { hand: [makeCard({ cost: 5 })], hero: { health: 30, mana: 5, heroPower: { name: 'Ping', cost: 2, description: '' } }, heroPowerUsed: false },
+      {},
+    );
+    expect(ai.shouldUseHeroPower(state)).toBe(false);
+  });
+});
+
+describe('AI responds within 2-second budget', () => {
+  const difficulties: AIDifficulty[] = ['easy', 'normal', 'hard'];
+
+  for (const d of difficulties) {
+    it(`${d} AI completes all decisions within 2 seconds`, () => {
+      const ai = createAI(d);
+      const hand = Array.from({ length: 10 }, (_, i) => makeCard({ cost: (i % 5) + 1 }));
+      const board = Array.from({ length: 7 }, () => makeMinion({ currentAttack: 3, currentHealth: 3 }));
+      const oppBoard = Array.from({ length: 7 }, () => makeMinion({ currentAttack: 2, currentHealth: 4 }));
+      const state = makeGameState(
+        { hand, board, hero: { health: 30, mana: 10, heroPower: { name: 'Ping', cost: 2, description: '' } }, heroPowerUsed: false },
+        { board: oppBoard, hero: { health: 30, mana: 0, heroPower: { name: '', cost: 2, description: '' } } },
+      );
+
+      const start = performance.now();
+      ai.getPlayDecisions(state);
+      ai.getAttackDecisions(state);
+      ai.shouldUseHeroPower(state);
+      const elapsed = performance.now() - start;
+
+      expect(elapsed).toBeLessThan(2000);
+    });
+  }
+});

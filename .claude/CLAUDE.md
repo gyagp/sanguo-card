@@ -1,13 +1,13 @@
 # Autopo execute Session
 
 ## Work Unit
-Write unit tests for AI combat logic — trading evaluation and lethal detection
+Write unit tests for difficulty levels — verify Easy randomness, Normal on-curve play, Hard optimal play
 
 ## Acceptance Criteria
-- Tests verify findLethal detects exact lethal scenarios
-- Tests verify findLethal returns false when no lethal exists
-- Tests verify evaluateTrade prefers value trades
-- Tests verify AI attacks face when lethal is available
+- Tests verify Easy makes valid but suboptimal plays
+- Tests verify Normal plays on-curve (uses most mana)
+- Tests verify Hard detects lethal and uses hero power
+- Tests verify AI responds within 2-second budget
 - All tests pass via npm run test
 
 ## Rules
