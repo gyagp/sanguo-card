@@ -1,12 +1,13 @@
 # Autopo test Session
 
 ## Work Unit
-Add SEO meta tags, Open Graph data, and favicon to layout.tsx
+Create beautiful loading screen component with Chinese-themed animation
 
 ## Acceptance Criteria
-- layout.tsx has custom title, description, OG tags
-- favicon.ico exists in public/ or app/
-- Meta tags visible in page source
+- src/app/loading.tsx exists with styled loading animation
+- src/app/game/loading.tsx exists for game page
+- Loading screen displays during page transitions
+- 60fps animation with no jank
 
 ## Rules
 # Rules
