@@ -1,12 +1,13 @@
 # Autopo test Session
 
 ## Work Unit
-Spell casting visual effects — add particle trail and flash effect when a spell card is played
+Card destruction shatter effect — replace fadeOutDeath with a shatter/fragment animation using CSS clip-path or multiple divs
 
 ## Acceptance Criteria
-- Spell cards trigger a distinct visual effect (not the minion popIn)
-- Particle trail or burst effect plays on the spell target area
-- Effect includes a screen flash or glow overlay lasting ~600ms
+- Dying minions break into 4-6 fragments that fly outward
+- Fragments fade and rotate as they disperse
+- Animation completes in ~600ms
+- Snapshot-before-mutation pattern preserved per learned rules
 
 ## Rules
 # Rules

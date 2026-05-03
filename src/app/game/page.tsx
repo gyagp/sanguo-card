@@ -158,10 +158,56 @@ function BoardMinionCard({ minion, onClick, selected, exhausted, targetable, ani
   const cursor = dying ? "pointer-events-none" : exhausted ? "cursor-not-allowed" : "cursor-pointer";
 
   const animStyle: React.CSSProperties = {};
-  if (dying) Object.assign(animStyle, { animation: "fadeOutDeath 0.5s ease-in forwards" });
-  else if (animation === "popIn") Object.assign(animStyle, { animation: "popIn 0.4s ease-out forwards" });
-  else if (animation === "lunge") Object.assign(animStyle, { animation: "lunge 0.3s ease-in-out" });
-  else if (animation === "shake") Object.assign(animStyle, { animation: "shake 0.3s ease-in-out" });
+  if (!dying) {
+    if (animation === "popIn") Object.assign(animStyle, { animation: "popIn 0.4s ease-out forwards" });
+    else if (animation === "lunge") Object.assign(animStyle, { animation: "lunge 0.3s ease-in-out" });
+    else if (animation === "shake") Object.assign(animStyle, { animation: "shake 0.3s ease-in-out" });
+  }
+
+  const SHARD_CLIPS = [
+    "polygon(0% 0%, 50% 0%, 50% 50%, 0% 50%)",
+    "polygon(50% 0%, 100% 0%, 100% 50%, 50% 50%)",
+    "polygon(0% 50%, 50% 50%, 50% 100%, 0% 100%)",
+    "polygon(50% 50%, 100% 50%, 100% 100%, 50% 100%)",
+    "polygon(25% 10%, 75% 10%, 75% 90%, 25% 90%)",
+  ];
+  const SHARD_OFFSETS: [string, string, string][] = [
+    ["-40px", "-40px", "-30deg"],
+    ["40px", "-40px", "25deg"],
+    ["-35px", "40px", "35deg"],
+    ["35px", "40px", "-20deg"],
+    ["0px", "-50px", "40deg"],
+  ];
+
+  if (dying) {
+    return (
+      <div className={`relative w-20 h-28 sm:w-24 sm:h-32 pointer-events-none`}>
+        {SHARD_CLIPS.map((clip, i) => (
+          <div
+            key={i}
+            className={`absolute inset-0 bg-amber-900 border-2 border-amber-600 rounded-lg flex flex-col items-center justify-between p-1 text-white text-xs sm:text-sm shadow-md`}
+            style={{
+              clipPath: clip,
+              "--shard-x": SHARD_OFFSETS[i][0],
+              "--shard-y": SHARD_OFFSETS[i][1],
+              "--shard-rot": SHARD_OFFSETS[i][2],
+              animation: `shatterFragment 0.6s ease-out forwards`,
+              animationDelay: `${i * 30}ms`,
+            } as React.CSSProperties}
+          >
+            <span className="bg-blue-700 rounded-full w-5 h-5 flex items-center justify-center font-bold text-[10px]">
+              {minion.cost}
+            </span>
+            <span className="font-bold text-center leading-tight">{minion.name}</span>
+            <div className="flex w-full justify-between px-1">
+              <span className="bg-yellow-600 rounded px-1 font-bold">{minion.currentAttack}</span>
+              <span className="bg-red-700 rounded px-1 font-bold">{minion.currentHealth}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div
@@ -372,11 +418,11 @@ export default function GamePage() {
   }, [safeTimeout]);
 
   const addDyingMinion = useCallback((minion: BoardMinion, boardIndex: number, side: "player" | "enemy") => {
-    const dm: DyingMinion = { minion: { ...minion }, boardIndex, side, expiry: Date.now() + 500 };
+    const dm: DyingMinion = { minion: { ...minion }, boardIndex, side, expiry: Date.now() + 600 };
     setDyingMinions(prev => [...prev, dm]);
     safeTimeout(() => {
       setDyingMinions(prev => prev.filter(d => d !== dm));
-    }, 500);
+    }, 600);
   }, [safeTimeout]);
 
   const player = gameState.players[0];

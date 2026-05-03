@@ -64,9 +64,9 @@ describe("Animation acceptance criteria", () => {
     });
   });
 
-  describe("Minion death has a fade-out animation", () => {
-    it("CSS defines fadeOutDeath keyframe", () => {
-      expect(cssContent).toContain("@keyframes fadeOutDeath");
+  describe("Minion death has a shatter animation", () => {
+    it("CSS defines shatterFragment keyframe", () => {
+      expect(cssContent).toContain("@keyframes shatterFragment");
     });
 
     it("uses DyingMinion snapshot approach to preserve dead minions for animation", () => {
@@ -89,8 +89,10 @@ describe("Animation acceptance criteria", () => {
       expect(pageContent).toMatch(/addDyingMinion\(attackerMinion,\s*attackerIdx,\s*"player"\)/);
     });
 
-    it("BoardMinionCard applies fadeOutDeath animation when dying prop is set", () => {
-      expect(pageContent).toMatch(/dying\?.*fadeOutDeath 0\.5s/s);
+    it("BoardMinionCard renders 5 shatter fragments when dying", () => {
+      expect(pageContent).toMatch(/SHARD_CLIPS/);
+      expect(pageContent).toMatch(/clipPath:\s*clip/);
+      expect(pageContent).toMatch(/shatterFragment 0\.6s/);
     });
 
     it("dying minions are interleaved at their original board position", () => {
@@ -98,7 +100,7 @@ describe("Animation acceptance criteria", () => {
       expect(pageContent).toMatch(/dyingByIndex\.get\(dm\.boardIndex\)/);
     });
 
-    it("dying minions auto-remove after 500ms via safeTimeout", () => {
+    it("dying minions auto-remove after 600ms via safeTimeout", () => {
       expect(pageContent).toMatch(/safeTimeout\(\(\)\s*=>\s*\{[\s\S]*?setDyingMinions/);
     });
   });
