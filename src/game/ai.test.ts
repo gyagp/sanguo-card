@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { evaluateBoard, getPlayableCards, getBestManaUsage, AIDecision } from './ai';
+import { evaluateBoard, getPlayableCards, getBestManaUsage, AIDecision, findLethal, evaluateTrade, getAIAttackDecisions } from './ai';
 import { GameState, PlayerState, Card, BoardMinion, Deck } from './types';
 
 function makeCard(overrides: Partial<Card> = {}): Card {
@@ -192,5 +192,133 @@ describe('getBestManaUsage', () => {
     const totalCost = result.reduce((sum, i) => sum + hand[i].cost, 0);
     expect(totalCost).toBeLessThanOrEqual(6);
     expect(totalCost).toBeGreaterThan(0);
+  });
+});
+
+describe('findLethal', () => {
+  it('returns true when total attack >= opponent health', () => {
+    const attackers = [
+      makeMinion({ currentAttack: 5 }),
+      makeMinion({ currentAttack: 4 }),
+    ];
+    expect(findLethal(attackers, 9)).toBe(true);
+  });
+
+  it('returns true when total attack exceeds opponent health', () => {
+    const attackers = [makeMinion({ currentAttack: 10 })];
+    expect(findLethal(attackers, 5)).toBe(true);
+  });
+
+  it('returns false when total attack < opponent health', () => {
+    const attackers = [
+      makeMinion({ currentAttack: 3 }),
+      makeMinion({ currentAttack: 2 }),
+    ];
+    expect(findLethal(attackers, 10)).toBe(false);
+  });
+
+  it('ignores minions with summoning sickness', () => {
+    const attackers = [
+      makeMinion({ currentAttack: 10, summoningSickness: true }),
+      makeMinion({ currentAttack: 2 }),
+    ];
+    expect(findLethal(attackers, 5)).toBe(false);
+  });
+
+  it('ignores minions that already attacked', () => {
+    const attackers = [
+      makeMinion({ currentAttack: 10, hasAttacked: true }),
+      makeMinion({ currentAttack: 2 }),
+    ];
+    expect(findLethal(attackers, 5)).toBe(false);
+  });
+
+  it('returns true with empty board and zero health', () => {
+    expect(findLethal([], 0)).toBe(true);
+  });
+});
+
+describe('evaluateTrade', () => {
+  it('scores favorably when attacker kills defender and survives', () => {
+    const attacker = makeMinion({ currentAttack: 5, currentHealth: 4 });
+    const defender = makeMinion({ currentAttack: 2, currentHealth: 3 });
+    const score = evaluateTrade(attacker, defender);
+    expect(score).toBeGreaterThan(0);
+  });
+
+  it('scores negatively when attacker dies and defender survives', () => {
+    const attacker = makeMinion({ currentAttack: 1, currentHealth: 1 });
+    const defender = makeMinion({ currentAttack: 5, currentHealth: 10 });
+    const score = evaluateTrade(attacker, defender);
+    expect(score).toBeLessThan(0);
+  });
+
+  it('scores positively for even trade when defender has higher value', () => {
+    const attacker = makeMinion({ currentAttack: 3, currentHealth: 2 });
+    const defender = makeMinion({ currentAttack: 2, currentHealth: 3 });
+    expect(evaluateTrade(attacker, defender)).toBeGreaterThan(0);
+  });
+
+  it('scores mutual kills based on value exchange', () => {
+    const attacker = makeMinion({ currentAttack: 3, currentHealth: 3 });
+    const defender = makeMinion({ currentAttack: 3, currentHealth: 3 });
+    const score = evaluateTrade(attacker, defender);
+    // Both die: gain defenderValue+bonus, lose attackerValue => net = bonus
+    expect(score).toBeGreaterThan(0);
+  });
+});
+
+describe('getAIAttackDecisions', () => {
+  it('goes face when lethal is available', () => {
+    const state = makeGameState(
+      { board: [makeMinion({ currentAttack: 10, currentHealth: 5 })] },
+      { hero: { health: 5, mana: 0, heroPower: { name: '', cost: 2, description: '' } }, board: [makeMinion({ currentAttack: 2, currentHealth: 2 })] },
+    );
+    state.activePlayer = 0;
+    const decisions = getAIAttackDecisions(state);
+    expect(decisions.every(d => d.targetIndex === 'hero')).toBe(true);
+  });
+
+  it('trades efficiently when no lethal', () => {
+    const state = makeGameState(
+      { board: [makeMinion({ currentAttack: 5, currentHealth: 4 })] },
+      { hero: { health: 30, mana: 0, heroPower: { name: '', cost: 2, description: '' } }, board: [makeMinion({ currentAttack: 2, currentHealth: 3 })] },
+    );
+    state.activePlayer = 0;
+    const decisions = getAIAttackDecisions(state);
+    const tradeDecision = decisions.find(d => d.targetIndex !== 'hero');
+    expect(tradeDecision).toBeDefined();
+    expect(tradeDecision!.targetIndex).toBe(0);
+  });
+
+  it('sends remaining minions face after trading', () => {
+    const state = makeGameState(
+      { board: [
+        makeMinion({ currentAttack: 5, currentHealth: 4, name: 'Trader' }),
+        makeMinion({ currentAttack: 3, currentHealth: 3, name: 'Attacker' }),
+      ]},
+      { hero: { health: 30, mana: 0, heroPower: { name: '', cost: 2, description: '' } }, board: [makeMinion({ currentAttack: 2, currentHealth: 3 })] },
+    );
+    state.activePlayer = 0;
+    const decisions = getAIAttackDecisions(state);
+    expect(decisions.length).toBe(2);
+    const faceAttacks = decisions.filter(d => d.targetIndex === 'hero');
+    expect(faceAttacks.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('skips minions with summoning sickness', () => {
+    const state = makeGameState(
+      { board: [makeMinion({ currentAttack: 5, summoningSickness: true })] },
+      { hero: { health: 30, mana: 0, heroPower: { name: '', cost: 2, description: '' } } },
+    );
+    state.activePlayer = 0;
+    const decisions = getAIAttackDecisions(state);
+    expect(decisions).toEqual([]);
+  });
+
+  it('returns empty when no minions on board', () => {
+    const state = makeGameState({}, {});
+    state.activePlayer = 0;
+    expect(getAIAttackDecisions(state)).toEqual([]);
   });
 });

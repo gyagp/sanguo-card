@@ -30,6 +30,8 @@ export type AIDecision =
 const MINION_VALUE_PER_STAT = 1;
 const HERO_HEALTH_WEIGHT = 0.5;
 const MANA_ADVANTAGE_WEIGHT = 0.3;
+const TRADE_KILL_BONUS = 5;
+const TRADE_SURVIVE_BONUS = 3;
 
 export function evaluateBoard(state: GameState, playerIndex: 0 | 1): number {
   const player = state.players[playerIndex];
@@ -89,4 +91,116 @@ export function getBestManaUsage(hand: Card[], currentMana: number): number[] {
   }
 
   return bestCombo;
+}
+
+export interface TradeScore {
+  attackerIndex: number;
+  defenderIndex: number;
+  score: number;
+}
+
+export function evaluateTrade(
+  attacker: BoardMinion,
+  defender: BoardMinion,
+): number {
+  const attackerDies = defender.currentAttack >= attacker.currentHealth;
+  const defenderDies = attacker.currentAttack >= defender.currentHealth;
+
+  const attackerValue = attacker.currentAttack + attacker.currentHealth;
+  const defenderValue = defender.currentAttack + defender.currentHealth;
+
+  let score = 0;
+
+  if (defenderDies) {
+    score += defenderValue + TRADE_KILL_BONUS;
+  } else {
+    score += attacker.currentAttack;
+  }
+
+  if (attackerDies) {
+    score -= attackerValue;
+  } else {
+    score += TRADE_SURVIVE_BONUS;
+    score -= defender.currentAttack;
+  }
+
+  return score;
+}
+
+export function findLethal(
+  attackers: BoardMinion[],
+  opponentHeroHealth: number,
+): boolean {
+  let totalDamage = 0;
+  for (const minion of attackers) {
+    if (!minion.summoningSickness && !minion.hasAttacked) {
+      totalDamage += minion.currentAttack;
+    }
+  }
+  return totalDamage >= opponentHeroHealth;
+}
+
+export function getAIAttackDecisions(state: GameState): AttackDecision[] {
+  const aiIndex = state.activePlayer;
+  const opponentIndex = aiIndex === 0 ? 1 : 0;
+  const aiBoard = state.players[aiIndex].board;
+  const opponentBoard = state.players[opponentIndex].board;
+  const opponentHealth = state.players[opponentIndex].hero.health;
+
+  const available = aiBoard.filter(
+    (m) => !m.summoningSickness && !m.hasAttacked,
+  );
+
+  if (findLethal(available, opponentHealth)) {
+    return available.map((_, i) => {
+      const boardIndex = aiBoard.indexOf(available[i]);
+      return { type: 'attack' as const, attackerIndex: boardIndex, targetIndex: 'hero' as const };
+    });
+  }
+
+  const decisions: AttackDecision[] = [];
+  const usedAttackers = new Set<number>();
+  const usedDefenders = new Set<number>();
+
+  if (opponentBoard.length > 0) {
+    const trades: TradeScore[] = [];
+    for (let a = 0; a < aiBoard.length; a++) {
+      const attacker = aiBoard[a];
+      if (attacker.summoningSickness || attacker.hasAttacked) continue;
+      for (let d = 0; d < opponentBoard.length; d++) {
+        trades.push({
+          attackerIndex: a,
+          defenderIndex: d,
+          score: evaluateTrade(attacker, opponentBoard[d]),
+        });
+      }
+    }
+
+    trades.sort((a, b) => b.score - a.score);
+
+    for (const trade of trades) {
+      if (usedAttackers.has(trade.attackerIndex) || usedDefenders.has(trade.defenderIndex)) continue;
+      if (trade.score > 0) {
+        decisions.push({
+          type: 'attack',
+          attackerIndex: trade.attackerIndex,
+          targetIndex: trade.defenderIndex,
+        });
+        usedAttackers.add(trade.attackerIndex);
+        usedDefenders.add(trade.defenderIndex);
+      }
+    }
+  }
+
+  for (let a = 0; a < aiBoard.length; a++) {
+    const minion = aiBoard[a];
+    if (minion.summoningSickness || minion.hasAttacked || usedAttackers.has(a)) continue;
+    decisions.push({
+      type: 'attack',
+      attackerIndex: a,
+      targetIndex: 'hero',
+    });
+  }
+
+  return decisions;
 }

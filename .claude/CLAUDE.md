@@ -1,14 +1,13 @@
 # Autopo test Session
 
 ## Work Unit
-Create AI decision engine module with core interfaces and utility helpers (evaluate board state, calculate available plays, mana curve logic)
+Implement AI combat logic — minion trading evaluator and lethal detection
 
 ## Acceptance Criteria
-- src/game/ai.ts exists
-- AIDecision type defined (playCard, attack, useHeroPower, endTurn)
-- evaluateBoard function scores board advantage
-- getPlayableCards returns cards affordable by current mana
-- getBestManaUsage selects combination maximizing mana spent
+- findLethal returns true when available attacks can kill opponent hero
+- evaluateTrade scores minion-vs-minion trades by value exchange
+- AI attacks face when lethal is detected
+- AI prioritizes efficient trades when no lethal
 
 ## Rules
 # Rules
