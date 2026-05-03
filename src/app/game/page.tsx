@@ -151,7 +151,7 @@ function ManaBar({ mana, maxMana }: { mana: number; maxMana: number }) {
       {Array.from({ length: maxMana }, (_, i) => (
         <span
           key={i}
-          className={`w-3 h-3 rounded-full ${i < mana ? "bg-blue-500" : "bg-gray-600"}`}
+          className={`w-3 h-3 rounded-full transition-colors duration-300 ${i < mana ? "bg-blue-500" : "bg-gray-600"}`}
         />
       ))}
     </div>
@@ -161,15 +161,55 @@ function ManaBar({ mana, maxMana }: { mana: number; maxMana: number }) {
 function HeroPortrait({ player, onClick, targetable }: { player: PlayerState; onClick?: () => void; targetable?: boolean }) {
   const borderClass = targetable ? "border-red-400 ring-2 ring-red-400" : "border-amber-500";
   const cursor = onClick ? "cursor-pointer" : "";
+
+  const prevHealthRef = useRef(player.hero.health);
+  const prevManaRef = useRef(player.hero.mana);
+  const [healthFlash, setHealthFlash] = useState<"damage" | "heal" | null>(null);
+  const [manaFlash, setManaFlash] = useState(false);
+  const healthTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const manaTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (player.hero.health !== prevHealthRef.current) {
+      setHealthFlash(player.hero.health < prevHealthRef.current ? "damage" : "heal");
+      if (healthTimerRef.current) clearTimeout(healthTimerRef.current);
+      healthTimerRef.current = setTimeout(() => setHealthFlash(null), 500);
+      prevHealthRef.current = player.hero.health;
+    }
+  }, [player.hero.health]);
+
+  useEffect(() => {
+    if (player.hero.mana !== prevManaRef.current) {
+      setManaFlash(true);
+      if (manaTimerRef.current) clearTimeout(manaTimerRef.current);
+      manaTimerRef.current = setTimeout(() => setManaFlash(false), 400);
+      prevManaRef.current = player.hero.mana;
+    }
+  }, [player.hero.mana]);
+
+  useEffect(() => {
+    return () => {
+      if (healthTimerRef.current) clearTimeout(healthTimerRef.current);
+      if (manaTimerRef.current) clearTimeout(manaTimerRef.current);
+    };
+  }, []);
+
+  const healthStyle: React.CSSProperties = healthFlash
+    ? { animation: `${healthFlash === "damage" ? "healthFlash" : "healFlash"} 0.5s ease-out` }
+    : {};
+  const manaStyle: React.CSSProperties = manaFlash
+    ? { animation: "manaFlash 0.4s ease-out" }
+    : {};
+
   return (
     <div className={`flex items-center gap-3 px-4 py-2 ${cursor}`} onClick={(e) => { if (onClick) { e.stopPropagation(); onClick(); } }}>
-      <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-gray-700 border-2 ${borderClass} flex items-center justify-center text-lg font-bold text-white`}>
+      <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-gray-700 border-2 ${borderClass} flex items-center justify-center text-lg font-bold text-white transition-all duration-200`}>
         ⚔
       </div>
       <div className="flex flex-col gap-1 text-white text-sm">
         <div className="flex items-center gap-1">
-          <span className="text-red-400 font-bold">❤ {player.hero.health}</span>
-          <span className="text-blue-400 font-bold ml-2">💧 {player.hero.mana}/{player.maxMana}</span>
+          <span className="text-red-400 font-bold inline-block" style={healthStyle}>❤ {player.hero.health}</span>
+          <span className="text-blue-400 font-bold ml-2 inline-block" style={manaStyle}>💧 {player.hero.mana}/{player.maxMana}</span>
         </div>
         <ManaBar mana={player.hero.mana} maxMana={player.maxMana} />
       </div>
@@ -257,7 +297,7 @@ function BoardMinionCard({ minion, onClick, selected, exhausted, targetable, ani
   return (
     <div
       onClick={(e) => { e.stopPropagation(); onClick?.(); }}
-      className={`relative w-20 h-28 sm:w-24 sm:h-32 bg-amber-900 border-2 ${borderColor} rounded-lg flex flex-col items-center justify-between p-1 text-white text-xs sm:text-sm shadow-md transition-colors ${cursor} ${opacity}`}
+      className={`relative w-20 h-28 sm:w-24 sm:h-32 bg-amber-900 border-2 ${borderColor} rounded-lg flex flex-col items-center justify-between p-1 text-white text-xs sm:text-sm shadow-md transition-all duration-200 ${cursor} ${opacity}`}
       style={animStyle}
     >
       <span className="bg-blue-700 rounded-full w-5 h-5 flex items-center justify-center font-bold text-[10px]">
@@ -331,8 +371,8 @@ const BoardZone = forwardRef<HTMLDivElement, {
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      className={`flex-1 flex items-center justify-center gap-2 min-h-[7rem] sm:min-h-[9rem] rounded-lg transition-colors ${
-        dragOver ? "bg-green-800/40 border-2 border-dashed border-green-400" : "border-2 border-transparent"
+      className={`flex-1 flex items-center justify-center gap-2 min-h-[7rem] sm:min-h-[9rem] rounded-lg transition-all duration-300 ease-out ${
+        dragOver ? "bg-green-800/40 border-2 border-dashed border-green-400 shadow-[inset_0_0_20px_rgba(74,222,128,0.15)]" : "border-2 border-transparent"
       }`}
     >
       {minions.length === 0 && (!dyingMinions || dyingMinions.length === 0) ? (
@@ -777,7 +817,7 @@ export default function GamePage() {
         {opponent.hand.map((_, i) => (
           <div
             key={i}
-            className="w-14 h-20 sm:w-16 sm:h-24 bg-red-900 border-2 border-red-700 rounded-lg shadow-md"
+            className="w-14 h-20 sm:w-16 sm:h-24 bg-red-900 border-2 border-red-700 rounded-lg shadow-md transition-transform duration-200 hover:scale-105"
           />
         ))}
       </div>
@@ -814,10 +854,10 @@ export default function GamePage() {
         <button
           onClick={() => { endTurn(); setSelectedAttacker(null); }}
           disabled={isOpponentTurn || winner !== null}
-          className={`mx-4 px-6 py-2 font-bold rounded-lg shadow-lg transition-colors ${
+          className={`mx-4 px-6 py-2 font-bold rounded-lg shadow-lg transition-all duration-200 ${
             isOpponentTurn || winner !== null
               ? "bg-gray-600 text-gray-400 cursor-not-allowed"
-              : "bg-amber-700 hover:bg-amber-600 text-white"
+              : "bg-amber-700 hover:bg-amber-600 hover:scale-105 hover:shadow-xl text-white"
           }`}
         >
           结束回合
@@ -856,10 +896,10 @@ export default function GamePage() {
         <button
           onClick={() => useHeroPower()}
           disabled={isOpponentTurn || winner !== null || player.heroPowerUsed || player.hero.mana < player.hero.heroPower.cost}
-          className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full border-2 font-bold text-sm flex items-center justify-center transition-colors ${
+          className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full border-2 font-bold text-sm flex items-center justify-center transition-all duration-200 ${
             isOpponentTurn || winner !== null || player.heroPowerUsed || player.hero.mana < player.hero.heroPower.cost
               ? "bg-gray-700 border-gray-600 text-gray-500 cursor-not-allowed"
-              : "bg-purple-700 border-purple-400 text-white hover:bg-purple-600 cursor-pointer"
+              : "bg-purple-700 border-purple-400 text-white hover:bg-purple-600 hover:scale-110 cursor-pointer"
           }`}
         >
           {player.hero.heroPower.cost}

@@ -1,13 +1,13 @@
 # Autopo test Session
 
 ## Work Unit
-Victory/defeat screen with dramatic animation — full-screen overlay with win/loss result, animated text, and particle effects
+Smooth CSS transitions throughout — add hover effects, mana changes, health changes, and state transitions with CSS transitions
 
 ## Acceptance Criteria
-- Victory shows celebratory animation with golden particles and large 'VICTORY' text
-- Defeat shows somber animation with shatter/fade and 'DEFEAT' text
-- Screen includes a 'Play Again' button
-- Animation builds over ~2s with eased entrance
+- Cards in hand scale up on hover with shadow
+- Health/mana number changes animate (color flash on damage)
+- Board zone highlights smoothly on drag-over
+- All interactive elements have transition properties
 
 ## Rules
 # Rules
