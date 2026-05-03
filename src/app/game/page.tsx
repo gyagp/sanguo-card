@@ -140,7 +140,7 @@ export default function GamePage() {
     return [createDeck(buildDeck()), createDeck(buildDeck())];
   }, []);
 
-  const { gameState, winner, playCard, endTurn, attack, attackHero } = useGameState(deck1, deck2);
+  const { gameState, winner, playCard, endTurn, attack, attackHero, isOpponentTurn } = useGameState(deck1, deck2);
 
   const [selectedAttacker, setSelectedAttacker] = useState<number | null>(null);
 
@@ -149,6 +149,7 @@ export default function GamePage() {
 
   const handleFriendlyMinionClick = (index: number) => {
     if (winner !== null) return;
+    if (isOpponentTurn) return;
     if (gameState.activePlayer !== 0) return;
     const minion = player.board[index];
     if (minion.hasAttacked || minion.summoningSickness) return;
@@ -198,17 +199,36 @@ export default function GamePage() {
       {/* Opponent board */}
       <BoardZone minions={opponent.board} label="对方战场" isEnemy hasAttackerSelected={selectedAttacker !== null} onMinionClick={handleEnemyMinionClick} />
 
+      {/* Turn indicator */}
+      <div className="flex items-center justify-center py-0.5">
+        <span className={`text-sm font-bold px-3 py-0.5 rounded-full ${isOpponentTurn ? "bg-red-700 text-red-200" : "bg-green-700 text-green-200"}`}>
+          {isOpponentTurn ? "对手回合" : "你的回合"}
+        </span>
+      </div>
+
       {/* Divider + End Turn */}
       <div className="flex items-center justify-center py-1">
         <div className="h-px flex-1 bg-amber-700/50" />
         <button
           onClick={() => { endTurn(); setSelectedAttacker(null); }}
-          className="mx-4 px-6 py-2 bg-amber-700 hover:bg-amber-600 text-white font-bold rounded-lg shadow-lg transition-colors"
+          disabled={isOpponentTurn || winner !== null}
+          className={`mx-4 px-6 py-2 font-bold rounded-lg shadow-lg transition-colors ${
+            isOpponentTurn || winner !== null
+              ? "bg-gray-600 text-gray-400 cursor-not-allowed"
+              : "bg-amber-700 hover:bg-amber-600 text-white"
+          }`}
         >
           结束回合
         </button>
         <div className="h-px flex-1 bg-amber-700/50" />
       </div>
+
+      {/* Turn timer bar */}
+      {isOpponentTurn && (
+        <div className="w-full h-1 bg-gray-700 overflow-hidden">
+          <div className="h-full bg-red-500 animate-[shrink_2s_linear_forwards]" />
+        </div>
+      )}
 
       {/* Player board */}
       <BoardZone minions={player.board} label="我方战场" onDrop={(i) => playCard(i)} onMinionClick={handleFriendlyMinionClick} selectedIndex={selectedAttacker} />

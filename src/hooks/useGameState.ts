@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import {
   GameState,
   Deck,
@@ -27,6 +27,8 @@ export function useGameState(deck1: Deck, deck2: Deck) {
     startTurn(state);
     return state;
   });
+  const [isOpponentTurn, setIsOpponentTurn] = useState(false);
+  const opponentTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const winner = checkWinCondition(gameState);
 
@@ -62,6 +64,19 @@ export function useGameState(deck1: Deck, deck2: Deck) {
     engineEndTurn(next);
     startTurn(next);
     setGameState(next);
+    setIsOpponentTurn(true);
+
+    if (opponentTimerRef.current) clearTimeout(opponentTimerRef.current);
+    opponentTimerRef.current = setTimeout(() => {
+      setGameState((prev) => {
+        const next = cloneState(prev);
+        engineEndTurn(next);
+        startTurn(next);
+        return next;
+      });
+      setIsOpponentTurn(false);
+      opponentTimerRef.current = null;
+    }, 2000);
   }, [gameState]);
 
   const heroPower = useCallback((): HeroPowerResult => {
@@ -74,6 +89,7 @@ export function useGameState(deck1: Deck, deck2: Deck) {
   return {
     gameState,
     winner,
+    isOpponentTurn,
     playCard,
     attack: attackMinionAction,
     attackHero: attackHeroAction,

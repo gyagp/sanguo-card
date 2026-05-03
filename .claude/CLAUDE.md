@@ -1,14 +1,13 @@
 # Autopo test Session
 
 ## Work Unit
-Implement click-to-attack: select attacker minion, click target minion or hero
+Add End Turn button with visual feedback and turn indicator
 
 ## Acceptance Criteria
-- Clicking a friendly minion selects it as attacker with visual highlight
-- Clicking an enemy minion or hero with a selected attacker triggers attack
-- Attack result updates board state (damage, deaths)
-- Clicking own minion again or empty space deselects
-- Minions that already attacked this turn are visually dimmed and not selectable
+- End Turn button calls endTurn and starts opponent simulated turn
+- Button shows active/disabled state based on whose turn it is
+- Turn indicator displays whose turn it is (Player/Opponent)
+- Visual turn timer bar animates during the turn
 
 ## Rules
 # Rules
