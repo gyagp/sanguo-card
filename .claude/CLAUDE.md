@@ -1,14 +1,13 @@
 # Autopo test Session
 
 ## Work Unit
-Create AudioManager service with Web Audio API — singleton class managing AudioContext, master GainNode, lazy initialization on first user interaction
+Implement procedural sound effect generators — short synthesized sounds for card play, attack, damage, hero power, turn start, card draw using OscillatorNode and envelope shaping
 
 ## Acceptance Criteria
-- src/app/game/audio-manager.ts exists
-- AudioManager class exports singleton with lazy AudioContext creation
-- Master volume control via GainNode (0-1 range)
-- Mute toggle method
-- Does not create AudioContext until first play() call
+- AudioManager has methods: playCardPlay(), playAttack(), playDamage(), playHeroPower(), playTurnStart(), playCardDraw()
+- Each sound is distinct and < 1 second
+- Sounds are procedurally generated (no audio file dependencies)
+- All methods are no-ops if AudioContext not yet initialized
 
 ## Rules
 # Rules

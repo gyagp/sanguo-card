@@ -3,7 +3,7 @@ import { AudioManager } from "./audio-manager";
 
 // Mock Web Audio API
 const mockGainNode = {
-  gain: { value: 1 },
+  gain: { value: 1, setValueAtTime: vi.fn(), linearRampToValueAtTime: vi.fn(), exponentialRampToValueAtTime: vi.fn() },
   connect: vi.fn(),
 };
 
@@ -13,9 +13,26 @@ const mockSourceNode = {
   start: vi.fn(),
 };
 
+const mockOscillatorNode = {
+  type: 'sine' as OscillatorType,
+  frequency: { setValueAtTime: vi.fn(), exponentialRampToValueAtTime: vi.fn() },
+  connect: vi.fn(),
+  start: vi.fn(),
+  stop: vi.fn(),
+};
+
+function createMockGain() {
+  return {
+    gain: { value: 1, setValueAtTime: vi.fn(), linearRampToValueAtTime: vi.fn(), exponentialRampToValueAtTime: vi.fn() },
+    connect: vi.fn(),
+  };
+}
+
 const mockAudioContext = {
   createGain: vi.fn(() => mockGainNode),
   createBufferSource: vi.fn(() => mockSourceNode),
+  createOscillator: vi.fn(() => mockOscillatorNode),
+  currentTime: 0,
   destination: {},
 };
 
@@ -32,6 +49,9 @@ describe("AudioManager", () => {
     vi.clearAllMocks();
     mockGainNode.gain.value = 1;
     mockSourceNode.buffer = null;
+    mockOscillatorNode.type = 'sine';
+    mockAudioContext.createGain.mockImplementation(() => createMockGain());
+    mockAudioContext.createGain.mockReturnValueOnce(mockGainNode);
   });
 
   describe("singleton", () => {
@@ -157,5 +177,37 @@ describe("AudioManager", () => {
       expect(mockSourceNode.start).toHaveBeenCalled();
       expect(source).toBe(mockSourceNode);
     });
+  });
+
+  describe("procedural sound effects", () => {
+    const soundMethods = [
+      'playCardPlay',
+      'playAttack',
+      'playDamage',
+      'playHeroPower',
+      'playTurnStart',
+      'playCardDraw',
+    ] as const;
+
+    for (const method of soundMethods) {
+      it(`${method}() is a no-op when AudioContext not initialized`, () => {
+        const mgr = AudioManager.getInstance();
+        expect(mgr.getContext()).toBeNull();
+        expect(() => mgr[method]()).not.toThrow();
+        expect(mockAudioContext.createOscillator).not.toHaveBeenCalled();
+      });
+
+      it(`${method}() creates oscillator and envelope when context exists`, () => {
+        const mgr = AudioManager.getInstance();
+        mgr.play({} as AudioBuffer); // initialize context
+        vi.clearAllMocks();
+        mockAudioContext.createGain.mockImplementation(() => createMockGain());
+
+        mgr[method]();
+
+        expect(mockAudioContext.createOscillator).toHaveBeenCalledTimes(1);
+        expect(mockAudioContext.createGain).toHaveBeenCalledTimes(1);
+      });
+    }
   });
 });

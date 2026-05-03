@@ -59,4 +59,111 @@ export class AudioManager {
   getContext(): AudioContext | null {
     return this.context;
   }
+
+  playCardPlay(): void {
+    if (!this.context) return;
+    const { context, masterGain } = this.ensureContext();
+    const t = context.currentTime;
+    const osc = context.createOscillator();
+    const env = context.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(440, t);
+    osc.frequency.exponentialRampToValueAtTime(880, t + 0.15);
+    env.gain.setValueAtTime(0.4, t);
+    env.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+    osc.connect(env);
+    env.connect(masterGain);
+    osc.start(t);
+    osc.stop(t + 0.25);
+  }
+
+  playAttack(): void {
+    if (!this.context) return;
+    const { context, masterGain } = this.ensureContext();
+    const t = context.currentTime;
+    const osc = context.createOscillator();
+    const env = context.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(200, t);
+    osc.frequency.exponentialRampToValueAtTime(80, t + 0.3);
+    env.gain.setValueAtTime(0.5, t);
+    env.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+    osc.connect(env);
+    env.connect(masterGain);
+    osc.start(t);
+    osc.stop(t + 0.35);
+  }
+
+  playDamage(): void {
+    if (!this.context) return;
+    const { context, masterGain } = this.ensureContext();
+    const t = context.currentTime;
+    const osc = context.createOscillator();
+    const env = context.createGain();
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(150, t);
+    osc.frequency.exponentialRampToValueAtTime(50, t + 0.2);
+    env.gain.setValueAtTime(0.3, t);
+    env.gain.linearRampToValueAtTime(0.5, t + 0.05);
+    env.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+    osc.connect(env);
+    env.connect(masterGain);
+    osc.start(t);
+    osc.stop(t + 0.3);
+  }
+
+  playHeroPower(): void {
+    if (!this.context) return;
+    const { context, masterGain } = this.ensureContext();
+    const t = context.currentTime;
+    const osc = context.createOscillator();
+    const env = context.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(330, t);
+    osc.frequency.exponentialRampToValueAtTime(660, t + 0.15);
+    osc.frequency.exponentialRampToValueAtTime(990, t + 0.4);
+    env.gain.setValueAtTime(0.3, t);
+    env.gain.setValueAtTime(0.3, t + 0.3);
+    env.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
+    osc.connect(env);
+    env.connect(masterGain);
+    osc.start(t);
+    osc.stop(t + 0.5);
+  }
+
+  playTurnStart(): void {
+    if (!this.context) return;
+    const { context, masterGain } = this.ensureContext();
+    const t = context.currentTime;
+    const osc = context.createOscillator();
+    const env = context.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(523, t);
+    osc.frequency.setValueAtTime(659, t + 0.15);
+    osc.frequency.setValueAtTime(784, t + 0.3);
+    env.gain.setValueAtTime(0.35, t);
+    env.gain.setValueAtTime(0.35, t + 0.35);
+    env.gain.exponentialRampToValueAtTime(0.001, t + 0.6);
+    osc.connect(env);
+    env.connect(masterGain);
+    osc.start(t);
+    osc.stop(t + 0.6);
+  }
+
+  playCardDraw(): void {
+    if (!this.context) return;
+    const { context, masterGain } = this.ensureContext();
+    const t = context.currentTime;
+    const osc = context.createOscillator();
+    const env = context.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(600, t);
+    osc.frequency.exponentialRampToValueAtTime(1200, t + 0.1);
+    env.gain.setValueAtTime(0.25, t);
+    env.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+    osc.connect(env);
+    env.connect(masterGain);
+    osc.start(t);
+    osc.stop(t + 0.15);
+  }
 }
