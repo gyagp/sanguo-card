@@ -29,10 +29,12 @@ function ManaBar({ mana, maxMana }: { mana: number; maxMana: number }) {
   );
 }
 
-function HeroPortrait({ player }: { player: PlayerState }) {
+function HeroPortrait({ player, onClick, targetable }: { player: PlayerState; onClick?: () => void; targetable?: boolean }) {
+  const borderClass = targetable ? "border-red-400 ring-2 ring-red-400" : "border-amber-500";
+  const cursor = onClick ? "cursor-pointer" : "";
   return (
-    <div className="flex items-center gap-3 px-4 py-2">
-      <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-gray-700 border-2 border-amber-500 flex items-center justify-center text-lg font-bold text-white">
+    <div className={`flex items-center gap-3 px-4 py-2 ${cursor}`} onClick={(e) => { if (onClick) { e.stopPropagation(); onClick(); } }}>
+      <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-gray-700 border-2 ${borderClass} flex items-center justify-center text-lg font-bold text-white`}>
         ⚔
       </div>
       <div className="flex flex-col gap-1 text-white text-sm">
@@ -46,9 +48,26 @@ function HeroPortrait({ player }: { player: PlayerState }) {
   );
 }
 
-function BoardMinionCard({ minion }: { minion: BoardMinion }) {
+function BoardMinionCard({ minion, onClick, selected, exhausted, targetable }: {
+  minion: BoardMinion;
+  onClick?: () => void;
+  selected?: boolean;
+  exhausted?: boolean;
+  targetable?: boolean;
+}) {
+  const borderColor = selected
+    ? "border-yellow-300 ring-2 ring-yellow-400"
+    : targetable
+      ? "border-red-400 hover:border-red-300"
+      : "border-amber-600 hover:border-yellow-400";
+  const opacity = exhausted ? "opacity-50" : "";
+  const cursor = exhausted ? "cursor-not-allowed" : "cursor-pointer";
+
   return (
-    <div className="w-20 h-28 sm:w-24 sm:h-32 bg-amber-900 border-2 border-amber-600 rounded-lg flex flex-col items-center justify-between p-1 text-white text-xs sm:text-sm shadow-md hover:border-yellow-400 transition-colors cursor-pointer">
+    <div
+      onClick={(e) => { e.stopPropagation(); onClick?.(); }}
+      className={`w-20 h-28 sm:w-24 sm:h-32 bg-amber-900 border-2 ${borderColor} rounded-lg flex flex-col items-center justify-between p-1 text-white text-xs sm:text-sm shadow-md transition-colors ${cursor} ${opacity}`}
+    >
       <span className="bg-blue-700 rounded-full w-5 h-5 flex items-center justify-center font-bold text-[10px]">
         {minion.cost}
       </span>
@@ -61,7 +80,15 @@ function BoardMinionCard({ minion }: { minion: BoardMinion }) {
   );
 }
 
-function BoardZone({ minions, label, onDrop }: { minions: BoardMinion[]; label: string; onDrop?: (handIndex: number) => void }) {
+function BoardZone({ minions, label, onDrop, onMinionClick, selectedIndex, isEnemy, hasAttackerSelected }: {
+  minions: BoardMinion[];
+  label: string;
+  onDrop?: (handIndex: number) => void;
+  onMinionClick?: (index: number) => void;
+  selectedIndex?: number | null;
+  isEnemy?: boolean;
+  hasAttackerSelected?: boolean;
+}) {
   const [dragOver, setDragOver] = useState(false);
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -93,7 +120,16 @@ function BoardZone({ minions, label, onDrop }: { minions: BoardMinion[]; label: 
       {minions.length === 0 ? (
         <span className="text-gray-500 text-sm italic">{label}</span>
       ) : (
-        minions.map((m, i) => <BoardMinionCard key={i} minion={m} />)
+        minions.map((m, i) => (
+          <BoardMinionCard
+            key={i}
+            minion={m}
+            onClick={() => onMinionClick?.(i)}
+            selected={!isEnemy && selectedIndex === i}
+            exhausted={!isEnemy && (m.hasAttacked || m.summoningSickness)}
+            targetable={isEnemy && !!hasAttackerSelected}
+          />
+        ))
       )}
     </div>
   );
@@ -104,13 +140,39 @@ export default function GamePage() {
     return [createDeck(buildDeck()), createDeck(buildDeck())];
   }, []);
 
-  const { gameState, winner, playCard, endTurn } = useGameState(deck1, deck2);
+  const { gameState, winner, playCard, endTurn, attack, attackHero } = useGameState(deck1, deck2);
+
+  const [selectedAttacker, setSelectedAttacker] = useState<number | null>(null);
 
   const player = gameState.players[0];
   const opponent = gameState.players[1];
 
+  const handleFriendlyMinionClick = (index: number) => {
+    if (winner !== null) return;
+    if (gameState.activePlayer !== 0) return;
+    const minion = player.board[index];
+    if (minion.hasAttacked || minion.summoningSickness) return;
+    setSelectedAttacker(selectedAttacker === index ? null : index);
+  };
+
+  const handleEnemyMinionClick = (index: number) => {
+    if (selectedAttacker === null) return;
+    attack(selectedAttacker, index);
+    setSelectedAttacker(null);
+  };
+
+  const handleEnemyHeroClick = () => {
+    if (selectedAttacker === null) return;
+    attackHero(selectedAttacker);
+    setSelectedAttacker(null);
+  };
+
+  const handleBoardClick = (e: React.MouseEvent) => {
+    if (e.target === e.currentTarget) setSelectedAttacker(null);
+  };
+
   return (
-    <div className="flex flex-col h-screen bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 select-none">
+    <div className="flex flex-col h-screen bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 select-none" onClick={handleBoardClick}>
       {/* Winner banner */}
       {winner !== null && (
         <div className="absolute inset-0 z-50 bg-black/70 flex items-center justify-center">
@@ -121,10 +183,10 @@ export default function GamePage() {
       )}
 
       {/* Opponent hero */}
-      <HeroPortrait player={opponent} />
+      <HeroPortrait player={opponent} onClick={handleEnemyHeroClick} targetable={selectedAttacker !== null} />
 
       {/* Opponent hand (face down) */}
-      <div className="flex items-center justify-center gap-2 py-1 min-h-[5rem]">
+      <div className="flex items-center justify-center gap-2 py-1 min-h-[5rem]" onClick={handleBoardClick}>
         {opponent.hand.map((_, i) => (
           <div
             key={i}
@@ -134,13 +196,13 @@ export default function GamePage() {
       </div>
 
       {/* Opponent board */}
-      <BoardZone minions={opponent.board} label="对方战场" />
+      <BoardZone minions={opponent.board} label="对方战场" isEnemy hasAttackerSelected={selectedAttacker !== null} onMinionClick={handleEnemyMinionClick} />
 
       {/* Divider + End Turn */}
       <div className="flex items-center justify-center py-1">
         <div className="h-px flex-1 bg-amber-700/50" />
         <button
-          onClick={() => endTurn()}
+          onClick={() => { endTurn(); setSelectedAttacker(null); }}
           className="mx-4 px-6 py-2 bg-amber-700 hover:bg-amber-600 text-white font-bold rounded-lg shadow-lg transition-colors"
         >
           结束回合
@@ -149,7 +211,7 @@ export default function GamePage() {
       </div>
 
       {/* Player board */}
-      <BoardZone minions={player.board} label="我方战场" onDrop={(i) => playCard(i)} />
+      <BoardZone minions={player.board} label="我方战场" onDrop={(i) => playCard(i)} onMinionClick={handleFriendlyMinionClick} selectedIndex={selectedAttacker} />
 
       {/* Player hand */}
       <div className="flex items-center justify-center gap-2 py-2 min-h-[8rem] overflow-x-auto">

@@ -1,14 +1,14 @@
 # Autopo test Session
 
 ## Work Unit
-Implement drag-and-drop to play cards from hand to board
+Implement click-to-attack: select attacker minion, click target minion or hero
 
 ## Acceptance Criteria
-- Cards in hand are draggable
-- Board zone is a valid drop target with visual highlight on dragover
-- Dropping a card calls playCard and updates the board
-- Cards with insufficient mana show visual feedback and cannot be played
-- Board respects MAX_BOARD_SIZE limit
+- Clicking a friendly minion selects it as attacker with visual highlight
+- Clicking an enemy minion or hero with a selected attacker triggers attack
+- Attack result updates board state (damage, deaths)
+- Clicking own minion again or empty space deselects
+- Minions that already attacked this turn are visually dimmed and not selectable
 
 ## Rules
 # Rules
