@@ -1,13 +1,13 @@
-# Autopo execute Session
+# Autopo test Session
 
 ## Work Unit
-Write unit tests for VolumeControl component — verify slider, mute toggle, localStorage persistence
+Create main menu page with Play, Deck Builder, and Settings navigation — replace boilerplate page.tsx with styled Chinese-themed menu
 
 ## Acceptance Criteria
-- Tests verify slider changes volume
-- Tests verify mute button toggles audio
-- Tests verify localStorage read/write
-- All tests pass via npm run test
+- src/app/page.tsx renders main menu with Play, Deck Builder, Settings buttons
+- Navigation links to /game, /deck-builder, /settings
+- Styled with Tailwind matching game theme
+- No console errors
 
 ## Rules
 # Rules
