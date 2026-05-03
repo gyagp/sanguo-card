@@ -1,13 +1,15 @@
 # Autopo test Session
 
 ## Work Unit
-Create useGameState hook to connect game engine to React UI state
+Rebuild game page to use real game engine state via useGameState hook
 
 ## Acceptance Criteria
-- useGameState hook initializes a GameState from the engine
-- Hook exposes playCard, attack, endTurn, useHeroPower actions
-- Hook re-renders UI on state changes
-- Importing and calling useGameState in a component works without errors
+- Game page uses useGameState instead of mock data
+- Player hand shows real drawn cards using the Card component
+- Both player and opponent board zones show BoardMinion cards
+- Hero portraits show real HP and mana from game state
+- Mana bar displays available/total mana with filled/empty gems
+- Page renders without errors
 
 ## Rules
 # Rules

@@ -14,56 +14,105 @@ describe("Game page acceptance criteria", () => {
     expect(pageContent).toMatch(/export\s+default\s+function\s+\w+/);
   });
 
-  describe("board layout zones", () => {
-    it("has opponent hand area", () => {
-      expect(pageContent).toContain("Opponent hand");
+  describe("uses useGameState instead of mock data", () => {
+    it("imports useGameState hook", () => {
+      expect(pageContent).toMatch(/import\s*\{[^}]*useGameState[^}]*\}/);
     });
 
-    it("has opponent board area", () => {
-      expect(pageContent).toContain("Opponent board");
+    it("calls useGameState with deck arguments", () => {
+      expect(pageContent).toMatch(/useGameState\s*\(/);
     });
 
-    it("has player board area", () => {
-      expect(pageContent).toContain("Player board");
+    it("does not contain hardcoded mock player data", () => {
+      expect(pageContent).not.toMatch(/const\s+player\s*=\s*\{/);
+      expect(pageContent).not.toMatch(/const\s+opponent\s*=\s*\{/);
     });
 
-    it("has player hand area", () => {
-      expect(pageContent).toContain("Player hand");
-    });
-  });
-
-  describe("hero portraits", () => {
-    it("renders HeroPortrait for opponent", () => {
-      expect(pageContent).toMatch(/HeroPortrait.*side="opponent"/);
-    });
-
-    it("renders HeroPortrait for player", () => {
-      expect(pageContent).toMatch(/HeroPortrait.*side="player"/);
-    });
-
-    it("displays HP", () => {
-      expect(pageContent).toMatch(/hero\.hp/);
-    });
-
-    it("displays mana", () => {
-      expect(pageContent).toMatch(/hero\.mana/);
+    it("destructures gameState from useGameState", () => {
+      expect(pageContent).toMatch(/\{\s*gameState[\s,]/);
     });
   });
 
-  it("has an end turn button", () => {
-    expect(pageContent).toMatch(/<button[\s\S]*?结束回合[\s\S]*?<\/button>/);
-  });
-
-  describe("responsive Tailwind CSS", () => {
-    it("uses Tailwind utility classes", () => {
-      expect(pageContent).toMatch(/className="/);
+  describe("player hand shows real drawn cards using Card component", () => {
+    it("imports Card component", () => {
+      expect(pageContent).toMatch(/import\s+Card\s+from/);
     });
 
-    it("uses responsive breakpoints", () => {
+    it("renders Card components for player hand", () => {
+      expect(pageContent).toMatch(/player\.hand\.map/);
+      expect(pageContent).toMatch(/<Card\b/);
+    });
+
+    it("passes card data and onClick to Card", () => {
+      expect(pageContent).toMatch(/card=\{card\}/);
+      expect(pageContent).toMatch(/onClick=\{.*playCard/);
+    });
+  });
+
+  describe("board zones show BoardMinion cards", () => {
+    it("imports BoardMinion type", () => {
+      expect(pageContent).toMatch(/BoardMinion/);
+    });
+
+    it("renders player board zone with player.board minions", () => {
+      expect(pageContent).toMatch(/player\.board/);
+    });
+
+    it("renders opponent board zone with opponent.board minions", () => {
+      expect(pageContent).toMatch(/opponent\.board/);
+    });
+
+    it("BoardMinionCard displays currentAttack and currentHealth", () => {
+      expect(pageContent).toMatch(/minion\.currentAttack/);
+      expect(pageContent).toMatch(/minion\.currentHealth/);
+    });
+  });
+
+  describe("hero portraits show real HP and mana", () => {
+    it("renders HeroPortrait for both players", () => {
+      expect(pageContent).toMatch(/<HeroPortrait\s+player=\{opponent\}/);
+      expect(pageContent).toMatch(/<HeroPortrait\s+player=\{player\}/);
+    });
+
+    it("displays hero health", () => {
+      expect(pageContent).toMatch(/player\.hero\.health/);
+    });
+
+    it("displays hero mana and maxMana", () => {
+      expect(pageContent).toMatch(/player\.hero\.mana/);
+      expect(pageContent).toMatch(/player\.maxMana/);
+    });
+  });
+
+  describe("mana bar with filled/empty gems", () => {
+    it("has a ManaBar component", () => {
+      expect(pageContent).toMatch(/function\s+ManaBar/);
+    });
+
+    it("renders gems based on maxMana", () => {
+      expect(pageContent).toMatch(/Array\.from\(\{.*length:\s*maxMana/);
+    });
+
+    it("distinguishes filled vs empty gems", () => {
+      expect(pageContent).toMatch(/i\s*<\s*mana/);
+    });
+  });
+
+  describe("page structure", () => {
+    it("has an end turn button", () => {
+      expect(pageContent).toMatch(/<button[\s\S]*?结束回合[\s\S]*?<\/button>/);
+    });
+
+    it("calls endTurn on button click", () => {
+      expect(pageContent).toMatch(/onClick=\{.*endTurn/);
+    });
+
+    it("handles winner display including draw", () => {
+      expect(pageContent).toMatch(/winner\s*===\s*"draw"/);
+    });
+
+    it("uses responsive Tailwind classes", () => {
       expect(pageContent).toMatch(/sm:/);
-    });
-
-    it("uses flexbox layout", () => {
       expect(pageContent).toContain("flex");
     });
   });
