@@ -1,0 +1,116 @@
+project:
+  name: sanguo-card
+  description: 三国卡牌游戏 — A Three Kingdoms card game inspired by Hearthstone, with
+    characters from Romance of the Three Kingdoms. Beautifully designed,
+    gorgeous effects, vivid BGM, cartoon style, moderately difficult, addictive
+    gameplay.
+  path: D:/workspace/project/gyagp/sanguo-card
+goals:
+  - id: scaffold
+    description: Next.js project with TypeScript, Tailwind CSS, ready for Vercel deployment
+    acceptance:
+      - Next.js app created with TypeScript and Tailwind CSS
+      - npm run build succeeds
+      - npm run dev starts the dev server
+    priority: 1
+  - id: core-engine
+    description: Core card game engine with Three Kingdoms characters and
+      Hearthstone-like mechanics
+    acceptance:
+      - "Card data model with: name, cost, attack, health, description, rarity,
+        type (minion/spell/weapon)"
+      - Deck building system with 30-card decks
+      - "Turn-based game loop: draw card, gain mana crystal, play cards, attack,
+        end turn"
+      - Mana system starting at 1, increasing by 1 each turn up to 10
+      - Minion placement on board (max 7 per side)
+      - "Combat system: minions attack other minions or hero"
+      - Hero health (30 HP) and hero power
+      - Card draw from deck, hand limit of 10
+      - "Win condition: reduce opponent hero health to 0"
+      - At least 30 unique Three Kingdoms character cards with abilities
+    priority: 2
+  - id: card-design
+    description: Beautiful cartoon-style card designs with Three Kingdoms characters
+    acceptance:
+      - Card component with cartoon-style visual design
+      - Card frame with rarity colors (common/rare/epic/legendary)
+      - Mana cost crystal in top-left corner
+      - Attack and health values at bottom corners
+      - Card name and description text
+      - Card hover animation (enlarge and glow)
+      - Different visual treatment for minion, spell, and weapon cards
+      - At least 5 faction colors representing Wei, Shu, Wu, Qun, and neutral
+    priority: 3
+  - id: game-board
+    description: Interactive game board with drag-and-drop card play and attack animations
+    acceptance:
+      - "Split-screen board: player side at bottom, opponent at top"
+      - Hand display at bottom showing current cards
+      - Board with minion slots for both players
+      - Drag-and-drop to play cards from hand to board
+      - "Click-to-attack: select attacker, click target"
+      - Mana bar display showing available/total mana
+      - End Turn button with visual feedback
+      - Hero portraits with health display
+      - Hero power button
+      - Turn indicator and timer visual
+    priority: 4
+  - id: visual-effects
+    description: Gorgeous visual effects, animations, and particle systems
+    acceptance:
+      - Card play animation (card flies from hand to board)
+      - Attack animation with impact effect
+      - Spell casting visual effects with particles
+      - Card destruction animation (shatter effect)
+      - Damage numbers floating up on hit
+      - Legendary card entrance animation (golden glow)
+      - Turn start/end transition effects
+      - Victory/defeat screen with dramatic animation
+      - Smooth CSS transitions throughout
+    priority: 5
+  - id: ai-opponent
+    description: AI opponent for single-player mode with reasonable difficulty
+    acceptance:
+      - AI can play cards following mana cost rules
+      - AI prioritizes trading minions efficiently
+      - AI uses hero power when appropriate
+      - AI targets face (hero) when lethal is available
+      - AI plays on-curve (uses most mana each turn)
+      - "Three difficulty levels: Easy, Normal, Hard"
+      - AI responds within 2 seconds per turn
+    priority: 6
+  - id: audio
+    description: Vivid BGM and sound effects using Web Audio API
+    acceptance:
+      - Epic background music (procedurally generated or royalty-free
+        Chinese-themed)
+      - Card play sound effect
+      - Attack and damage sound effects
+      - Hero power activation sound
+      - Turn start chime
+      - Victory fanfare and defeat sound
+      - Card draw sound
+      - Volume control and mute toggle
+      - Audio lazy-loaded, does not block page load
+    priority: 7
+  - id: polish
+    description: "Production-ready polish: responsive, accessible, performant"
+    acceptance:
+      - All game features work without console errors
+      - npm run build produces no errors
+      - Responsive design works on desktop and tablet
+      - Main menu with Play, Deck Builder, and Settings
+      - Deck builder UI to create and save custom decks (localStorage)
+      - Game state persistence (can resume interrupted game)
+      - SEO meta tags and favicon
+      - README with game description and instructions
+      - 60fps gameplay with no jank
+      - Beautiful loading screen
+    priority: 8
+settings:
+  max_iterations: 150
+  max_time_hours: 48
+  tech_stack: Next.js, TypeScript, Tailwind CSS, HTML5 Canvas, Web Audio API
+  auto_push: true
+  ui_port: 4800
