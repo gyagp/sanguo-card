@@ -19,11 +19,13 @@ import {
   MAX_HAND_SIZE,
   MAX_MANA,
   STARTING_HP,
+  MAX_BOARD_SIZE,
   DrawResult,
   createPlayerState,
   initializeGame,
   startTurn,
   endTurn,
+  playCard,
 } from "./types";
 
 function makeCard(overrides: Partial<Card> = {}): Card {
@@ -58,6 +60,7 @@ function makePlayerState(): PlayerState {
     hand: [],
     board: [],
     maxMana: 0,
+    weapon: null,
   };
 }
 
@@ -336,5 +339,100 @@ describe("endTurn", () => {
     startTurn(state);
     endTurn(state);
     expect(state.turnPhase).toBe("end");
+  });
+});
+
+describe("playCard", () => {
+  function setupGame(mana: number, handCards: Card[]): GameState {
+    const state = initializeGame(makeDeck(), makeDeck());
+    state.players[0].hero.mana = mana;
+    state.players[0].maxMana = mana;
+    state.players[0].hand = [...handCards];
+    return state;
+  }
+
+  it("plays a minion card, deducting mana and placing on board", () => {
+    const minion = makeCard({ name: "Warrior", cost: 3, attack: 4, health: 5, type: "minion" });
+    const state = setupGame(5, [minion]);
+    const result = playCard(state, 0);
+    expect(result.success).toBe(true);
+    expect(state.players[0].hero.mana).toBe(2);
+    expect(state.players[0].hand).toHaveLength(0);
+    expect(state.players[0].board).toHaveLength(1);
+    expect(state.players[0].board[0].name).toBe("Warrior");
+    expect(state.players[0].board[0].currentAttack).toBe(4);
+    expect(state.players[0].board[0].currentHealth).toBe(5);
+  });
+
+  it("minions have summoning sickness when played", () => {
+    const minion = makeCard({ cost: 1, type: "minion" });
+    const state = setupGame(1, [minion]);
+    playCard(state, 0);
+    expect(state.players[0].board[0].summoningSickness).toBe(true);
+  });
+
+  it("summoning sickness is removed at start of next turn", () => {
+    const minion = makeCard({ cost: 1, type: "minion" });
+    const state = setupGame(1, [minion]);
+    playCard(state, 0);
+    endTurn(state);
+    startTurn(state);
+    endTurn(state);
+    startTurn(state);
+    expect(state.players[0].board[0].summoningSickness).toBe(false);
+  });
+
+  it("rejects playing a card with insufficient mana", () => {
+    const minion = makeCard({ cost: 5, type: "minion" });
+    const state = setupGame(3, [minion]);
+    const result = playCard(state, 0);
+    expect(result.success).toBe(false);
+    expect(result.error).toBe("Not enough mana");
+    expect(state.players[0].hand).toHaveLength(1);
+    expect(state.players[0].hero.mana).toBe(3);
+  });
+
+  it("rejects playing when board is full (7 minions)", () => {
+    const minion = makeCard({ cost: 1, type: "minion" });
+    const state = setupGame(1, [minion]);
+    state.players[0].board = Array.from({ length: MAX_BOARD_SIZE }, () => ({
+      ...makeCard({ type: "minion" }),
+      currentAttack: 1,
+      currentHealth: 1,
+      summoningSickness: false,
+    }));
+    const result = playCard(state, 0);
+    expect(result.success).toBe(false);
+    expect(result.error).toBe("Board is full");
+  });
+
+  it("rejects invalid hand index", () => {
+    const state = setupGame(5, [makeCard()]);
+    expect(playCard(state, -1).success).toBe(false);
+    expect(playCard(state, 5).success).toBe(false);
+  });
+
+  it("plays a spell card and removes it from hand", () => {
+    const spell = makeCard({ name: "Fireball", cost: 4, type: "spell" });
+    const state = setupGame(5, [spell]);
+    const result = playCard(state, 0);
+    expect(result.success).toBe(true);
+    expect(state.players[0].hero.mana).toBe(1);
+    expect(state.players[0].hand).toHaveLength(0);
+    expect(state.players[0].board).toHaveLength(0);
+  });
+
+  it("plays a weapon card and equips it to hero", () => {
+    const weapon = makeCard({ name: "Axe", cost: 2, attack: 3, health: 2, type: "weapon" });
+    const state = setupGame(5, [weapon]);
+    const result = playCard(state, 0);
+    expect(result.success).toBe(true);
+    expect(state.players[0].hero.mana).toBe(3);
+    expect(state.players[0].hand).toHaveLength(0);
+    expect(state.players[0].weapon).toEqual({ name: "Axe", attack: 3, durability: 2 });
+  });
+
+  it("MAX_BOARD_SIZE is 7", () => {
+    expect(MAX_BOARD_SIZE).toBe(7);
   });
 });

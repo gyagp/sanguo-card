@@ -1,14 +1,14 @@
 # Autopo test Session
 
 ## Work Unit
-Implement mana system and turn-based game loop
+Implement card playing, board placement, and minion summoning
 
 ## Acceptance Criteria
-- Mana starts at 1, increases by 1 each turn, caps at 10
-- Mana refills at start of each turn
-- Turn phases: start (gain mana, draw card) -> play -> combat -> end
-- startTurn, endTurn functions that manage state transitions
-- Game initializes with both players at 30 HP, 0 mana crystals
+- playCard function that deducts mana and places minion on board
+- Board supports max 7 minions per side
+- Minions have summoning sickness (cannot attack on turn played)
+- Spell cards apply their effect and go to graveyard
+- Weapon cards equip to hero
 
 ## Rules
 # Rules

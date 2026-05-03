@@ -90,6 +90,13 @@ export function drawCard(player: PlayerState): DrawResult {
 export interface BoardMinion extends Card {
   currentAttack: number;
   currentHealth: number;
+  summoningSickness: boolean;
+}
+
+export interface Weapon {
+  name: string;
+  attack: number;
+  durability: number;
 }
 
 export interface PlayerState {
@@ -98,6 +105,7 @@ export interface PlayerState {
   hand: Card[];
   board: BoardMinion[];
   maxMana: number;
+  weapon: Weapon | null;
 }
 
 export type TurnPhase = "start" | "play" | "combat" | "end";
@@ -113,6 +121,7 @@ export interface GameState {
 
 export const MAX_MANA = 10;
 export const STARTING_HP = 30;
+export const MAX_BOARD_SIZE = 7;
 
 export function createPlayerState(deck: Deck): PlayerState {
   return {
@@ -125,6 +134,7 @@ export function createPlayerState(deck: Deck): PlayerState {
     hand: [],
     board: [],
     maxMana: 0,
+    weapon: null,
   };
 }
 
@@ -150,6 +160,10 @@ export function startTurn(state: GameState): DrawResult {
   }
   player.hero.mana = player.maxMana;
 
+  for (const minion of player.board) {
+    minion.summoningSickness = false;
+  }
+
   const result = drawCard(player);
 
   state.turnPhase = "play";
@@ -159,4 +173,61 @@ export function startTurn(state: GameState): DrawResult {
 export function endTurn(state: GameState): void {
   state.turnPhase = "end";
   state.activePlayer = state.activePlayer === 0 ? 1 : 0;
+}
+
+export interface PlayCardResult {
+  success: boolean;
+  error?: string;
+}
+
+export function playCard(
+  state: GameState,
+  handIndex: number,
+): PlayCardResult {
+  const player = state.players[state.activePlayer];
+
+  if (handIndex < 0 || handIndex >= player.hand.length) {
+    return { success: false, error: "Invalid hand index" };
+  }
+
+  const card = player.hand[handIndex];
+
+  if (card.cost > player.hero.mana) {
+    return { success: false, error: "Not enough mana" };
+  }
+
+  if (card.type === "minion") {
+    if (player.board.length >= MAX_BOARD_SIZE) {
+      return { success: false, error: "Board is full" };
+    }
+    player.hero.mana -= card.cost;
+    player.hand.splice(handIndex, 1);
+    const minion: BoardMinion = {
+      ...card,
+      currentAttack: card.attack,
+      currentHealth: card.health,
+      summoningSickness: true,
+    };
+    player.board.push(minion);
+    return { success: true };
+  }
+
+  if (card.type === "spell") {
+    player.hero.mana -= card.cost;
+    player.hand.splice(handIndex, 1);
+    return { success: true };
+  }
+
+  if (card.type === "weapon") {
+    player.hero.mana -= card.cost;
+    player.hand.splice(handIndex, 1);
+    player.weapon = {
+      name: card.name,
+      attack: card.attack,
+      durability: card.health,
+    };
+    return { success: true };
+  }
+
+  return { success: false, error: "Unknown card type" };
 }
