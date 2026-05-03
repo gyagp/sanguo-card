@@ -2,6 +2,8 @@ export type Rarity = "common" | "rare" | "epic" | "legendary";
 
 export type CardType = "minion" | "spell" | "weapon";
 
+export type Faction = "wei" | "shu" | "wu" | "qun" | "neutral";
+
 export interface Card {
   name: string;
   cost: number;
@@ -10,6 +12,7 @@ export interface Card {
   description: string;
   rarity: Rarity;
   type: CardType;
+  faction: Faction;
 }
 
 export interface HeroPower {

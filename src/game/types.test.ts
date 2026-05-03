@@ -42,6 +42,7 @@ function makeCard(overrides: Partial<Card> = {}): Card {
     description: "A test card",
     rarity: "common",
     type: "minion",
+    faction: "neutral",
     ...overrides,
   };
 }

@@ -1,14 +1,17 @@
 # Autopo test Session
 
 ## Work Unit
-Create basic game UI page with board layout using Tailwind CSS
+Create Card component with cartoon-style visual design, rarity frame colors, mana crystal, attack/health values, name/description, and faction colors
 
 ## Acceptance Criteria
-- Game page at src/app/game/page.tsx
-- Board layout: opponent hand, opponent board, player board, player hand
-- Hero portraits with HP and mana display on both sides
-- End turn button
-- Responsive layout using Tailwind CSS
+- Card component exists at src/components/Card.tsx
+- Card displays mana cost crystal in top-left corner
+- Card displays attack value at bottom-left and health at bottom-right
+- Card displays name and description text
+- Card frame color changes by rarity: common (gray), rare (blue), epic (purple), legendary (orange)
+- 5 faction background colors: Wei (blue), Shu (green), Wu (red), Qun (yellow), neutral (gray)
+- Different visual treatment for minion, spell, and weapon card types
+- Card hover animation: enlarge (scale) and glow effect using Tailwind CSS
 
 ## Rules
 # Rules
