@@ -86,6 +86,17 @@ export function useGameState(deck1: Deck, deck2: Deck) {
     return result;
   }, [gameState]);
 
+  const resetGame = useCallback(() => {
+    if (opponentTimerRef.current) {
+      clearTimeout(opponentTimerRef.current);
+      opponentTimerRef.current = null;
+    }
+    const state = initializeGame(deck1, deck2);
+    startTurn(state);
+    setGameState(state);
+    setIsOpponentTurn(false);
+  }, [deck1, deck2]);
+
   return {
     gameState,
     winner,
@@ -95,5 +106,6 @@ export function useGameState(deck1: Deck, deck2: Deck) {
     attackHero: attackHeroAction,
     endTurn,
     useHeroPower: heroPower,
+    resetGame,
   };
 }

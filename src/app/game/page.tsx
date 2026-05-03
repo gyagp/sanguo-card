@@ -408,12 +408,104 @@ const BoardZone = forwardRef<HTMLDivElement, {
   );
 });
 
+const VICTORY_PARTICLE_COUNT = 30;
+const DEFEAT_PARTICLE_COUNT = 20;
+
+interface ResultParticle {
+  x: number;
+  y: number;
+  delay: number;
+  duration: number;
+  size: number;
+  color: string;
+}
+
+function makeResultParticles(type: "victory" | "defeat"): ResultParticle[] {
+  const count = type === "victory" ? VICTORY_PARTICLE_COUNT : DEFEAT_PARTICLE_COUNT;
+  const colors = type === "victory"
+    ? ["#ffd700", "#ffaa00", "#fff4b0", "#ff6b35", "#ffffff"]
+    : ["#666666", "#444444", "#888888", "#333333", "#555555"];
+  return Array.from({ length: count }, () => ({
+    x: Math.random() * 100,
+    y: Math.random() * 100,
+    delay: Math.random() * 1.5,
+    duration: 1.5 + Math.random() * 2,
+    size: 3 + Math.random() * 6,
+    color: colors[Math.floor(Math.random() * colors.length)],
+  }));
+}
+
+function VictoryDefeatOverlay({ winner, onPlayAgain }: { winner: 0 | 1 | "draw"; onPlayAgain: () => void }) {
+  const isVictory = winner === 0;
+  const isDraw = winner === "draw";
+  const type = isVictory ? "victory" : isDraw ? "draw" : "defeat";
+  const particlesRef = useRef(makeResultParticles(isVictory || isDraw ? "victory" : "defeat"));
+
+  const title = isVictory ? "VICTORY" : isDraw ? "DRAW" : "DEFEAT";
+  const subtitle = isVictory ? "胜利!" : isDraw ? "平局!" : "失败!";
+
+  const bgClass = isVictory
+    ? "from-yellow-900/80 via-black/80 to-yellow-900/80"
+    : isDraw
+      ? "from-blue-900/80 via-black/80 to-blue-900/80"
+      : "from-red-900/80 via-black/80 to-red-900/80";
+
+  const textColor = isVictory ? "text-yellow-400" : isDraw ? "text-blue-400" : "text-red-400";
+  const glowColor = isVictory ? "drop-shadow-[0_0_30px_rgba(255,215,0,0.8)]" : isDraw ? "drop-shadow-[0_0_30px_rgba(100,149,237,0.8)]" : "drop-shadow-[0_0_30px_rgba(255,0,0,0.6)]";
+
+  return (
+    <div
+      className="absolute inset-0 z-50 flex items-center justify-center overflow-hidden"
+      style={{ animation: "resultOverlayIn 0.6s ease-out forwards" }}
+    >
+      <div className={`absolute inset-0 bg-gradient-to-b ${bgClass}`} style={{ animation: "resultBgFade 0.8s ease-out forwards" }} />
+
+      {particlesRef.current.map((p, i) => (
+        <div
+          key={i}
+          className="absolute rounded-full pointer-events-none"
+          style={{
+            left: `${p.x}%`,
+            top: `${p.y}%`,
+            width: p.size,
+            height: p.size,
+            backgroundColor: p.color,
+            animation: `${type === "defeat" ? "defeatParticle" : "victoryParticle"} ${p.duration}s ease-in-out ${p.delay}s infinite`,
+          }}
+        />
+      ))}
+
+      <div className="relative flex flex-col items-center gap-4 z-10">
+        <div
+          className={`text-7xl sm:text-8xl font-black tracking-wider ${textColor} ${glowColor}`}
+          style={{ animation: "resultTextIn 2s cubic-bezier(0.16, 1, 0.3, 1) forwards" }}
+        >
+          {title}
+        </div>
+        <div
+          className="text-2xl sm:text-3xl text-white/80 font-bold"
+          style={{ animation: "resultSubtitleIn 1.5s ease-out 0.5s both" }}
+        >
+          {subtitle}
+        </div>
+        <button
+          onClick={onPlayAgain}
+          className="mt-8 px-8 py-3 rounded-lg text-lg font-bold text-white bg-gradient-to-r from-amber-600 to-amber-800 hover:from-amber-500 hover:to-amber-700 border border-amber-500/50 shadow-lg cursor-pointer transition-all hover:scale-105"
+          style={{ animation: "resultButtonIn 0.8s ease-out 1.5s both" }}
+        >
+          再来一局
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function GamePage() {
   const [deck1, deck2] = useMemo(() => {
     return [createDeck(buildDeck()), createDeck(buildDeck())];
   }, []);
 
-  const { gameState, winner, playCard, endTurn, attack, attackHero, useHeroPower, isOpponentTurn } = useGameState(deck1, deck2);
+  const { gameState, winner, playCard, endTurn, attack, attackHero, useHeroPower, isOpponentTurn, resetGame } = useGameState(deck1, deck2);
 
   const [selectedAttacker, setSelectedAttacker] = useState<number | null>(null);
 
@@ -662,13 +754,9 @@ export default function GamePage() {
 
   return (
     <div className="flex flex-col h-screen bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 select-none" onClick={handleBoardClick}>
-      {/* Winner banner */}
+      {/* Victory/Defeat overlay */}
       {winner !== null && (
-        <div className="absolute inset-0 z-50 bg-black/70 flex items-center justify-center">
-          <span className="text-4xl font-bold text-yellow-400">
-            {winner === "draw" ? "平局!" : `玩家 ${winner + 1} 获胜!`}
-          </span>
-        </div>
+        <VictoryDefeatOverlay winner={winner} onPlayAgain={resetGame} />
       )}
 
       {/* Opponent hero */}

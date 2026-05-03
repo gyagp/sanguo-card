@@ -1,12 +1,13 @@
 # Autopo test Session
 
 ## Work Unit
-Turn start/end transition effects — add a banner or overlay that announces turn changes with slide-in animation
+Victory/defeat screen with dramatic animation — full-screen overlay with win/loss result, animated text, and particle effects
 
 ## Acceptance Criteria
-- 'Your Turn' banner slides in at start of player turn
-- 'Enemy Turn' banner slides in at start of opponent turn
-- Banner auto-dismisses after ~1.5s with fade-out
+- Victory shows celebratory animation with golden particles and large 'VICTORY' text
+- Defeat shows somber animation with shatter/fade and 'DEFEAT' text
+- Screen includes a 'Play Again' button
+- Animation builds over ~2s with eased entrance
 
 ## Rules
 # Rules
