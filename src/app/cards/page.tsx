@@ -37,14 +37,14 @@ export default function CardsPage() {
   });
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-800 text-white p-8">
+    <div className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-800 text-white p-4 md:p-8">
       <h1 className="text-4xl font-bold text-center mb-2">Card Gallery</h1>
       <p className="text-center text-gray-400 mb-8">
         {filtered.length} of {cards.length} cards
       </p>
 
-      <div className="flex flex-wrap justify-center gap-4 mb-8">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-col items-center gap-3 mb-8 md:flex-row md:flex-wrap md:justify-center md:gap-4">
+        <div className="flex flex-wrap items-center justify-center gap-2">
           <span className="text-sm text-gray-400">Rarity:</span>
           {(["all", ...rarities] as const).map((r) => (
             <button
@@ -63,7 +63,7 @@ export default function CardsPage() {
           ))}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-center gap-2">
           <span className="text-sm text-gray-400">Faction:</span>
           {(["all", ...factions] as const).map((f) => (
             <button
@@ -80,7 +80,7 @@ export default function CardsPage() {
           ))}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-center gap-2">
           <span className="text-sm text-gray-400">Type:</span>
           {(["all", ...types] as const).map((t) => (
             <button
@@ -98,9 +98,11 @@ export default function CardsPage() {
         </div>
       </div>
 
-      <div className="flex flex-wrap justify-center gap-6">
+      <div className="flex flex-wrap justify-center gap-2 sm:gap-3 md:gap-6 px-2">
         {filtered.map((card, i) => (
-          <Card key={`${card.name}-${i}`} card={card} />
+          <div key={`${card.name}-${i}`} className="scale-75 sm:scale-90 md:scale-100 origin-top -m-4 sm:-m-2 md:m-0">
+            <Card card={card} />
+          </div>
         ))}
       </div>
 

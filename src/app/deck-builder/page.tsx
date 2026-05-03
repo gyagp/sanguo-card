@@ -166,17 +166,17 @@ export default function DeckBuilderPage() {
     <div className="flex min-h-screen flex-col bg-gradient-to-b from-red-950 via-red-900 to-yellow-900">
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-yellow-900/20 via-transparent to-transparent" />
 
-      <header className="relative z-10 flex items-center justify-between border-b border-yellow-600/40 px-6 py-4">
+      <header className="relative z-10 flex items-center justify-between border-b border-yellow-600/40 px-3 md:px-6 py-3 md:py-4">
         <Link href="/" className="text-yellow-400 hover:text-yellow-300 transition-colors">
           ← Back to Menu
         </Link>
-        <h1 className="text-2xl font-bold text-yellow-400">Deck Builder</h1>
-        <div className="w-24" />
+        <h1 className="text-lg md:text-2xl font-bold text-yellow-400">Deck Builder</h1>
+        <div className="w-16 md:w-24" />
       </header>
 
       <main className="relative z-10 flex flex-1 overflow-hidden">
         {view === 'list' ? (
-          <div className="flex flex-1 flex-col items-center justify-start p-8 gap-6">
+          <div className="flex flex-1 flex-col items-center justify-start p-4 sm:p-6 md:p-8 gap-4 sm:gap-6">
             <div className="flex items-center gap-4">
               <h2 className="text-xl font-bold text-yellow-400">Your Decks</h2>
               <button
@@ -192,7 +192,7 @@ export default function DeckBuilderPage() {
             ) : (
               <div className="grid w-full max-w-2xl gap-3">
                 {savedDecks.map(deck => (
-                  <div key={deck.id} className="flex items-center justify-between rounded-lg border border-yellow-600/40 bg-red-950/60 px-5 py-4 shadow-lg">
+                  <div key={deck.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0 rounded-lg border border-yellow-600/40 bg-red-950/60 px-4 sm:px-5 py-3 sm:py-4 shadow-lg">
                     <div>
                       <span className="text-lg font-semibold text-yellow-100">{deck.name}</span>
                       <span className="ml-3 text-sm text-yellow-100/60">{deck.cards.length}/{MAX_DECK_SIZE} cards</span>
@@ -211,9 +211,9 @@ export default function DeckBuilderPage() {
             )}
           </div>
         ) : (
-          <div className="flex flex-1 overflow-hidden">
+          <div className="flex flex-1 flex-col overflow-hidden md:flex-row">
             {/* Card browser */}
-            <div className="flex flex-1 flex-col overflow-hidden border-r border-yellow-600/40 p-4">
+            <div className="flex flex-1 flex-col overflow-hidden border-b border-yellow-600/40 p-4 md:border-b-0 md:border-r">
               <div className="mb-3 flex flex-wrap gap-2">
                 <input
                   type="text"
@@ -284,7 +284,7 @@ export default function DeckBuilderPage() {
             </div>
 
             {/* Current deck panel */}
-            <div className="flex w-80 flex-col overflow-hidden p-4">
+            <div className="flex w-full flex-col overflow-hidden p-3 sm:p-4 md:w-80">
               <div className="mb-3 flex items-center gap-2">
                 <button
                   onClick={() => setView('list')}

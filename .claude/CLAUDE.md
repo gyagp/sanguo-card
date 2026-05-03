@@ -1,14 +1,13 @@
-# Autopo test Session
+# Autopo review Session
 
 ## Work Unit
-Implement deck builder UI — create, edit, save custom decks to localStorage
+Write README with game description, features, setup instructions, and screenshots placeholder
 
 ## Acceptance Criteria
-- src/app/deck-builder/page.tsx renders deck builder
-- Can browse available cards and add/remove from deck
-- Deck saved to localStorage with name
-- Can manage multiple saved decks
-- Back navigation to main menu
+- README.md has game description
+- Includes setup/run instructions
+- Lists features and tech stack
+- Replaces boilerplate content
 
 ## Rules
 # Rules

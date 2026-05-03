@@ -152,7 +152,7 @@ function ManaBar({ mana, maxMana }: { mana: number; maxMana: number }) {
       {Array.from({ length: maxMana }, (_, i) => (
         <span
           key={i}
-          className={`w-3 h-3 rounded-full transition-colors duration-300 ${i < mana ? "bg-blue-500" : "bg-gray-600"}`}
+          className={`w-1.5 h-1.5 sm:w-2 sm:h-2 md:w-3 md:h-3 rounded-full transition-colors duration-300 ${i < mana ? "bg-blue-500" : "bg-gray-600"}`}
         />
       ))}
     </div>
@@ -203,11 +203,11 @@ function HeroPortrait({ player, onClick, targetable }: { player: PlayerState; on
     : {};
 
   return (
-    <div className={`flex items-center gap-3 px-4 py-2 ${cursor}`} onClick={(e) => { if (onClick) { e.stopPropagation(); onClick(); } }}>
-      <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-gray-700 border-2 ${borderClass} flex items-center justify-center text-lg font-bold text-white transition-all duration-200`}>
+    <div className={`flex items-center gap-1.5 sm:gap-2 md:gap-3 px-1.5 sm:px-2 md:px-4 py-1 sm:py-1.5 md:py-2 ${cursor}`} onClick={(e) => { if (onClick) { e.stopPropagation(); onClick(); } }}>
+      <div className={`w-8 h-8 sm:w-10 sm:h-10 md:w-14 md:h-14 rounded-full bg-gray-700 border-2 ${borderClass} flex items-center justify-center text-sm sm:text-base md:text-lg font-bold text-white transition-all duration-200`}>
         ⚔
       </div>
-      <div className="flex flex-col gap-1 text-white text-sm">
+      <div className="flex flex-col gap-0.5 md:gap-1 text-white text-[10px] sm:text-xs md:text-sm">
         <div className="flex items-center gap-1">
           <span className="text-red-400 font-bold inline-block" style={healthStyle}>❤ {player.hero.health}</span>
           <span className="text-blue-400 font-bold ml-2 inline-block" style={manaStyle}>💧 {player.hero.mana}/{player.maxMana}</span>
@@ -267,11 +267,11 @@ function BoardMinionCard({ minion, onClick, selected, exhausted, targetable, ani
 
   if (dying) {
     return (
-      <div className={`relative w-20 h-28 sm:w-24 sm:h-32 pointer-events-none`}>
+      <div className={`relative w-12 h-[4.25rem] sm:w-20 sm:h-[6.5rem] md:w-24 md:h-32 pointer-events-none`}>
         {SHARD_CLIPS.map((clip, i) => (
           <div
             key={i}
-            className={`absolute inset-0 bg-amber-900 border-2 border-amber-600 rounded-lg flex flex-col items-center justify-between p-1 text-white text-xs sm:text-sm shadow-md`}
+            className={`absolute inset-0 bg-amber-900 border-2 border-amber-600 rounded-lg flex flex-col items-center justify-between p-0.5 sm:p-1 text-white text-[8px] sm:text-[10px] md:text-sm shadow-md`}
             style={{
               clipPath: clip,
               "--shard-x": SHARD_OFFSETS[i][0],
@@ -298,20 +298,20 @@ function BoardMinionCard({ minion, onClick, selected, exhausted, targetable, ani
   return (
     <div
       onClick={(e) => { e.stopPropagation(); onClick?.(); }}
-      className={`relative w-20 h-28 sm:w-24 sm:h-32 bg-amber-900 border-2 ${borderColor} rounded-lg flex flex-col items-center justify-between p-1 text-white text-xs sm:text-sm shadow-md transition-all duration-200 ${cursor} ${opacity}`}
+      className={`relative w-12 h-[4.25rem] sm:w-20 sm:h-[6.5rem] md:w-24 md:h-32 bg-amber-900 border-2 ${borderColor} rounded-lg flex flex-col items-center justify-between p-0.5 sm:p-1 text-white text-[8px] sm:text-[10px] md:text-sm shadow-md transition-all duration-200 ${cursor} ${opacity}`}
       style={animStyle}
     >
-      <span className="bg-blue-700 rounded-full w-5 h-5 flex items-center justify-center font-bold text-[10px]">
+      <span className="bg-blue-700 rounded-full w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center font-bold text-[8px] sm:text-[10px]">
         {minion.cost}
       </span>
-      <span className="font-bold text-center leading-tight">{minion.name}</span>
-      <div className="flex w-full justify-between px-1">
-        <span className="bg-yellow-600 rounded px-1 font-bold">{minion.currentAttack}</span>
-        <span className="bg-red-700 rounded px-1 font-bold">{minion.currentHealth}</span>
+      <span className="font-bold text-center leading-tight truncate max-w-full">{minion.name}</span>
+      <div className="flex w-full justify-between px-0.5 sm:px-1">
+        <span className="bg-yellow-600 rounded px-0.5 sm:px-1 font-bold">{minion.currentAttack}</span>
+        <span className="bg-red-700 rounded px-0.5 sm:px-1 font-bold">{minion.currentHealth}</span>
       </div>
       {damageNumber != null && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <span className="text-2xl font-black text-red-400 drop-shadow-lg" style={{ animation: "floatDamage 0.8s ease-out forwards" }}>
+          <span className="text-lg sm:text-2xl font-black text-red-400 drop-shadow-lg" style={{ animation: "floatDamage 0.8s ease-out forwards" }}>
             -{damageNumber}
           </span>
         </div>
@@ -372,7 +372,7 @@ const BoardZone = forwardRef<HTMLDivElement, {
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      className={`flex-1 flex items-center justify-center gap-2 min-h-[7rem] sm:min-h-[9rem] rounded-lg transition-all duration-300 ease-out ${
+      className={`flex-1 flex items-center justify-center gap-1 sm:gap-1.5 md:gap-2 min-h-[5rem] sm:min-h-[6.5rem] md:min-h-[9rem] rounded-lg transition-all duration-300 ease-out px-1 sm:px-2 md:px-3 flex-wrap ${
         dragOver ? "bg-green-800/40 border-2 border-dashed border-green-400 shadow-[inset_0_0_20px_rgba(74,222,128,0.15)]" : "border-2 border-transparent"
       }`}
     >
@@ -518,7 +518,7 @@ function VictoryDefeatOverlay({ winner, onPlayAgain }: { winner: 0 | 1 | "draw";
 
       <div className="relative flex flex-col items-center gap-4 z-10">
         <div
-          className={`text-7xl sm:text-8xl font-black tracking-wider ${textColor} ${glowColor}`}
+          className={`text-5xl sm:text-7xl md:text-8xl font-black tracking-wider ${textColor} ${glowColor}`}
           style={{ animation: "resultTextIn 2s cubic-bezier(0.16, 1, 0.3, 1) forwards" }}
         >
           {title}
@@ -794,7 +794,7 @@ export default function GamePage() {
   const enemyDying = dyingMinions.filter(d => d.side === "enemy");
 
   return (
-    <div className="flex flex-col h-screen bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 select-none" onClick={handleBoardClick}>
+    <div className="flex flex-col h-screen w-full bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 select-none overflow-hidden" onClick={handleBoardClick}>
       <div className="absolute top-2 right-2 z-50">
         <VolumeControl />
       </div>
@@ -805,7 +805,7 @@ export default function GamePage() {
       )}
 
       {/* Opponent hero */}
-      <div className="relative">
+      <div className="relative px-2 sm:px-3 md:px-4 shrink-0">
         <HeroPortrait player={opponent} onClick={handleEnemyHeroClick} targetable={selectedAttacker !== null} />
         {heroDmg != null && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -818,11 +818,11 @@ export default function GamePage() {
       </div>
 
       {/* Opponent hand (face down) */}
-      <div className="flex items-center justify-center gap-2 py-1 min-h-[5rem]" onClick={handleBoardClick}>
+      <div className="flex items-center justify-center gap-0.5 sm:gap-1 md:gap-2 py-0.5 sm:py-1 md:py-1 min-h-[2.5rem] sm:min-h-[4rem] md:min-h-[5rem] px-2 sm:px-3 md:px-4 shrink-0 flex-wrap" onClick={handleBoardClick}>
         {opponent.hand.map((_, i) => (
           <div
             key={i}
-            className="w-14 h-20 sm:w-16 sm:h-24 bg-red-900 border-2 border-red-700 rounded-lg shadow-md transition-transform duration-200 hover:scale-105"
+            className="w-7 h-10 sm:w-12 sm:h-16 md:w-16 md:h-24 bg-red-900 border-2 border-red-700 rounded-lg shadow-md transition-transform duration-200 hover:scale-105"
           />
         ))}
       </div>
@@ -834,7 +834,7 @@ export default function GamePage() {
       {turnBanner && (
         <div className="fixed inset-0 flex items-center justify-center pointer-events-none" style={{ zIndex: 50 }}>
           <div
-            className={`px-12 py-4 rounded-lg text-3xl font-bold tracking-widest shadow-2xl ${
+            className={`px-6 py-2 md:px-12 md:py-4 rounded-lg text-xl md:text-3xl font-bold tracking-widest shadow-2xl ${
               turnBanner === "your"
                 ? "bg-green-800/90 text-green-100 border-2 border-green-400"
                 : "bg-red-800/90 text-red-100 border-2 border-red-400"
@@ -846,20 +846,16 @@ export default function GamePage() {
         </div>
       )}
 
-      {/* Turn indicator */}
-      <div className="flex items-center justify-center py-0.5">
-        <span className={`text-sm font-bold px-3 py-0.5 rounded-full ${isOpponentTurn ? "bg-red-700 text-red-200" : "bg-green-700 text-green-200"}`}>
+      {/* Turn indicator + End Turn */}
+      <div className="flex items-center justify-center py-0.5 sm:py-1 md:py-1 gap-1.5 sm:gap-2 px-2 sm:px-3 shrink-0">
+        <div className="h-px flex-1 bg-amber-700/50" />
+        <span className={`text-[10px] sm:text-xs md:text-sm font-bold px-1.5 sm:px-2 md:px-3 py-0.5 rounded-full whitespace-nowrap ${isOpponentTurn ? "bg-red-700 text-red-200" : "bg-green-700 text-green-200"}`}>
           {isOpponentTurn ? "对手回合" : "你的回合"}
         </span>
-      </div>
-
-      {/* Divider + End Turn */}
-      <div className="flex items-center justify-center py-1">
-        <div className="h-px flex-1 bg-amber-700/50" />
         <button
           onClick={() => { endTurn(); setSelectedAttacker(null); }}
           disabled={isOpponentTurn || winner !== null}
-          className={`mx-4 px-6 py-2 font-bold rounded-lg shadow-lg transition-all duration-200 ${
+          className={`px-3 sm:px-4 md:px-6 py-1 sm:py-1.5 md:py-2 font-bold text-xs sm:text-sm md:text-base rounded-lg shadow-lg transition-all duration-200 whitespace-nowrap ${
             isOpponentTurn || winner !== null
               ? "bg-gray-600 text-gray-400 cursor-not-allowed"
               : "bg-amber-700 hover:bg-amber-600 hover:scale-105 hover:shadow-xl text-white"
@@ -872,7 +868,7 @@ export default function GamePage() {
 
       {/* Turn timer bar */}
       {isOpponentTurn && (
-        <div className="w-full h-1 bg-gray-700 overflow-hidden">
+        <div className="w-full h-1 bg-gray-700 overflow-hidden shrink-0">
           <div className="h-full bg-red-500 animate-[shrink_2s_linear_forwards]" />
         </div>
       )}
@@ -881,9 +877,9 @@ export default function GamePage() {
       <BoardZone ref={boardZoneRef} minions={player.board} label="我方战场" onDrop={(i) => handlePlayCard(i)} onMinionClick={handleFriendlyMinionClick} selectedIndex={selectedAttacker} animations={playerAnims} damageNumbers={playerDmg} dyingMinions={playerDying} legendaryParticles={playerLegendaryParticles} legendaryShimmer={playerLegendaryShimmer} />
 
       {/* Player hand */}
-      <div className="flex items-center justify-center gap-2 py-2 min-h-[8rem] overflow-x-auto">
+      <div className="flex items-center justify-center gap-0.5 sm:gap-1 md:gap-2 py-0.5 sm:py-1.5 md:py-2 min-h-[4rem] sm:min-h-[5.5rem] md:min-h-[8rem] px-2 sm:px-3 shrink-0 flex-wrap">
         {player.hand.map((card, i) => (
-          <div key={i} className="shrink-0 scale-50 origin-bottom -mx-5" ref={el => { if (el) handCardRefs.current.set(i, el); else handCardRefs.current.delete(i); }}>
+          <div key={i} className="shrink-0 scale-[0.28] sm:scale-[0.4] md:scale-50 origin-bottom -mx-8 sm:-mx-6 md:-mx-5" ref={el => { if (el) handCardRefs.current.set(i, el); else handCardRefs.current.delete(i); }}>
             <Card
               card={card}
               onClick={(e) => handlePlayCard(i, (e.currentTarget as HTMLElement))}
@@ -896,12 +892,12 @@ export default function GamePage() {
       </div>
 
       {/* Player hero + hero power */}
-      <div className="flex items-center justify-center gap-2">
+      <div className="flex items-center justify-center gap-1.5 sm:gap-2 px-2 sm:px-3 md:px-4 shrink-0 pb-1">
         <HeroPortrait player={player} />
         <button
           onClick={() => useHeroPower()}
           disabled={isOpponentTurn || winner !== null || player.heroPowerUsed || player.hero.mana < player.hero.heroPower.cost}
-          className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full border-2 font-bold text-sm flex items-center justify-center transition-all duration-200 ${
+          className={`w-8 h-8 sm:w-10 sm:h-10 md:w-14 md:h-14 rounded-full border-2 font-bold text-[10px] sm:text-xs md:text-sm flex items-center justify-center transition-all duration-200 ${
             isOpponentTurn || winner !== null || player.heroPowerUsed || player.hero.mana < player.hero.heroPower.cost
               ? "bg-gray-700 border-gray-600 text-gray-500 cursor-not-allowed"
               : "bg-purple-700 border-purple-400 text-white hover:bg-purple-600 hover:scale-110 cursor-pointer"
