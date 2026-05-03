@@ -1,14 +1,14 @@
 # Autopo test Session
 
 ## Work Unit
-Define card and game data models with TypeScript types and interfaces
+Create 30+ unique Three Kingdoms character cards with abilities
 
 ## Acceptance Criteria
-- Card interface with name, cost, attack, health, description, rarity, type fields
-- Hero interface with health, mana, heroPower
-- GameState interface with players, board, turn, phase
-- Deck type as array of cards with 30-card constraint
-- All types exported from src/game/types.ts
+- At least 30 cards defined in src/game/cards.ts
+- Cards include minions, spells, and weapons
+- Cards span all rarities (common, rare, epic, legendary)
+- Each card has a unique ability description
+- Cards are balanced across mana costs 1-10
 
 ## Rules
 # Rules
