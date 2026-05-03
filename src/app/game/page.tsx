@@ -8,6 +8,42 @@ import { useMemo, useState, useEffect, useRef, useCallback, forwardRef } from "r
 
 type AnimKind = "popIn" | "lunge" | "shake" | "death";
 
+interface Particle { px: number; py: number; color: string; }
+
+const PARTICLE_COLORS = ["#ff6b35", "#ffd700", "#ff4444", "#ffaa00", "#ffffff"];
+
+function makeParticles(): Particle[] {
+  return Array.from({ length: 8 }, () => {
+    const angle = Math.random() * Math.PI * 2;
+    const dist = 18 + Math.random() * 20;
+    return {
+      px: Math.cos(angle) * dist,
+      py: Math.sin(angle) * dist,
+      color: PARTICLE_COLORS[Math.floor(Math.random() * PARTICLE_COLORS.length)],
+    };
+  });
+}
+
+function ImpactBurst({ particles }: { particles: Particle[] }) {
+  return (
+    <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 20 }}>
+      {particles.map((p, i) => (
+        <div
+          key={i}
+          className="absolute left-1/2 top-1/2"
+          style={{
+            width: 6, height: 6, borderRadius: "50%",
+            backgroundColor: p.color,
+            marginLeft: -3, marginTop: -3,
+            animation: "impactParticle 0.4s ease-out forwards",
+            "--px": `${p.px}px`, "--py": `${p.py}px`,
+          } as React.CSSProperties}
+        />
+      ))}
+    </div>
+  );
+}
+
 interface DyingMinion {
   minion: BoardMinion;
   boardIndex: number;
@@ -57,7 +93,7 @@ function HeroPortrait({ player, onClick, targetable }: { player: PlayerState; on
   );
 }
 
-function BoardMinionCard({ minion, onClick, selected, exhausted, targetable, animation, damageNumber, dying }: {
+function BoardMinionCard({ minion, onClick, selected, exhausted, targetable, animation, damageNumber, dying, impactParticles }: {
   minion: BoardMinion;
   onClick?: () => void;
   selected?: boolean;
@@ -66,6 +102,7 @@ function BoardMinionCard({ minion, onClick, selected, exhausted, targetable, ani
   animation?: AnimKind;
   damageNumber?: number | null;
   dying?: boolean;
+  impactParticles?: Particle[] | null;
 }) {
   const borderColor = selected
     ? "border-yellow-300 ring-2 ring-yellow-400"
@@ -102,6 +139,7 @@ function BoardMinionCard({ minion, onClick, selected, exhausted, targetable, ani
           </span>
         </div>
       )}
+      {impactParticles && <ImpactBurst particles={impactParticles} />}
     </div>
   );
 }
@@ -117,7 +155,8 @@ const BoardZone = forwardRef<HTMLDivElement, {
   animations?: Map<number, AnimKind>;
   damageNumbers?: Map<number, number>;
   dyingMinions?: DyingMinion[];
-}>(function BoardZone({ minions, label, onDrop, onMinionClick, selectedIndex, isEnemy, hasAttackerSelected, animations, damageNumbers, dyingMinions }, ref) {
+  impactParticles?: Map<number, Particle[]>;
+}>(function BoardZone({ minions, label, onDrop, onMinionClick, selectedIndex, isEnemy, hasAttackerSelected, animations, damageNumbers, dyingMinions, impactParticles }, ref) {
   const [dragOver, setDragOver] = useState(false);
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -181,6 +220,7 @@ const BoardZone = forwardRef<HTMLDivElement, {
                   targetable={isEnemy && !!hasAttackerSelected}
                   animation={animations?.get(i)}
                   damageNumber={damageNumbers?.get(i) ?? null}
+                  impactParticles={impactParticles?.get(i) ?? null}
                 />
               );
             }
@@ -197,6 +237,7 @@ const BoardZone = forwardRef<HTMLDivElement, {
                 targetable={isEnemy && !!hasAttackerSelected}
                 animation={animations?.get(i)}
                 damageNumber={damageNumbers?.get(i) ?? null}
+                impactParticles={impactParticles?.get(i) ?? null}
               />
             );
           }
@@ -229,6 +270,8 @@ export default function GamePage() {
   const [enemyDmg, setEnemyDmg] = useState<Map<number, number>>(new Map());
   const [heroDmg, setHeroDmg] = useState<number | null>(null);
   const [dyingMinions, setDyingMinions] = useState<DyingMinion[]>([]);
+  const [enemyImpacts, setEnemyImpacts] = useState<Map<number, Particle[]>>(new Map());
+  const [heroImpact, setHeroImpact] = useState<Particle[] | null>(null);
 
   interface FlyingCard { card: CardType; startRect: DOMRect; key: number; }
   const [flyingCards, setFlyingCards] = useState<FlyingCard[]>([]);
@@ -264,6 +307,18 @@ export default function GamePage() {
   const triggerDmg = useCallback((setter: typeof setPlayerDmg, index: number, amount: number) => {
     setter(prev => new Map(prev).set(index, amount));
     safeTimeout(() => setter(prev => { const m = new Map(prev); m.delete(index); return m; }), 800);
+  }, [safeTimeout]);
+
+  const triggerImpact = useCallback((index: number) => {
+    const particles = makeParticles();
+    setEnemyImpacts(prev => new Map(prev).set(index, particles));
+    safeTimeout(() => setEnemyImpacts(prev => { const m = new Map(prev); m.delete(index); return m; }), 400);
+  }, [safeTimeout]);
+
+  const triggerHeroImpact = useCallback(() => {
+    const particles = makeParticles();
+    setHeroImpact(particles);
+    safeTimeout(() => setHeroImpact(null), 400);
   }, [safeTimeout]);
 
   const addDyingMinion = useCallback((minion: BoardMinion, boardIndex: number, side: "player" | "enemy") => {
@@ -333,6 +388,7 @@ export default function GamePage() {
     if (result.success) {
       triggerAnim(setPlayerAnims, attackerIdx, "lunge", 300);
       safeTimeout(() => triggerAnim(setEnemyAnims, index, "shake", 300), 150);
+      safeTimeout(() => triggerImpact(index), 150);
 
       if (attackerAtk > 0) {
         safeTimeout(() => triggerDmg(setEnemyDmg, index, attackerAtk), 150);
@@ -360,6 +416,7 @@ export default function GamePage() {
 
     if (result.success) {
       triggerAnim(setPlayerAnims, attackerIdx, "lunge", 300);
+      safeTimeout(() => triggerHeroImpact(), 150);
 
       if (attackerAtk > 0) {
         safeTimeout(() => {
@@ -398,6 +455,7 @@ export default function GamePage() {
             </span>
           </div>
         )}
+        {heroImpact && <ImpactBurst particles={heroImpact} />}
       </div>
 
       {/* Opponent hand (face down) */}
@@ -411,7 +469,7 @@ export default function GamePage() {
       </div>
 
       {/* Opponent board */}
-      <BoardZone minions={opponent.board} label="对方战场" isEnemy hasAttackerSelected={selectedAttacker !== null} onMinionClick={handleEnemyMinionClick} animations={enemyAnims} damageNumbers={enemyDmg} dyingMinions={enemyDying} />
+      <BoardZone minions={opponent.board} label="对方战场" isEnemy hasAttackerSelected={selectedAttacker !== null} onMinionClick={handleEnemyMinionClick} animations={enemyAnims} damageNumbers={enemyDmg} dyingMinions={enemyDying} impactParticles={enemyImpacts} />
 
       {/* Turn indicator */}
       <div className="flex items-center justify-center py-0.5">

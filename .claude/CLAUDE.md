@@ -1,12 +1,12 @@
 # Autopo test Session
 
 ## Work Unit
-Card play animation — animate card flying from hand position to board slot using CSS keyframes with translate coordinates
+Attack impact effect — add particle burst (CSS-based) at point of impact when a minion attacks another minion or hero
 
 ## Acceptance Criteria
-- Playing a card shows it moving from hand area to board position
-- Animation lasts ~500ms with easing
-- Card scales down from hand size to board minion size during flight
+- Impact sparks/burst appear at the defender's position on hit
+- Particles fade out within 400ms
+- Works for both minion-vs-minion and minion-vs-hero attacks
 
 ## Rules
 # Rules
