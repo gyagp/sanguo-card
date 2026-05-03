@@ -1,14 +1,13 @@
-# Autopo test Session
+# Autopo execute Session
 
 ## Work Unit
-Implement three difficulty levels (Easy, Normal, Hard) with distinct play styles
+Write unit tests for AI decision engine — board evaluation, playable cards, mana curve
 
 ## Acceptance Criteria
-- AIDifficulty type = 'easy' | 'normal' | 'hard'
-- Easy: plays random valid cards, attacks randomly
-- Normal: plays on-curve, trades efficiently
-- Hard: optimal mana usage, lethal detection, smart hero power usage
-- createAI(difficulty) factory function exported
+- Tests verify getPlayableCards filters by mana correctly
+- Tests verify getBestManaUsage maximizes mana spent
+- Tests verify evaluateBoard scores advantage correctly
+- All tests pass via npm run test
 
 ## Rules
 # Rules
@@ -28,3 +27,8 @@ Implement three difficulty levels (Easy, Normal, Hard) with distinct play styles
 
 - **setTimeout/setInterval in React components must be tracked in refs and cleaned up on unmount** — Reviewer flagged state updates on unmounted components as a warning in wu-020
   Learned: iteration 1, wu-020
+
+- **Remove all dead code (unused variables, unreachable branches) before submitting — lint-level issues are review errors** — wu-034 failed partly because a `stateForThis` variable was assigned but never read, flagged as dead code
+  Learned: iteration 1, wu-034
+
+- **Never use index-based references (cardIndex, attackerIndex) across separate setTimeout callbacks — indices can go stale between React state updates** — wu-034's core race condition: sequential setTimeouts each calling setState(prev => ...) with index-based decisions could

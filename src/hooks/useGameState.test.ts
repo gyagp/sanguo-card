@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { useGameState } from "./useGameState";
 import {
@@ -7,6 +7,7 @@ import {
   createDeck,
   GameState,
 } from "../game/types";
+import { AIDifficulty } from "../game/ai";
 
 function makeCard(overrides: Partial<Card> = {}): Card {
   return {
@@ -165,5 +166,173 @@ describe("useGameState", () => {
     });
 
     expect(result.current.gameState).toBe(stateBefore);
+  });
+
+  describe("AI integration", () => {
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it("accepts optional aiDifficulty parameter", () => {
+      const { result } = renderHook(() => useGameState(makeDeck(), makeDeck(), "easy"));
+      expect(result.current.gameState).toBeDefined();
+    });
+
+    it("AI plays cards, attacks, and ends turn after endTurn", () => {
+      vi.useFakeTimers();
+      const deck1 = makeDeck({ cost: 1 });
+      const deck2 = makeDeck({ cost: 1 });
+      const { result } = renderHook(() => useGameState(deck1, deck2, "normal"));
+
+      // Player ends turn — triggers AI opponent turn
+      act(() => {
+        result.current.endTurn();
+      });
+
+      // isOpponentTurn should be true immediately
+      expect(result.current.isOpponentTurn).toBe(true);
+
+      // Advance all timers to let AI complete
+      act(() => {
+        vi.advanceTimersByTime(2500);
+      });
+
+      // After AI completes, it should be player's turn again
+      expect(result.current.isOpponentTurn).toBe(false);
+      expect(result.current.gameState.activePlayer).toBe(0);
+    });
+
+    it("AI executes actions sequentially with delays", () => {
+      vi.useFakeTimers();
+      const deck1 = makeDeck({ cost: 1 });
+      const deck2 = makeDeck({ cost: 1 });
+      const { result } = renderHook(() => useGameState(deck1, deck2, "easy"));
+
+      act(() => {
+        result.current.endTurn();
+      });
+
+      // State should change as timers fire
+      const stateAfterEndTurn = result.current.gameState;
+
+      act(() => {
+        vi.advanceTimersByTime(300);
+      });
+
+      // Some AI actions may have fired
+      // After all timers, AI turn should be done
+      act(() => {
+        vi.advanceTimersByTime(2200);
+      });
+
+      expect(result.current.isOpponentTurn).toBe(false);
+    });
+
+    it("AI turn completes within 2 seconds", () => {
+      vi.useFakeTimers();
+      const deck1 = makeDeck({ cost: 1 });
+      const deck2 = makeDeck({ cost: 1 });
+      const { result } = renderHook(() => useGameState(deck1, deck2, "hard"));
+
+      act(() => {
+        result.current.endTurn();
+      });
+
+      // At 2000ms the AI should be done
+      act(() => {
+        vi.advanceTimersByTime(2000);
+      });
+
+      expect(result.current.isOpponentTurn).toBe(false);
+      expect(result.current.gameState.activePlayer).toBe(0);
+    });
+
+    it("cleans up timers on unmount", () => {
+      vi.useFakeTimers();
+      const { result, unmount } = renderHook(() =>
+        useGameState(makeDeck(), makeDeck(), "normal")
+      );
+
+      act(() => {
+        result.current.endTurn();
+      });
+
+      // Unmount before AI finishes — should not throw
+      unmount();
+
+      // Advance timers after unmount — no errors
+      act(() => {
+        vi.advanceTimersByTime(3000);
+      });
+    });
+
+    it("resetGame clears AI timers", () => {
+      vi.useFakeTimers();
+      const deck1 = makeDeck({ cost: 1 });
+      const deck2 = makeDeck({ cost: 1 });
+      const { result } = renderHook(() => useGameState(deck1, deck2, "easy"));
+
+      act(() => {
+        result.current.endTurn();
+      });
+
+      // Reset mid-AI-turn
+      act(() => {
+        result.current.resetGame();
+      });
+
+      // Advance past where AI would have acted
+      act(() => {
+        vi.advanceTimersByTime(3000);
+      });
+
+      // Should be back to initial state, player 0's turn
+      expect(result.current.gameState.activePlayer).toBe(0);
+      expect(result.current.gameState.turn).toBe(1);
+      expect(result.current.isOpponentTurn).toBe(false);
+    });
+
+    it("works with all difficulty levels", () => {
+      const difficulties: AIDifficulty[] = ["easy", "normal", "hard"];
+      for (const diff of difficulties) {
+        vi.useFakeTimers();
+        const { result } = renderHook(() =>
+          useGameState(makeDeck({ cost: 1 }), makeDeck({ cost: 1 }), diff)
+        );
+
+        act(() => {
+          result.current.endTurn();
+        });
+
+        act(() => {
+          vi.advanceTimersByTime(2500);
+        });
+
+        expect(result.current.isOpponentTurn).toBe(false);
+        expect(result.current.gameState.activePlayer).toBe(0);
+        vi.useRealTimers();
+      }
+    });
+
+    it("without aiDifficulty, opponent turn auto-completes after 2s", () => {
+      vi.useFakeTimers();
+      const { result } = renderHook(() => useGameState(makeDeck(), makeDeck()));
+
+      act(() => {
+        result.current.endTurn();
+      });
+
+      // At 1900ms still opponent turn
+      act(() => {
+        vi.advanceTimersByTime(1900);
+      });
+      expect(result.current.isOpponentTurn).toBe(true);
+
+      // At 2000ms should complete
+      act(() => {
+        vi.advanceTimersByTime(100);
+      });
+      expect(result.current.isOpponentTurn).toBe(false);
+    });
   });
 });
