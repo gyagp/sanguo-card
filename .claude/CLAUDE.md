@@ -1,15 +1,14 @@
 # Autopo test Session
 
 ## Work Unit
-Rebuild game page to use real game engine state via useGameState hook
+Implement drag-and-drop to play cards from hand to board
 
 ## Acceptance Criteria
-- Game page uses useGameState instead of mock data
-- Player hand shows real drawn cards using the Card component
-- Both player and opponent board zones show BoardMinion cards
-- Hero portraits show real HP and mana from game state
-- Mana bar displays available/total mana with filled/empty gems
-- Page renders without errors
+- Cards in hand are draggable
+- Board zone is a valid drop target with visual highlight on dragover
+- Dropping a card calls playCard and updates the board
+- Cards with insufficient mana show visual feedback and cannot be played
+- Board respects MAX_BOARD_SIZE limit
 
 ## Rules
 # Rules

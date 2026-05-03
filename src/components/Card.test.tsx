@@ -141,6 +141,40 @@ describe("Card component", () => {
     });
   });
 
+  describe("drag-and-drop support", () => {
+    it("sets draggable attribute when draggable prop is true and mana is sufficient", () => {
+      const { container } = render(<Card card={makeCard()} draggable handIndex={0} />);
+      const cardEl = container.firstElementChild as HTMLElement;
+      expect(cardEl.getAttribute("draggable")).toBe("true");
+    });
+
+    it("is not draggable when insufficientMana is true", () => {
+      const { container } = render(<Card card={makeCard()} draggable handIndex={0} insufficientMana />);
+      const cardEl = container.firstElementChild as HTMLElement;
+      expect(cardEl.getAttribute("draggable")).toBe("false");
+    });
+
+    it("is not draggable when draggable prop is not passed", () => {
+      const { container } = render(<Card card={makeCard()} />);
+      const cardEl = container.firstElementChild as HTMLElement;
+      expect(cardEl.draggable).toBe(false);
+    });
+
+    it("shows opacity and cursor-not-allowed when insufficientMana", () => {
+      const { container } = render(<Card card={makeCard()} insufficientMana />);
+      const cardEl = container.firstElementChild as HTMLElement;
+      expect(cardEl.className).toContain("opacity-50");
+      expect(cardEl.className).toContain("cursor-not-allowed");
+    });
+
+    it("does not show disabled styles when mana is sufficient", () => {
+      const { container } = render(<Card card={makeCard()} />);
+      const cardEl = container.firstElementChild as HTMLElement;
+      expect(cardEl.className).not.toContain("opacity-50");
+      expect(cardEl.className).not.toContain("cursor-not-allowed");
+    });
+  });
+
   describe("hover animation classes", () => {
     it("has scale hover class for enlarge effect", () => {
       const { container } = render(<Card card={makeCard()} />);

@@ -3,8 +3,8 @@
 import { useGameState } from "../../hooks/useGameState";
 import Card from "../../components/Card";
 import { cards } from "../../game/cards";
-import { createDeck, BoardMinion, PlayerState, Card as CardType } from "../../game/types";
-import { useMemo } from "react";
+import { createDeck, BoardMinion, PlayerState, Card as CardType, MAX_BOARD_SIZE } from "../../game/types";
+import { useMemo, useState } from "react";
 
 function buildDeck(): CardType[] {
   const pool = [...cards];
@@ -61,9 +61,35 @@ function BoardMinionCard({ minion }: { minion: BoardMinion }) {
   );
 }
 
-function BoardZone({ minions, label }: { minions: BoardMinion[]; label: string }) {
+function BoardZone({ minions, label, onDrop }: { minions: BoardMinion[]; label: string; onDrop?: (handIndex: number) => void }) {
+  const [dragOver, setDragOver] = useState(false);
+
+  const handleDragOver = (e: React.DragEvent) => {
+    if (!onDrop) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    setDragOver(true);
+  };
+
+  const handleDragLeave = () => setDragOver(false);
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    if (!onDrop) return;
+    const handIndex = parseInt(e.dataTransfer.getData("text/plain"), 10);
+    if (!isNaN(handIndex)) onDrop(handIndex);
+  };
+
   return (
-    <div className="flex-1 flex items-center justify-center gap-2 min-h-[7rem] sm:min-h-[9rem]">
+    <div
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      className={`flex-1 flex items-center justify-center gap-2 min-h-[7rem] sm:min-h-[9rem] rounded-lg transition-colors ${
+        dragOver ? "bg-green-800/40 border-2 border-dashed border-green-400" : "border-2 border-transparent"
+      }`}
+    >
       {minions.length === 0 ? (
         <span className="text-gray-500 text-sm italic">{label}</span>
       ) : (
@@ -123,13 +149,19 @@ export default function GamePage() {
       </div>
 
       {/* Player board */}
-      <BoardZone minions={player.board} label="我方战场" />
+      <BoardZone minions={player.board} label="我方战场" onDrop={(i) => playCard(i)} />
 
       {/* Player hand */}
       <div className="flex items-center justify-center gap-2 py-2 min-h-[8rem] overflow-x-auto">
         {player.hand.map((card, i) => (
           <div key={i} className="shrink-0 scale-50 origin-bottom -mx-5">
-            <Card card={card} onClick={() => playCard(i)} />
+            <Card
+              card={card}
+              onClick={() => playCard(i)}
+              draggable
+              handIndex={i}
+              insufficientMana={card.cost > player.hero.mana || player.board.length >= MAX_BOARD_SIZE}
+            />
           </div>
         ))}
       </div>

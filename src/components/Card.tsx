@@ -32,19 +32,36 @@ interface CardProps {
   card: CardData;
   onClick?: () => void;
   className?: string;
+  draggable?: boolean;
+  handIndex?: number;
+  insufficientMana?: boolean;
 }
 
-export default function Card({ card, onClick, className = "" }: CardProps) {
+export default function Card({ card, onClick, className = "", draggable: isDraggable, handIndex, insufficientMana }: CardProps) {
   const isMinion = card.type === "minion";
   const isWeapon = card.type === "weapon";
+
+  const handleDragStart = (e: React.DragEvent) => {
+    if (insufficientMana) {
+      e.preventDefault();
+      return;
+    }
+    if (handIndex !== undefined) {
+      e.dataTransfer.setData("text/plain", String(handIndex));
+      e.dataTransfer.effectAllowed = "move";
+    }
+  };
 
   return (
     <div
       onClick={onClick}
+      draggable={isDraggable && !insufficientMana}
+      onDragStart={handleDragStart}
       className={`
-        relative w-44 h-64 rounded-xl border-3 cursor-pointer select-none
+        relative w-44 h-64 rounded-xl border-3 select-none
         transition-all duration-200 ease-out
         hover:scale-110 hover:z-10 hover:shadow-lg
+        ${insufficientMana ? "opacity-50 cursor-not-allowed grayscale-[40%]" : "cursor-pointer"}
         ${rarityStyles[card.rarity]}
         ${rarityGlow[card.rarity]}
         ${factionBg[card.faction]}
