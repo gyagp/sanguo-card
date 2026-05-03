@@ -1,13 +1,15 @@
-# Autopo test Session
+# Autopo execute Session
 
 ## Work Unit
-Smooth CSS transitions throughout — add hover effects, mana changes, health changes, and state transitions with CSS transitions
+Write tests for all new animation systems — verify animation triggers, cleanup, and snapshot-before-mutation
 
 ## Acceptance Criteria
-- Cards in hand scale up on hover with shadow
-- Health/mana number changes animate (color flash on damage)
-- Board zone highlights smoothly on drag-over
-- All interactive elements have transition properties
+- Tests verify card play animation triggers on playCard
+- Tests verify shatter effect uses pre-mutation snapshot
+- Tests verify turn banner appears on turn change
+- Tests verify victory/defeat screen renders on win condition
+- Tests verify all timeouts are cleaned up on unmount
+- All tests pass via npm run test
 
 ## Rules
 # Rules
