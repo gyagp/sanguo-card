@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Card as CardData } from "../game/types";
 import { getCardArt } from "../game/card-art";
 
@@ -48,9 +49,11 @@ interface CardProps {
 }
 
 export default function Card({ card, onClick, className = "", draggable: isDraggable, handIndex, insufficientMana }: CardProps) {
+  const [pngFailed, setPngFailed] = useState(false);
   const isMinion = card.type === "minion";
   const isWeapon = card.type === "weapon";
   const art = getCardArt(card.name);
+  const pngSrc = `/card-art/${encodeURIComponent(card.name)}.png`;
 
   const handleDragStart = (e: React.DragEvent) => {
     if (insufficientMana) {
@@ -130,7 +133,15 @@ export default function Card({ card, onClick, className = "", draggable: isDragg
         mx-2.5 mt-7 h-28 rounded-lg flex items-center justify-center overflow-hidden
         ${factionArtBg[card.faction]}
       `}>
-        {art ? (
+        {!pngFailed ? (
+          <img
+            src={pngSrc}
+            alt={card.name}
+            className="w-full h-full object-cover"
+            onError={() => setPngFailed(true)}
+            draggable={false}
+          />
+        ) : art ? (
           <div
             className="w-full h-full flex items-center justify-center p-1"
             dangerouslySetInnerHTML={{ __html: art }}

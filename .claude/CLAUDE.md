@@ -1,13 +1,14 @@
 # Autopo test Session
 
 ## Work Unit
-Create public/card-art/ directory and run the generation script to produce all 34 card art PNGs
+Update Card component to load PNG art from /card-art/[name].png — replace inline SVG rendering with <img> tag pointing to generated PNG, keeping SVG as fallback
 
 ## Acceptance Criteria
-- public/card-art/ directory exists
-- 34 PNG files exist in public/card-art/, one per card name
-- Each PNG file is a valid image (non-zero size)
-- Files are named by card name: e.g., 刘备.png, 曹操.png
+- Card.tsx loads art from /card-art/[cardName].png as primary source
+- Falls back to existing inline SVG art if PNG fails to load (onerror handler)
+- Card art image area occupies at least 40% of card height
+- Images use object-fit: cover for consistent display
+- No layout shift when images load
 
 ## Rules
 # Rules

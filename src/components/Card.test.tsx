@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { describe, it, expect, vi } from "vitest";
+import { render, screen, fireEvent } from "@testing-library/react";
 import Card from "./Card";
 import type { Card as CardData } from "../game/types";
 
@@ -125,10 +125,14 @@ describe("Card component", () => {
       expect(artArea).not.toBeNull();
     });
 
-    it("shows different type icons", () => {
+    it("shows different type icons when PNG fails to load", () => {
       const { container: c1 } = render(<Card card={makeCard({ type: "minion" })} />);
       const { container: c2 } = render(<Card card={makeCard({ type: "spell" })} />);
       const { container: c3 } = render(<Card card={makeCard({ type: "weapon" })} />);
+      // Trigger PNG load failure to reveal emoji fallbacks
+      c1.querySelectorAll("img").forEach(img => fireEvent.error(img));
+      c2.querySelectorAll("img").forEach(img => fireEvent.error(img));
+      c3.querySelectorAll("img").forEach(img => fireEvent.error(img));
       expect(c1.textContent).toContain("⚔️");
       expect(c2.textContent).toContain("✨");
       expect(c3.textContent).toContain("🗡️");
@@ -236,6 +240,68 @@ describe("Card component", () => {
       particles.forEach((p) => {
         expect((p as HTMLElement).style.background).toContain("radial-gradient");
       });
+    });
+  });
+
+  describe("PNG card art loading", () => {
+    it("renders an img tag with src pointing to /card-art/[cardName].png", () => {
+      const { container } = render(<Card card={makeCard({ name: "Zhao Yun" })} />);
+      const img = container.querySelector("img") as HTMLImageElement;
+      expect(img).not.toBeNull();
+      expect(img.src).toContain("/card-art/Zhao%20Yun.png");
+    });
+
+    it("uses object-fit: cover on the card art image", () => {
+      const { container } = render(<Card card={makeCard()} />);
+      const img = container.querySelector("img") as HTMLImageElement;
+      expect(img).not.toBeNull();
+      expect(img.className).toContain("object-cover");
+    });
+
+    it("falls back to SVG art when PNG fails to load", () => {
+      const { container } = render(<Card card={makeCard({ name: "Zhao Yun" })} />);
+      const img = container.querySelector("img") as HTMLImageElement;
+      expect(img).not.toBeNull();
+      fireEvent.error(img);
+      // After error, img should be gone (replaced by SVG or emoji fallback)
+      const imgAfter = container.querySelector("img");
+      expect(imgAfter).toBeNull();
+    });
+
+    it("card art area occupies at least 40% of card height via h-28 on h-64 card", () => {
+      // h-28 = 7rem, h-64 = 16rem. 7/16 = 43.75% > 40%
+      const { container } = render(<Card card={makeCard()} />);
+      const artArea = container.querySelector("[class*='h-28']");
+      expect(artArea).not.toBeNull();
+    });
+
+    it("image fills the full art area width and height", () => {
+      const { container } = render(<Card card={makeCard()} />);
+      const img = container.querySelector("img") as HTMLImageElement;
+      expect(img).not.toBeNull();
+      expect(img.className).toContain("w-full");
+      expect(img.className).toContain("h-full");
+    });
+
+    it("art area has overflow-hidden to prevent layout shift", () => {
+      const { container } = render(<Card card={makeCard()} />);
+      const artArea = container.querySelector("[class*='h-28']");
+      expect(artArea).not.toBeNull();
+      expect(artArea!.className).toContain("overflow-hidden");
+    });
+
+    it("encodes card names with special characters in the PNG URL", () => {
+      const { container } = render(<Card card={makeCard({ name: "曹操" })} />);
+      const img = container.querySelector("img") as HTMLImageElement;
+      expect(img).not.toBeNull();
+      expect(img.src).toContain("/card-art/%E6%9B%B9%E6%93%8D.png");
+    });
+
+    it("sets draggable=false on the art image to prevent ghost drag", () => {
+      const { container } = render(<Card card={makeCard()} />);
+      const img = container.querySelector("img") as HTMLImageElement;
+      expect(img).not.toBeNull();
+      expect(img.draggable).toBe(false);
     });
   });
 
