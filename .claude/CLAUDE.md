@@ -1,18 +1,13 @@
 # Autopo test Session
 
 ## Work Unit
-Create Gemini API image generation script — build a Node.js script that calls the Gemini 2.0 flash preview image generation API to generate cartoon-style card art PNGs for all 34 cards, saving them to public/card-art/[cardName].png
+Create public/card-art/ directory and run the generation script to produce all 34 card art PNGs
 
 ## Acceptance Criteria
-- scripts/generate-card-art.ts exists
-- Script reads card definitions from src/game/cards.ts
-- Script calls POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-preview-image-generation:generateContent with responseModalities: ['TEXT', 'IMAGE']
-- Generates faction-appropriate prompts: 三国武将卡通风格 for minions, 法术效果场景 for spells, 武器造型 for weapons
-- Prompts include faction color direction (魏=blue, 蜀=green, 吴=red, 群=amber)
-- Saves base64-decoded PNG to public/card-art/[cardName].png
-- Script handles rate limiting with delays between requests
-- Script skips cards that already have generated PNGs (idempotent)
-- GEMINI_API_KEY read from environment variable
+- public/card-art/ directory exists
+- 34 PNG files exist in public/card-art/, one per card name
+- Each PNG file is a valid image (non-zero size)
+- Files are named by card name: e.g., 刘备.png, 曹操.png
 
 ## Rules
 # Rules
