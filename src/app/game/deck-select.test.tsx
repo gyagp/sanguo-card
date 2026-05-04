@@ -32,6 +32,30 @@ vi.mock("../../components/VolumeControl", () => ({
   default: () => <div data-testid="volume-control" />,
 }));
 
+const mockGainNode = { connect: vi.fn(), gain: { value: 0, setValueAtTime: vi.fn(), linearRampToValueAtTime: vi.fn() } };
+globalThis.AudioContext = vi.fn().mockImplementation(() => ({
+  createGain: vi.fn(() => mockGainNode),
+  createOscillator: vi.fn(() => ({ connect: vi.fn(), start: vi.fn(), stop: vi.fn(), frequency: { value: 0, setValueAtTime: vi.fn(), linearRampToValueAtTime: vi.fn() }, type: 'sine' })),
+  createBufferSource: vi.fn(() => ({ connect: vi.fn(), start: vi.fn(), stop: vi.fn(), buffer: null })),
+  destination: {},
+  currentTime: 0,
+  close: vi.fn(),
+  resume: vi.fn(),
+  suspend: vi.fn(),
+  state: 'running',
+})) as unknown as typeof AudioContext;
+
+vi.mock("./audio-manager", () => {
+  const noop = vi.fn();
+  const instance = {
+    startBGM: noop, stopBGM: noop, setMuted: noop, setVolume: noop,
+    playCardPlay: noop, playAttack: noop, playDamage: noop, playHeroPower: noop,
+    playTurnStart: noop, playVictory: noop, playDefeat: noop, playCardDraw: noop,
+    muted: false, volume: 1,
+  };
+  return { AudioManager: { getInstance: vi.fn(() => instance) } };
+});
+
 import GamePage from "./page";
 import { MAX_DECK_SIZE } from "../../game/types";
 import type { Card } from "../../game/types";

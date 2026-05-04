@@ -29,7 +29,7 @@ describe("Card play animation: card flies from hand to board", () => {
 
   describe("animation duration and easing", () => {
     it("uses ~500ms duration with easing", () => {
-      expect(pageContent).toMatch(/cardFly\s+500ms\s+ease-in-out/);
+      expect(pageContent).toMatch(/cardFly \$\{500 \* animMultiplier\}ms ease-in-out/);
     });
 
     it("uses forwards fill mode so final state persists", () => {
@@ -53,7 +53,7 @@ describe("Card play animation: card flies from hand to board", () => {
     });
 
     it("removes flying card after animation completes (~500ms)", () => {
-      expect(pageContent).toMatch(/safeTimeout\(.*setFlyingCards.*500\)/);
+      expect(pageContent).toMatch(/safeTimeout\(.*setFlyingCards.*500 \* animMultiplier\)/);
     });
   });
 

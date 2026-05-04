@@ -1,12 +1,12 @@
 # Autopo test Session
 
 ## Work Unit
-Wire deck builder to game — let player select a saved deck before starting a battle
+Localize deck builder page — translate all English UI text to Chinese (headers, buttons, filters, placeholders, empty states)
 
 ## Acceptance Criteria
-- Game page reads saved decks from localStorage
-- Player can choose a deck or use random deck
-- Selected deck is used in initializeGame
+- All deck builder text is in Chinese
+- No English strings remain in deck-builder/page.tsx
+- Deck builder functionality unchanged
 
 ## Rules
 # Rules

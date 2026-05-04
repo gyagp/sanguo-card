@@ -47,6 +47,12 @@ const typeIcons: Record<CardType, string> = {
   weapon: '🗡️',
 };
 
+const typeLabels: Record<CardType, string> = {
+  minion: '随从',
+  spell: '法术',
+  weapon: '武器',
+};
+
 type FilterFaction = Faction | 'all';
 type FilterType = CardType | 'all';
 type FilterRarity = Rarity | 'all';
@@ -168,9 +174,9 @@ export default function DeckBuilderPage() {
 
       <header className="relative z-10 flex items-center justify-between border-b border-yellow-600/40 px-3 md:px-6 py-3 md:py-4">
         <Link href="/" className="text-yellow-400 hover:text-yellow-300 transition-colors">
-          ← Back to Menu
+          ← 返回主菜单
         </Link>
-        <h1 className="text-lg md:text-2xl font-bold text-yellow-400">Deck Builder</h1>
+        <h1 className="text-lg md:text-2xl font-bold text-yellow-400">卡组构建</h1>
         <div className="w-16 md:w-24" />
       </header>
 
@@ -178,31 +184,31 @@ export default function DeckBuilderPage() {
         {view === 'list' ? (
           <div className="flex flex-1 flex-col items-center justify-start p-4 sm:p-6 md:p-8 gap-4 sm:gap-6">
             <div className="flex items-center gap-4">
-              <h2 className="text-xl font-bold text-yellow-400">Your Decks</h2>
+              <h2 className="text-xl font-bold text-yellow-400">我的卡组</h2>
               <button
                 onClick={newDeck}
                 className="rounded-lg border border-yellow-600/40 bg-yellow-700/30 px-4 py-2 text-yellow-100 hover:bg-yellow-700/50 transition-colors"
               >
-                + New Deck
+                + 新建卡组
               </button>
             </div>
 
             {savedDecks.length === 0 ? (
-              <p className="text-yellow-100/60">No decks yet. Create your first deck!</p>
+              <p className="text-yellow-100/60">暂无卡组，创建你的第一副卡组吧！</p>
             ) : (
               <div className="grid w-full max-w-2xl gap-3">
                 {savedDecks.map(deck => (
                   <div key={deck.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0 rounded-lg border border-yellow-600/40 bg-red-950/60 px-4 sm:px-5 py-3 sm:py-4 shadow-lg">
                     <div>
                       <span className="text-lg font-semibold text-yellow-100">{deck.name}</span>
-                      <span className="ml-3 text-sm text-yellow-100/60">{deck.cards.length}/{MAX_DECK_SIZE} cards</span>
+                      <span className="ml-3 text-sm text-yellow-100/60">{deck.cards.length}/{MAX_DECK_SIZE} 张卡牌</span>
                     </div>
                     <div className="flex gap-2">
                       <button onClick={() => editDeck(deck)} className="rounded border border-yellow-600/40 bg-yellow-700/20 px-3 py-1 text-sm text-yellow-100 hover:bg-yellow-700/40 transition-colors">
-                        Edit
+                        编辑
                       </button>
                       <button onClick={() => deleteDeck(deck.id)} className="rounded border border-red-500/40 bg-red-900/40 px-3 py-1 text-sm text-red-300 hover:bg-red-800/60 transition-colors">
-                        Delete
+                        删除
                       </button>
                     </div>
                   </div>
@@ -217,31 +223,31 @@ export default function DeckBuilderPage() {
               <div className="mb-3 flex flex-wrap gap-2">
                 <input
                   type="text"
-                  placeholder="Search cards..."
+                  placeholder="搜索卡牌..."
                   value={searchText}
                   onChange={e => setSearchText(e.target.value)}
                   className="rounded border border-yellow-600/40 bg-red-950/60 px-3 py-1.5 text-sm text-yellow-100 placeholder-yellow-100/40 outline-none focus:border-yellow-400"
                 />
                 <select value={filterFaction} onChange={e => setFilterFaction(e.target.value as FilterFaction)} className="rounded border border-yellow-600/40 bg-red-950/60 px-2 py-1.5 text-sm text-yellow-100">
-                  <option value="all">All Factions</option>
-                  <option value="shu">Shu</option>
-                  <option value="wei">Wei</option>
-                  <option value="wu">Wu</option>
-                  <option value="qun">Qun</option>
-                  <option value="neutral">Neutral</option>
+                  <option value="all">全部阵营</option>
+                  <option value="shu">蜀</option>
+                  <option value="wei">魏</option>
+                  <option value="wu">吴</option>
+                  <option value="qun">群</option>
+                  <option value="neutral">中立</option>
                 </select>
                 <select value={filterType} onChange={e => setFilterType(e.target.value as FilterType)} className="rounded border border-yellow-600/40 bg-red-950/60 px-2 py-1.5 text-sm text-yellow-100">
-                  <option value="all">All Types</option>
-                  <option value="minion">Minion</option>
-                  <option value="spell">Spell</option>
-                  <option value="weapon">Weapon</option>
+                  <option value="all">全部类型</option>
+                  <option value="minion">随从</option>
+                  <option value="spell">法术</option>
+                  <option value="weapon">武器</option>
                 </select>
                 <select value={filterRarity} onChange={e => setFilterRarity(e.target.value as FilterRarity)} className="rounded border border-yellow-600/40 bg-red-950/60 px-2 py-1.5 text-sm text-yellow-100">
-                  <option value="all">All Rarities</option>
-                  <option value="common">Common</option>
-                  <option value="rare">Rare</option>
-                  <option value="epic">Epic</option>
-                  <option value="legendary">Legendary</option>
+                  <option value="all">全部稀有度</option>
+                  <option value="common">普通</option>
+                  <option value="rare">稀有</option>
+                  <option value="epic">史诗</option>
+                  <option value="legendary">传说</option>
                 </select>
               </div>
 
@@ -264,7 +270,7 @@ export default function DeckBuilderPage() {
                       >
                         <div className="flex items-center justify-between">
                           <span className="text-xs font-bold text-blue-300">{card.cost}</span>
-                          <span className="text-xs text-yellow-100/60">{typeIcons[card.type]} {card.type}</span>
+                          <span className="text-xs text-yellow-100/60">{typeIcons[card.type]} {typeLabels[card.type]}</span>
                         </div>
                         <div className="mt-1 text-sm font-semibold text-yellow-100">{card.name}</div>
                         {card.type === 'minion' && (
@@ -290,13 +296,13 @@ export default function DeckBuilderPage() {
                   onClick={() => setView('list')}
                   className="text-sm text-yellow-400 hover:text-yellow-300 transition-colors"
                 >
-                  ← Decks
+                  ← 卡组列表
                 </button>
               </div>
 
               <input
                 type="text"
-                placeholder="Deck name..."
+                placeholder="卡组名称..."
                 value={deckName}
                 onChange={e => setDeckName(e.target.value)}
                 className="mb-3 rounded border border-yellow-600/40 bg-red-950/60 px-3 py-2 text-yellow-100 placeholder-yellow-100/40 outline-none focus:border-yellow-400"
@@ -304,7 +310,7 @@ export default function DeckBuilderPage() {
 
               <div className="mb-3 flex items-center justify-between text-sm text-yellow-100/80">
                 <span>{currentDeck.length}/{MAX_DECK_SIZE}</span>
-                <span>Avg: {summary.avgCost} mana</span>
+                <span>平均: {summary.avgCost} 法力</span>
               </div>
               <div className="mb-3 flex gap-3 text-xs text-yellow-100/60">
                 <span>⚔️ {summary.minions}</span>
@@ -314,7 +320,7 @@ export default function DeckBuilderPage() {
 
               <div className="flex-1 overflow-y-auto">
                 {deckEntries.length === 0 ? (
-                  <p className="text-center text-sm text-yellow-100/40">Click cards to add them</p>
+                  <p className="text-center text-sm text-yellow-100/40">点击卡牌添加到卡组</p>
                 ) : (
                   <div className="flex flex-col gap-1">
                     {deckEntries.map(({ card, count }) => (
@@ -347,13 +353,13 @@ export default function DeckBuilderPage() {
                   disabled={!deckName.trim() || currentDeck.length === 0}
                   className="flex-1 rounded-lg border border-yellow-600/40 bg-yellow-700/30 py-2 text-yellow-100 hover:bg-yellow-700/50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 >
-                  {editingDeckId ? 'Update Deck' : 'Save Deck'}
+                  {editingDeckId ? '更新卡组' : '保存卡组'}
                 </button>
                 <button
                   onClick={() => { setCurrentDeck([]); setDeckName(''); setEditingDeckId(null); }}
                   className="rounded-lg border border-red-500/40 bg-red-900/40 px-4 py-2 text-red-300 hover:bg-red-800/60 transition-colors"
                 >
-                  Clear
+                  清空
                 </button>
               </div>
             </div>

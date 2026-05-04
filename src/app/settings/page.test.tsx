@@ -35,9 +35,9 @@ describe('SettingsPage', () => {
 
   it('renders settings UI with headings', () => {
     render(<SettingsPage />);
-    expect(screen.getByText('Settings')).toBeInTheDocument();
-    expect(screen.getByText('Audio')).toBeInTheDocument();
-    expect(screen.getByText('Game')).toBeInTheDocument();
+    expect(screen.getByText('设置')).toBeInTheDocument();
+    expect(screen.getByText('音频')).toBeInTheDocument();
+    expect(screen.getByText('游戏')).toBeInTheDocument();
   });
 
   it('integrates VolumeControl component', () => {
@@ -48,20 +48,20 @@ describe('SettingsPage', () => {
 
   it('renders animation speed dropdown with default normal', () => {
     render(<SettingsPage />);
-    const selects = screen.getAllByDisplayValue('Normal');
+    const selects = screen.getAllByDisplayValue('正常');
     expect(selects.length).toBeGreaterThanOrEqual(1);
   });
 
   it('persists animation speed to localStorage', () => {
     render(<SettingsPage />);
-    const select = screen.getAllByDisplayValue('Normal')[0];
+    const select = screen.getAllByDisplayValue('正常')[0];
     fireEvent.change(select, { target: { value: 'fast' } });
     expect(storage['sanguo-card-animation-speed']).toBe('fast');
   });
 
   it('persists auto end turn toggle to localStorage', () => {
     render(<SettingsPage />);
-    const label = screen.getAllByText('Auto End Turn')[0];
+    const label = screen.getAllByText('自动结束回合')[0];
     const toggle = label.closest('div')!.querySelector('button')!;
     fireEvent.click(toggle);
     expect(storage['sanguo-card-auto-end-turn']).toBe('true');
@@ -69,7 +69,7 @@ describe('SettingsPage', () => {
 
   it('persists show damage numbers toggle to localStorage', () => {
     render(<SettingsPage />);
-    const label = screen.getAllByText('Show Damage Numbers')[0];
+    const label = screen.getAllByText('显示伤害数字')[0];
     const toggle = label.closest('div')!.querySelector('button')!;
     fireEvent.click(toggle);
     expect(storage['sanguo-card-show-damage-numbers']).toBe('false');
@@ -81,12 +81,12 @@ describe('SettingsPage', () => {
     storage['sanguo-card-show-damage-numbers'] = 'false';
 
     render(<SettingsPage />);
-    expect(screen.getAllByDisplayValue('Slow').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByDisplayValue('慢速').length).toBeGreaterThanOrEqual(1);
   });
 
   it('has back navigation link to main menu', () => {
     render(<SettingsPage />);
-    const links = screen.getAllByText('Back to Menu');
+    const links = screen.getAllByText('返回主菜单');
     const link = links[0].closest('a');
     expect(link).toHaveAttribute('href', '/');
   });

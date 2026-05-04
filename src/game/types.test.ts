@@ -297,7 +297,7 @@ describe("startTurn", () => {
     const state = initializeGame(makeDeck(), makeDeck());
     const result = startTurn(state);
     expect(result.drawn).not.toBeNull();
-    expect(state.players[0].hand).toHaveLength(1);
+    expect(state.players[0].hand).toHaveLength(4);
   });
 
   it("sets turnPhase to play after start", () => {

@@ -4,6 +4,35 @@ import "@testing-library/jest-dom/vitest";
 import * as fs from "fs";
 import * as path from "path";
 
+// Mock AudioContext for jsdom
+const mockGainNode = { connect: vi.fn(), gain: { value: 0, setValueAtTime: vi.fn(), linearRampToValueAtTime: vi.fn() } };
+globalThis.AudioContext = vi.fn().mockImplementation(() => ({
+  createGain: vi.fn(() => mockGainNode),
+  createOscillator: vi.fn(() => ({ connect: vi.fn(), start: vi.fn(), stop: vi.fn(), frequency: { value: 0, setValueAtTime: vi.fn(), linearRampToValueAtTime: vi.fn() }, type: 'sine' })),
+  createBufferSource: vi.fn(() => ({ connect: vi.fn(), start: vi.fn(), stop: vi.fn(), buffer: null })),
+  destination: {},
+  currentTime: 0,
+  close: vi.fn(),
+  resume: vi.fn(),
+  suspend: vi.fn(),
+  state: 'running',
+})) as unknown as typeof AudioContext;
+
+vi.mock("./audio-manager", () => {
+  const noop = vi.fn();
+  const instance = {
+    startBGM: noop, stopBGM: noop, setMuted: noop, setVolume: noop,
+    playCardPlay: noop, playAttack: noop, playDamage: noop, playHeroPower: noop,
+    playTurnStart: noop, playVictory: noop, playDefeat: noop, playCardDraw: noop,
+    muted: false, volume: 1,
+  };
+  return {
+    AudioManager: {
+      getInstance: vi.fn(() => instance),
+    },
+  };
+});
+
 const mockState = {
   gameState: {
     players: [
@@ -44,6 +73,11 @@ vi.mock("../../hooks/useGameState", () => ({
 
 import GamePage from "./page";
 
+function renderGamePage() {
+  render(<GamePage />);
+  fireEvent.click(screen.getByText("随机卡组"));
+}
+
 describe("Victory/Defeat overlay acceptance criteria", () => {
   afterEach(() => {
     cleanup();
@@ -56,38 +90,38 @@ describe("Victory/Defeat overlay acceptance criteria", () => {
   });
 
   it("does not show overlay when no winner", () => {
-    render(<GamePage />);
-    expect(screen.queryByText("VICTORY")).toBeNull();
-    expect(screen.queryByText("DEFEAT")).toBeNull();
-    expect(screen.queryByText("DRAW")).toBeNull();
+    renderGamePage();
+    expect(screen.queryByText("胜利")).toBeNull();
+    expect(screen.queryByText("失败")).toBeNull();
+    expect(screen.queryByText("平局")).toBeNull();
   });
 
   describe("AC1: Victory shows celebratory animation with golden particles and large VICTORY text", () => {
     it("renders VICTORY text when player 0 wins", () => {
       mockState.winner = 0;
-      render(<GamePage />);
-      expect(screen.getByText("VICTORY")).toBeDefined();
-      expect(screen.getByText("胜利!")).toBeDefined();
+      renderGamePage();
+      expect(screen.getByText("胜利")).toBeDefined();
+      expect(screen.getByText("大获全胜！")).toBeDefined();
     });
 
     it("VICTORY text has golden color class", () => {
       mockState.winner = 0;
-      render(<GamePage />);
-      const title = screen.getByText("VICTORY");
+      renderGamePage();
+      const title = screen.getByText("胜利");
       expect(title.className).toContain("text-yellow-400");
     });
 
     it("VICTORY text has large font size", () => {
       mockState.winner = 0;
-      render(<GamePage />);
-      const title = screen.getByText("VICTORY");
+      renderGamePage();
+      const title = screen.getByText("胜利");
       expect(title.className).toMatch(/text-7xl|text-8xl/);
     });
 
     it("VICTORY overlay has golden gradient background", () => {
       mockState.winner = 0;
-      render(<GamePage />);
-      const overlay = screen.getByText("VICTORY").closest(".absolute.inset-0.z-50");
+      renderGamePage();
+      const overlay = screen.getByText("胜利").closest(".absolute.inset-0.z-50");
       expect(overlay).toBeDefined();
       const bg = overlay!.querySelector(".bg-gradient-to-b");
       expect(bg).toBeDefined();
@@ -96,16 +130,16 @@ describe("Victory/Defeat overlay acceptance criteria", () => {
 
     it("renders golden particles for victory", () => {
       mockState.winner = 0;
-      render(<GamePage />);
-      const overlay = screen.getByText("VICTORY").closest(".absolute.inset-0.z-50");
+      renderGamePage();
+      const overlay = screen.getByText("胜利").closest(".absolute.inset-0.z-50");
       const particles = overlay!.querySelectorAll(".rounded-full.pointer-events-none");
       expect(particles.length).toBe(30);
     });
 
     it("victory particles use victoryParticle animation", () => {
       mockState.winner = 0;
-      render(<GamePage />);
-      const overlay = screen.getByText("VICTORY").closest(".absolute.inset-0.z-50");
+      renderGamePage();
+      const overlay = screen.getByText("胜利").closest(".absolute.inset-0.z-50");
       const particle = overlay!.querySelector(".rounded-full.pointer-events-none") as HTMLElement;
       expect(particle.style.animation).toContain("victoryParticle");
     });
@@ -114,38 +148,38 @@ describe("Victory/Defeat overlay acceptance criteria", () => {
   describe("AC2: Defeat shows somber animation with shatter/fade and DEFEAT text", () => {
     it("renders DEFEAT text when player 1 wins", () => {
       mockState.winner = 1;
-      render(<GamePage />);
-      expect(screen.getByText("DEFEAT")).toBeDefined();
-      expect(screen.getByText("失败!")).toBeDefined();
+      renderGamePage();
+      expect(screen.getByText("失败")).toBeDefined();
+      expect(screen.getByText("卷土重来！")).toBeDefined();
     });
 
     it("DEFEAT text has red color class", () => {
       mockState.winner = 1;
-      render(<GamePage />);
-      const title = screen.getByText("DEFEAT");
+      renderGamePage();
+      const title = screen.getByText("失败");
       expect(title.className).toContain("text-red-400");
     });
 
     it("renders somber particles for defeat", () => {
       mockState.winner = 1;
-      render(<GamePage />);
-      const overlay = screen.getByText("DEFEAT").closest(".absolute.inset-0.z-50");
+      renderGamePage();
+      const overlay = screen.getByText("失败").closest(".absolute.inset-0.z-50");
       const particles = overlay!.querySelectorAll(".rounded-full.pointer-events-none");
       expect(particles.length).toBe(20);
     });
 
     it("defeat particles use defeatParticle animation", () => {
       mockState.winner = 1;
-      render(<GamePage />);
-      const overlay = screen.getByText("DEFEAT").closest(".absolute.inset-0.z-50");
+      renderGamePage();
+      const overlay = screen.getByText("失败").closest(".absolute.inset-0.z-50");
       const particle = overlay!.querySelector(".rounded-full.pointer-events-none") as HTMLElement;
       expect(particle.style.animation).toContain("defeatParticle");
     });
 
     it("defeat overlay has red gradient background", () => {
       mockState.winner = 1;
-      render(<GamePage />);
-      const bg = screen.getByText("DEFEAT").closest(".absolute.inset-0.z-50")!.querySelector(".bg-gradient-to-b");
+      renderGamePage();
+      const bg = screen.getByText("失败").closest(".absolute.inset-0.z-50")!.querySelector(".bg-gradient-to-b");
       expect(bg!.className).toContain("red-900");
     });
   });
@@ -153,21 +187,21 @@ describe("Victory/Defeat overlay acceptance criteria", () => {
   describe("AC3: Screen includes a Play Again button", () => {
     it("renders Play Again button on victory", () => {
       mockState.winner = 0;
-      render(<GamePage />);
+      renderGamePage();
       const btn = screen.getByRole("button", { name: /再来一局/ });
       expect(btn).toBeDefined();
     });
 
     it("renders Play Again button on defeat", () => {
       mockState.winner = 1;
-      render(<GamePage />);
+      renderGamePage();
       const btn = screen.getByRole("button", { name: /再来一局/ });
       expect(btn).toBeDefined();
     });
 
     it("clicking Play Again calls resetGame", () => {
       mockState.winner = 0;
-      render(<GamePage />);
+      renderGamePage();
       const btn = screen.getByRole("button", { name: /再来一局/ });
       fireEvent.click(btn);
       expect(mockState.resetGame).toHaveBeenCalledTimes(1);
@@ -177,15 +211,15 @@ describe("Victory/Defeat overlay acceptance criteria", () => {
   describe("AC4: Animation builds over ~2s with eased entrance", () => {
     it("overlay container has fade-in animation", () => {
       mockState.winner = 0;
-      render(<GamePage />);
-      const overlay = screen.getByText("VICTORY").closest(".absolute.inset-0.z-50") as HTMLElement;
+      renderGamePage();
+      const overlay = screen.getByText("胜利").closest(".absolute.inset-0.z-50") as HTMLElement;
       expect(overlay.style.animation).toContain("resultOverlayIn");
     });
 
     it("title text has 2s entrance animation with cubic-bezier easing", () => {
       mockState.winner = 0;
-      render(<GamePage />);
-      const title = screen.getByText("VICTORY") as HTMLElement;
+      renderGamePage();
+      const title = screen.getByText("胜利") as HTMLElement;
       expect(title.style.animation).toContain("resultTextIn");
       expect(title.style.animation).toContain("2s");
       expect(title.style.animation).toContain("cubic-bezier");
@@ -193,7 +227,7 @@ describe("Victory/Defeat overlay acceptance criteria", () => {
 
     it("button has delayed entrance animation", () => {
       mockState.winner = 0;
-      render(<GamePage />);
+      renderGamePage();
       const btn = screen.getByRole("button", { name: /再来一局/ }) as HTMLElement;
       expect(btn.style.animation).toContain("resultButtonIn");
       expect(btn.style.animation).toContain("1.5s");
@@ -216,21 +250,21 @@ describe("Victory/Defeat overlay acceptance criteria", () => {
   describe("Draw condition", () => {
     it("renders DRAW text when result is draw", () => {
       mockState.winner = "draw";
-      render(<GamePage />);
-      expect(screen.getByText("DRAW")).toBeDefined();
-      expect(screen.getByText("平局!")).toBeDefined();
+      renderGamePage();
+      expect(screen.getByText("平局")).toBeDefined();
+      expect(screen.getByText("不分胜负！")).toBeDefined();
     });
 
     it("draw uses blue color scheme", () => {
       mockState.winner = "draw";
-      render(<GamePage />);
-      const title = screen.getByText("DRAW");
+      renderGamePage();
+      const title = screen.getByText("平局");
       expect(title.className).toContain("text-blue-400");
     });
 
     it("draw has Play Again button", () => {
       mockState.winner = "draw";
-      render(<GamePage />);
+      renderGamePage();
       expect(screen.getByRole("button", { name: /再来一局/ })).toBeDefined();
     });
   });

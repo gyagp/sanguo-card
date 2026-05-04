@@ -3,11 +3,25 @@
 import { useGameState } from "../../hooks/useGameState";
 import Card from "../../components/Card";
 import VolumeControl from "../../components/VolumeControl";
+import { AudioManager } from "./audio-manager";
 import { cards } from "../../game/cards";
 import { createDeck, BoardMinion, PlayerState, Card as CardType, MAX_BOARD_SIZE, MAX_DECK_SIZE, Deck } from "../../game/types";
 import { useMemo, useState, useEffect, useRef, useCallback, forwardRef } from "react";
 
 const STORAGE_KEY = 'sanguo-card-decks';
+const STORAGE_KEY_ANIMATION_SPEED = 'sanguo-card-animation-speed';
+const STORAGE_KEY_AUTO_END_TURN = 'sanguo-card-auto-end-turn';
+const STORAGE_KEY_SHOW_DAMAGE_NUMBERS = 'sanguo-card-show-damage-numbers';
+
+type AnimationSpeed = 'fast' | 'normal' | 'slow';
+
+function getAnimationMultiplier(speed: AnimationSpeed): number {
+  switch (speed) {
+    case 'fast': return 0.5;
+    case 'normal': return 1;
+    case 'slow': return 2;
+  }
+}
 
 interface SavedDeck {
   id: string;
@@ -238,7 +252,7 @@ function HeroPortrait({ player, onClick, targetable }: { player: PlayerState; on
   );
 }
 
-function BoardMinionCard({ minion, onClick, selected, exhausted, targetable, animation, damageNumber, dying, impactParticles, legendaryParticles, legendaryShimmer }: {
+function BoardMinionCard({ minion, onClick, selected, exhausted, targetable, animation, damageNumber, dying, impactParticles, legendaryParticles, legendaryShimmer, animMultiplier = 1, showDamageNumbers = true }: {
   minion: BoardMinion;
   onClick?: () => void;
   selected?: boolean;
@@ -250,6 +264,8 @@ function BoardMinionCard({ minion, onClick, selected, exhausted, targetable, ani
   impactParticles?: Particle[] | null;
   legendaryParticles?: LegendaryParticle[] | null;
   legendaryShimmer?: boolean;
+  animMultiplier?: number;
+  showDamageNumbers?: boolean;
 }) {
   const borderColor = selected
     ? "border-yellow-300 ring-2 ring-yellow-400"
@@ -261,10 +277,10 @@ function BoardMinionCard({ minion, onClick, selected, exhausted, targetable, ani
 
   const animStyle: React.CSSProperties = {};
   if (!dying) {
-    if (animation === "popIn") Object.assign(animStyle, { animation: "popIn 0.4s ease-out forwards" });
-    else if (animation === "legendaryEntrance") Object.assign(animStyle, { animation: "legendaryEntrance 0.7s ease-out forwards, legendaryGlow 1.2s ease-out forwards" });
-    else if (animation === "lunge") Object.assign(animStyle, { animation: "lunge 0.3s ease-in-out" });
-    else if (animation === "shake") Object.assign(animStyle, { animation: "shake 0.3s ease-in-out" });
+    if (animation === "popIn") Object.assign(animStyle, { animation: `popIn ${0.4 * animMultiplier}s ease-out forwards` });
+    else if (animation === "legendaryEntrance") Object.assign(animStyle, { animation: `legendaryEntrance ${0.7 * animMultiplier}s ease-out forwards, legendaryGlow ${1.2 * animMultiplier}s ease-out forwards` });
+    else if (animation === "lunge") Object.assign(animStyle, { animation: `lunge ${0.3 * animMultiplier}s ease-in-out` });
+    else if (animation === "shake") Object.assign(animStyle, { animation: `shake ${0.3 * animMultiplier}s ease-in-out` });
   }
   if (legendaryShimmer) {
     animStyle.boxShadow = "0 0 12px 4px rgba(255, 215, 0, 0.4), 0 0 24px 8px rgba(255, 165, 0, 0.2)";
@@ -297,7 +313,7 @@ function BoardMinionCard({ minion, onClick, selected, exhausted, targetable, ani
               "--shard-x": SHARD_OFFSETS[i][0],
               "--shard-y": SHARD_OFFSETS[i][1],
               "--shard-rot": SHARD_OFFSETS[i][2],
-              animation: `shatterFragment 0.6s ease-out forwards`,
+              animation: `shatterFragment ${0.6 * animMultiplier}s ease-out forwards`,
               animationDelay: `${i * 30}ms`,
             } as React.CSSProperties}
           >
@@ -329,9 +345,9 @@ function BoardMinionCard({ minion, onClick, selected, exhausted, targetable, ani
         <span className="bg-yellow-600 rounded px-0.5 sm:px-1 font-bold">{minion.currentAttack}</span>
         <span className="bg-red-700 rounded px-0.5 sm:px-1 font-bold">{minion.currentHealth}</span>
       </div>
-      {damageNumber != null && (
+      {showDamageNumbers && damageNumber != null && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <span className="text-lg sm:text-2xl font-black text-red-400 drop-shadow-lg" style={{ animation: "floatDamage 0.8s ease-out forwards" }}>
+          <span className="text-lg sm:text-2xl font-black text-red-400 drop-shadow-lg" style={{ animation: `floatDamage ${0.8 * animMultiplier}s ease-out forwards` }}>
             -{damageNumber}
           </span>
         </div>
@@ -366,7 +382,9 @@ const BoardZone = forwardRef<HTMLDivElement, {
   impactParticles?: Map<number, Particle[]>;
   legendaryParticles?: Map<number, LegendaryParticle[]>;
   legendaryShimmer?: Set<number>;
-}>(function BoardZone({ minions, label, onDrop, onMinionClick, selectedIndex, isEnemy, hasAttackerSelected, animations, damageNumbers, dyingMinions, impactParticles, legendaryParticles, legendaryShimmer }, ref) {
+  animMultiplier?: number;
+  showDamageNumbers?: boolean;
+}>(function BoardZone({ minions, label, onDrop, onMinionClick, selectedIndex, isEnemy, hasAttackerSelected, animations, damageNumbers, dyingMinions, impactParticles, legendaryParticles, legendaryShimmer, animMultiplier, showDamageNumbers }, ref) {
   const [dragOver, setDragOver] = useState(false);
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -414,7 +432,7 @@ const BoardZone = forwardRef<HTMLDivElement, {
             if (dying) {
               dying.forEach((dm, di) => {
                 slots.push(
-                  <BoardMinionCard key={`dying-${dm.boardIndex}-${di}`} minion={dm.minion} dying />
+                  <BoardMinionCard key={`dying-${dm.boardIndex}-${di}`} minion={dm.minion} dying animMultiplier={animMultiplier} />
                 );
               });
               dyingByIndex.delete(slot);
@@ -433,6 +451,8 @@ const BoardZone = forwardRef<HTMLDivElement, {
                   impactParticles={impactParticles?.get(i) ?? null}
                   legendaryParticles={legendaryParticles?.get(i) ?? null}
                   legendaryShimmer={legendaryShimmer?.has(i)}
+                  animMultiplier={animMultiplier}
+                  showDamageNumbers={showDamageNumbers}
                 />
               );
             }
@@ -452,13 +472,15 @@ const BoardZone = forwardRef<HTMLDivElement, {
                 impactParticles={impactParticles?.get(i) ?? null}
                 legendaryParticles={legendaryParticles?.get(i) ?? null}
                 legendaryShimmer={legendaryShimmer?.has(i)}
+                animMultiplier={animMultiplier}
+                showDamageNumbers={showDamageNumbers}
               />
             );
           }
           dyingByIndex.forEach((dms, idx) => {
             dms.forEach((dm, di) => {
               slots.push(
-                <BoardMinionCard key={`dying-${idx}-${di}`} minion={dm.minion} dying />
+                <BoardMinionCard key={`dying-${idx}-${di}`} minion={dm.minion} dying animMultiplier={animMultiplier} />
               );
             });
           });
@@ -609,6 +631,26 @@ function GameInner({ playerDeck }: { playerDeck: Deck }) {
 
   const [selectedAttacker, setSelectedAttacker] = useState<number | null>(null);
 
+  const audioRef = useRef(AudioManager.getInstance());
+
+  const [animationSpeed, setAnimationSpeed] = useState<AnimationSpeed>('normal');
+  const [autoEndTurn, setAutoEndTurn] = useState(false);
+  const [showDamageNumbers, setShowDamageNumbers] = useState(true);
+  const animMultiplier = getAnimationMultiplier(animationSpeed);
+
+  useEffect(() => {
+    const speed = localStorage.getItem(STORAGE_KEY_ANIMATION_SPEED) as AnimationSpeed | null;
+    if (speed === 'fast' || speed === 'normal' || speed === 'slow') setAnimationSpeed(speed);
+    setAutoEndTurn(localStorage.getItem(STORAGE_KEY_AUTO_END_TURN) === 'true');
+    setShowDamageNumbers(localStorage.getItem(STORAGE_KEY_SHOW_DAMAGE_NUMBERS) !== 'false');
+  }, []);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    audio.startBGM();
+    return () => { audio.stopBGM(); };
+  }, []);
+
   const [playerAnims, setPlayerAnims] = useState<Map<number, AnimKind>>(new Map());
   const [enemyAnims, setEnemyAnims] = useState<Map<number, AnimKind>>(new Map());
   const [playerDmg, setPlayerDmg] = useState<Map<number, number>>(new Map());
@@ -633,12 +675,13 @@ function GameInner({ playerDeck }: { playerDeck: Deck }) {
       return;
     }
     setTurnBanner(isOpponentTurn ? "enemy" : "your");
+    audioRef.current.playTurnStart();
     if (turnBannerTimerRef.current) clearTimeout(turnBannerTimerRef.current);
     turnBannerTimerRef.current = setTimeout(() => {
       setTurnBanner(null);
       turnBannerTimerRef.current = null;
-    }, 1500);
-  }, [isOpponentTurn]);
+    }, 1500 * animMultiplier);
+  }, [isOpponentTurn, animMultiplier]);
 
   useEffect(() => {
     return () => {
@@ -678,33 +721,33 @@ function GameInner({ playerDeck }: { playerDeck: Deck }) {
 
   const triggerAnim = useCallback((setter: typeof setPlayerAnims, index: number, kind: AnimKind, duration: number) => {
     setter(prev => new Map(prev).set(index, kind));
-    safeTimeout(() => setter(prev => { const m = new Map(prev); m.delete(index); return m; }), duration);
-  }, [safeTimeout]);
+    safeTimeout(() => setter(prev => { const m = new Map(prev); m.delete(index); return m; }), duration * animMultiplier);
+  }, [safeTimeout, animMultiplier]);
 
   const triggerDmg = useCallback((setter: typeof setPlayerDmg, index: number, amount: number) => {
     setter(prev => new Map(prev).set(index, amount));
-    safeTimeout(() => setter(prev => { const m = new Map(prev); m.delete(index); return m; }), 800);
-  }, [safeTimeout]);
+    safeTimeout(() => setter(prev => { const m = new Map(prev); m.delete(index); return m; }), 800 * animMultiplier);
+  }, [safeTimeout, animMultiplier]);
 
   const triggerImpact = useCallback((index: number) => {
     const particles = makeParticles();
     setEnemyImpacts(prev => new Map(prev).set(index, particles));
-    safeTimeout(() => setEnemyImpacts(prev => { const m = new Map(prev); m.delete(index); return m; }), 400);
-  }, [safeTimeout]);
+    safeTimeout(() => setEnemyImpacts(prev => { const m = new Map(prev); m.delete(index); return m; }), 400 * animMultiplier);
+  }, [safeTimeout, animMultiplier]);
 
   const triggerHeroImpact = useCallback(() => {
     const particles = makeParticles();
     setHeroImpact(particles);
-    safeTimeout(() => setHeroImpact(null), 400);
-  }, [safeTimeout]);
+    safeTimeout(() => setHeroImpact(null), 400 * animMultiplier);
+  }, [safeTimeout, animMultiplier]);
 
   const addDyingMinion = useCallback((minion: BoardMinion, boardIndex: number, side: "player" | "enemy") => {
-    const dm: DyingMinion = { minion: { ...minion }, boardIndex, side, expiry: Date.now() + 600 };
+    const dm: DyingMinion = { minion: { ...minion }, boardIndex, side, expiry: Date.now() + 600 * animMultiplier };
     setDyingMinions(prev => [...prev, dm]);
     safeTimeout(() => {
       setDyingMinions(prev => prev.filter(d => d !== dm));
-    }, 600);
-  }, [safeTimeout]);
+    }, 600 * animMultiplier);
+  }, [safeTimeout, animMultiplier]);
 
   const player = gameState.players[0];
   const opponent = gameState.players[1];
@@ -716,9 +759,10 @@ function GameInner({ playerDeck }: { playerDeck: Deck }) {
     const startRect = el?.getBoundingClientRect();
     const result = playCard(handIndex);
     if (result.success && startRect) {
+      audioRef.current.playCardPlay();
       const key = flyKeyRef.current++;
       setFlyingCards(prev => [...prev, { card, startRect, key }]);
-      safeTimeout(() => setFlyingCards(prev => prev.filter(f => f.key !== key)), 500);
+      safeTimeout(() => setFlyingCards(prev => prev.filter(f => f.key !== key)), 500 * animMultiplier);
 
       if (card.type === "spell") {
         const boardRect = boardZoneRef.current?.getBoundingClientRect();
@@ -727,12 +771,12 @@ function GameInner({ playerDeck }: { playerDeck: Deck }) {
         const particles = makeSpellParticles(startRect, targetY);
         const spellKey = spellKeyRef.current++;
         setSpellEffects(prev => [...prev, { particles, origin, key: spellKey }]);
-        safeTimeout(() => setSpellEffects(prev => prev.filter(e => e.key !== spellKey)), 700);
+        safeTimeout(() => setSpellEffects(prev => prev.filter(e => e.key !== spellKey)), 700 * animMultiplier);
 
         safeTimeout(() => {
           setSpellFlash(true);
-          safeTimeout(() => setSpellFlash(false), 600);
-        }, 200);
+          safeTimeout(() => setSpellFlash(false), 600 * animMultiplier);
+        }, 200 * animMultiplier);
       }
     }
   }, [player.hand, playCard, safeTimeout]);
@@ -745,9 +789,9 @@ function GameInner({ playerDeck }: { playerDeck: Deck }) {
     const particles = makeLegendaryParticles();
     particleSetter(prev => new Map(prev).set(index, particles));
     shimmerSetter(prev => new Set(prev).add(index));
-    safeTimeout(() => particleSetter(prev => { const m = new Map(prev); m.delete(index); return m; }), 900);
-    safeTimeout(() => shimmerSetter(prev => { const s = new Set(prev); s.delete(index); return s; }), 1200);
-  }, [safeTimeout]);
+    safeTimeout(() => particleSetter(prev => { const m = new Map(prev); m.delete(index); return m; }), 900 * animMultiplier);
+    safeTimeout(() => shimmerSetter(prev => { const s = new Set(prev); s.delete(index); return s; }), 1200 * animMultiplier);
+  }, [safeTimeout, animMultiplier]);
 
   useEffect(() => {
     const newLen = player.board.length;
@@ -804,22 +848,26 @@ function GameInner({ playerDeck }: { playerDeck: Deck }) {
     setSelectedAttacker(null);
 
     if (result.success) {
+      audioRef.current.playAttack();
       triggerAnim(setPlayerAnims, attackerIdx, "lunge", 300);
-      safeTimeout(() => triggerAnim(setEnemyAnims, index, "shake", 300), 150);
-      safeTimeout(() => triggerImpact(index), 150);
+      safeTimeout(() => triggerAnim(setEnemyAnims, index, "shake", 300), 150 * animMultiplier);
+      safeTimeout(() => triggerImpact(index), 150 * animMultiplier);
 
       if (attackerAtk > 0) {
-        safeTimeout(() => triggerDmg(setEnemyDmg, index, attackerAtk), 150);
+        safeTimeout(() => {
+          audioRef.current.playDamage();
+          triggerDmg(setEnemyDmg, index, attackerAtk);
+        }, 150 * animMultiplier);
       }
       if (defenderAtk > 0) {
         triggerDmg(setPlayerDmg, attackerIdx, defenderAtk);
       }
 
       if (defenderMinion && defenderHealth - attackerAtk <= 0) {
-        safeTimeout(() => addDyingMinion(defenderMinion, index, "enemy"), 350);
+        safeTimeout(() => addDyingMinion(defenderMinion, index, "enemy"), 350 * animMultiplier);
       }
       if (attackerMinion && attackerHealth - defenderAtk <= 0) {
-        safeTimeout(() => addDyingMinion(attackerMinion, attackerIdx, "player"), 350);
+        safeTimeout(() => addDyingMinion(attackerMinion, attackerIdx, "player"), 350 * animMultiplier);
       }
     }
   };
@@ -833,14 +881,16 @@ function GameInner({ playerDeck }: { playerDeck: Deck }) {
     setSelectedAttacker(null);
 
     if (result.success) {
+      audioRef.current.playAttack();
       triggerAnim(setPlayerAnims, attackerIdx, "lunge", 300);
-      safeTimeout(() => triggerHeroImpact(), 150);
+      safeTimeout(() => triggerHeroImpact(), 150 * animMultiplier);
 
       if (attackerAtk > 0) {
         safeTimeout(() => {
+          audioRef.current.playDamage();
           setHeroDmg(attackerAtk);
-          safeTimeout(() => setHeroDmg(null), 800);
-        }, 150);
+          safeTimeout(() => setHeroDmg(null), 800 * animMultiplier);
+        }, 150 * animMultiplier);
       }
     }
   };
@@ -849,8 +899,51 @@ function GameInner({ playerDeck }: { playerDeck: Deck }) {
     if (e.target === e.currentTarget) setSelectedAttacker(null);
   };
 
+  const autoEndTurnTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    return () => { if (autoEndTurnTimerRef.current) clearTimeout(autoEndTurnTimerRef.current); };
+  }, []);
+
+  useEffect(() => {
+    if (!autoEndTurn || isOpponentTurn || winner !== null) return;
+    const p = gameState.players[0];
+    const hasPlayableCard = p.hand.some(c =>
+      c.cost <= p.hero.mana && (c.type === 'spell' || p.board.length < MAX_BOARD_SIZE)
+    );
+    const hasAvailableAttack = p.board.some(m => !m.hasAttacked && !m.summoningSickness && m.currentAttack > 0);
+    const canUseHeroPower = !p.heroPowerUsed && p.hero.mana >= p.hero.heroPower.cost;
+    if (!hasPlayableCard && !hasAvailableAttack && !canUseHeroPower) {
+      autoEndTurnTimerRef.current = setTimeout(() => {
+        endTurn();
+        setSelectedAttacker(null);
+        autoEndTurnTimerRef.current = null;
+      }, 500 * animMultiplier);
+    }
+    return () => {
+      if (autoEndTurnTimerRef.current) {
+        clearTimeout(autoEndTurnTimerRef.current);
+        autoEndTurnTimerRef.current = null;
+      }
+    };
+  }, [gameState, autoEndTurn, isOpponentTurn, winner, endTurn, animMultiplier]);
+
   const playerDying = dyingMinions.filter(d => d.side === "player");
   const enemyDying = dyingMinions.filter(d => d.side === "enemy");
+
+  useEffect(() => {
+    if (winner === null) return;
+    audioRef.current.stopBGM();
+    if (winner === 0) audioRef.current.playVictory();
+    else audioRef.current.playDefeat();
+  }, [winner]);
+
+  const prevHandLen = useRef(player.hand.length);
+  useEffect(() => {
+    if (player.hand.length > prevHandLen.current) {
+      audioRef.current.playCardDraw();
+    }
+    prevHandLen.current = player.hand.length;
+  }, [player.hand.length]);
 
   return (
     <div className="flex flex-col h-screen w-full bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 select-none overflow-hidden" onClick={handleBoardClick}>
@@ -866,9 +959,9 @@ function GameInner({ playerDeck }: { playerDeck: Deck }) {
       {/* Opponent hero */}
       <div className="relative px-2 sm:px-3 md:px-4 shrink-0">
         <HeroPortrait player={opponent} onClick={handleEnemyHeroClick} targetable={selectedAttacker !== null} />
-        {heroDmg != null && (
+        {showDamageNumbers && heroDmg != null && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <span className="text-3xl font-black text-red-400 drop-shadow-lg" style={{ animation: "floatDamage 0.8s ease-out forwards" }}>
+            <span className="text-3xl font-black text-red-400 drop-shadow-lg" style={{ animation: `floatDamage ${0.8 * animMultiplier}s ease-out forwards` }}>
               -{heroDmg}
             </span>
           </div>
@@ -887,7 +980,7 @@ function GameInner({ playerDeck }: { playerDeck: Deck }) {
       </div>
 
       {/* Opponent board */}
-      <BoardZone minions={opponent.board} label="对方战场" isEnemy hasAttackerSelected={selectedAttacker !== null} onMinionClick={handleEnemyMinionClick} animations={enemyAnims} damageNumbers={enemyDmg} dyingMinions={enemyDying} impactParticles={enemyImpacts} legendaryParticles={enemyLegendaryParticles} legendaryShimmer={enemyLegendaryShimmer} />
+      <BoardZone minions={opponent.board} label="对方战场" isEnemy hasAttackerSelected={selectedAttacker !== null} onMinionClick={handleEnemyMinionClick} animations={enemyAnims} damageNumbers={enemyDmg} dyingMinions={enemyDying} impactParticles={enemyImpacts} legendaryParticles={enemyLegendaryParticles} legendaryShimmer={enemyLegendaryShimmer} animMultiplier={animMultiplier} showDamageNumbers={showDamageNumbers} />
 
       {/* Turn banner overlay */}
       {turnBanner && (
@@ -898,7 +991,7 @@ function GameInner({ playerDeck }: { playerDeck: Deck }) {
                 ? "bg-green-800/90 text-green-100 border-2 border-green-400"
                 : "bg-red-800/90 text-red-100 border-2 border-red-400"
             }`}
-            style={{ animation: "turnBannerIn 1.5s ease-out forwards" }}
+            style={{ animation: `turnBannerIn ${1.5 * animMultiplier}s ease-out forwards` }}
           >
             {turnBanner === "your" ? "你的回合" : "对手回合"}
           </div>
@@ -933,12 +1026,12 @@ function GameInner({ playerDeck }: { playerDeck: Deck }) {
       )}
 
       {/* Player board */}
-      <BoardZone ref={boardZoneRef} minions={player.board} label="我方战场" onDrop={(i) => handlePlayCard(i)} onMinionClick={handleFriendlyMinionClick} selectedIndex={selectedAttacker} animations={playerAnims} damageNumbers={playerDmg} dyingMinions={playerDying} legendaryParticles={playerLegendaryParticles} legendaryShimmer={playerLegendaryShimmer} />
+      <BoardZone ref={boardZoneRef} minions={player.board} label="我方战场" onDrop={(i) => handlePlayCard(i)} onMinionClick={handleFriendlyMinionClick} selectedIndex={selectedAttacker} animations={playerAnims} damageNumbers={playerDmg} dyingMinions={playerDying} legendaryParticles={playerLegendaryParticles} legendaryShimmer={playerLegendaryShimmer} animMultiplier={animMultiplier} showDamageNumbers={showDamageNumbers} />
 
       {/* Player hand */}
       <div className="flex items-center justify-center gap-0.5 sm:gap-1 md:gap-2 py-0.5 sm:py-1.5 md:py-2 min-h-[4rem] sm:min-h-[5.5rem] md:min-h-[8rem] px-2 sm:px-3 shrink-0 flex-wrap">
         {player.hand.map((card, i) => (
-          <div key={i} className="shrink-0 scale-[0.28] sm:scale-[0.4] md:scale-[0.5] origin-bottom -mx-8 sm:-mx-6 md:-mx-5" ref={el => { if (el) handCardRefs.current.set(i, el); else handCardRefs.current.delete(i); }}>
+          <div key={i} className="shrink-0 scale-[0.28] sm:scale-[0.4] md:scale-50 origin-bottom -mx-8 sm:-mx-6 md:-mx-5" ref={el => { if (el) handCardRefs.current.set(i, el); else handCardRefs.current.delete(i); }}>
             <Card
               card={card}
               onClick={(e) => handlePlayCard(i, (e.currentTarget as HTMLElement))}
@@ -954,7 +1047,7 @@ function GameInner({ playerDeck }: { playerDeck: Deck }) {
       <div className="flex items-center justify-center gap-1.5 sm:gap-2 px-2 sm:px-3 md:px-4 shrink-0 pb-1">
         <HeroPortrait player={player} />
         <button
-          onClick={() => useHeroPower()}
+          onClick={() => { audioRef.current.playHeroPower(); useHeroPower(); }}
           disabled={isOpponentTurn || winner !== null || player.heroPowerUsed || player.hero.mana < player.hero.heroPower.cost}
           className={`w-8 h-8 sm:w-10 sm:h-10 md:w-14 md:h-14 rounded-full border-2 font-bold text-[10px] sm:text-xs md:text-sm flex items-center justify-center transition-all duration-200 ${
             isOpponentTurn || winner !== null || player.heroPowerUsed || player.hero.mana < player.hero.heroPower.cost
@@ -981,7 +1074,7 @@ function GameInner({ playerDeck }: { playerDeck: Deck }) {
               width: fc.startRect.width,
               height: fc.startRect.height,
               ["--fly-dy" as string]: `${dy}px`,
-              animation: "cardFly 500ms ease-in-out forwards",
+              animation: `cardFly ${500 * animMultiplier}ms ease-in-out forwards`,
             }}
           >
             <Card card={fc.card} className="!w-full !h-full" />
@@ -1001,7 +1094,7 @@ function GameInner({ playerDeck }: { playerDeck: Deck }) {
           style={{
             zIndex: 60,
             background: "radial-gradient(circle, rgba(123,104,238,0.4) 0%, rgba(75,0,130,0.2) 60%, transparent 100%)",
-            animation: "spellFlash 0.6s ease-out forwards",
+            animation: `spellFlash ${0.6 * animMultiplier}s ease-out forwards`,
           }}
         />
       )}

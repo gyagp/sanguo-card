@@ -43,7 +43,36 @@ vi.mock("../../hooks/useGameState", () => ({
   useGameState: vi.fn(() => mockState),
 }));
 
+const mockGainNode = { connect: vi.fn(), gain: { value: 0, setValueAtTime: vi.fn(), linearRampToValueAtTime: vi.fn() } };
+globalThis.AudioContext = vi.fn().mockImplementation(() => ({
+  createGain: vi.fn(() => mockGainNode),
+  createOscillator: vi.fn(() => ({ connect: vi.fn(), start: vi.fn(), stop: vi.fn(), frequency: { value: 0, setValueAtTime: vi.fn(), linearRampToValueAtTime: vi.fn() }, type: 'sine' })),
+  createBufferSource: vi.fn(() => ({ connect: vi.fn(), start: vi.fn(), stop: vi.fn(), buffer: null })),
+  destination: {},
+  currentTime: 0,
+  close: vi.fn(),
+  resume: vi.fn(),
+  suspend: vi.fn(),
+  state: 'running',
+})) as unknown as typeof AudioContext;
+
+vi.mock("./audio-manager", () => {
+  const noop = vi.fn();
+  const instance = {
+    startBGM: noop, stopBGM: noop, setMuted: noop, setVolume: noop,
+    playCardPlay: noop, playAttack: noop, playDamage: noop, playHeroPower: noop,
+    playTurnStart: noop, playVictory: noop, playDefeat: noop, playCardDraw: noop,
+    muted: false, volume: 1,
+  };
+  return { AudioManager: { getInstance: vi.fn(() => instance) } };
+});
+
 import GamePage from "./page";
+
+function renderGamePage() {
+  render(<GamePage />);
+  fireEvent.click(screen.getByText("随机卡组"));
+}
 
 describe("Hero power button acceptance criteria", () => {
   afterEach(() => {
@@ -60,7 +89,7 @@ describe("Hero power button acceptance criteria", () => {
 
   describe("AC1: Hero power button is displayed near the hero portrait", () => {
     it("renders a hero power button showing the cost", () => {
-      render(<GamePage />);
+      renderGamePage();
       const buttons = screen.getAllByRole("button");
       const heroPowerBtn = buttons.find((b) => b.textContent === "2" && b.classList.contains("rounded-full"));
       expect(heroPowerBtn).toBeDefined();
@@ -69,7 +98,7 @@ describe("Hero power button acceptance criteria", () => {
 
   describe("AC2: Clicking hero power calls useHeroPower and deducts mana", () => {
     it("calls useHeroPower when clicked", () => {
-      render(<GamePage />);
+      renderGamePage();
       const buttons = screen.getAllByRole("button");
       const heroPowerBtn = buttons.find((b) => b.textContent === "2" && b.classList.contains("rounded-full"))!;
       fireEvent.click(heroPowerBtn);
@@ -80,7 +109,7 @@ describe("Hero power button acceptance criteria", () => {
   describe("AC3: Hero power button is grayed out when already used or insufficient mana", () => {
     it("is disabled when hero power already used this turn", () => {
       mockState.gameState.players[0].heroPowerUsed = true;
-      render(<GamePage />);
+      renderGamePage();
       const buttons = screen.getAllByRole("button");
       const heroPowerBtn = buttons.find((b) => b.textContent === "2" && b.classList.contains("rounded-full"))!;
       expect(heroPowerBtn).toBeDisabled();
@@ -89,7 +118,7 @@ describe("Hero power button acceptance criteria", () => {
 
     it("is disabled when insufficient mana", () => {
       mockState.gameState.players[0].hero.mana = 1;
-      render(<GamePage />);
+      renderGamePage();
       const buttons = screen.getAllByRole("button");
       const heroPowerBtn = buttons.find((b) => b.textContent === "2" && b.classList.contains("rounded-full"))!;
       expect(heroPowerBtn).toBeDisabled();
@@ -97,7 +126,7 @@ describe("Hero power button acceptance criteria", () => {
     });
 
     it("is enabled when not used and has enough mana", () => {
-      render(<GamePage />);
+      renderGamePage();
       const buttons = screen.getAllByRole("button");
       const heroPowerBtn = buttons.find((b) => b.textContent === "2" && b.classList.contains("rounded-full"))!;
       expect(heroPowerBtn).not.toBeDisabled();
@@ -106,7 +135,7 @@ describe("Hero power button acceptance criteria", () => {
 
     it("is disabled during opponent turn", () => {
       mockState.isOpponentTurn = true;
-      render(<GamePage />);
+      renderGamePage();
       const buttons = screen.getAllByRole("button");
       const heroPowerBtn = buttons.find((b) => b.textContent === "2" && b.classList.contains("rounded-full"))!;
       expect(heroPowerBtn).toBeDisabled();
@@ -126,13 +155,13 @@ describe("Opponent hand face-down display", () => {
 
   describe("AC4: Opponent hand shows correct number of face-down cards", () => {
     it("renders face-down cards matching opponent hand size", () => {
-      render(<GamePage />);
+      renderGamePage();
       const faceDownCards = document.querySelectorAll(".bg-red-900.border-red-700");
       expect(faceDownCards.length).toBe(mockState.gameState.players[1].hand.length);
     });
 
     it("face-down cards do not show card names or stats", () => {
-      render(<GamePage />);
+      renderGamePage();
       const faceDownCards = document.querySelectorAll(".bg-red-900.border-red-700");
       faceDownCards.forEach((card) => {
         expect(card.textContent).toBe("");
@@ -144,7 +173,7 @@ describe("Opponent hand face-down display", () => {
         { name: "C1", cost: 1, attack: 1, health: 1, description: "", rarity: "common", type: "minion", faction: "neutral" },
         { name: "C2", cost: 2, attack: 2, health: 2, description: "", rarity: "common", type: "minion", faction: "neutral" },
       ];
-      render(<GamePage />);
+      renderGamePage();
       const faceDownCards = document.querySelectorAll(".bg-red-900.border-red-700");
       expect(faceDownCards.length).toBe(2);
     });

@@ -40,8 +40,8 @@ describe("Turn banner acceptance criteria", () => {
       expect(pageSrc).toMatch(/setTimeout\(.*1500/s);
     });
 
-    it("uses turnBannerIn animation with 1.5s duration", () => {
-      expect(pageSrc).toContain('animation: "turnBannerIn 1.5s ease-out forwards"');
+    it("uses turnBannerIn animation with duration based on animMultiplier", () => {
+      expect(pageSrc).toMatch(/turnBannerIn \$\{1\.5 \* animMultiplier\}s ease-out forwards/);
     });
 
     it("CSS keyframe fades out at 100%", () => {

@@ -107,21 +107,21 @@ describe("Card component", () => {
   });
 
   describe("card type visual treatment", () => {
-    it("shows minion art area with emerald background", () => {
-      const { container } = render(<Card card={makeCard({ type: "minion" })} />);
-      const artArea = container.querySelector("[class*='bg-emerald']");
+    it("shows minion art area with faction-specific background", () => {
+      const { container } = render(<Card card={makeCard({ type: "minion", faction: "shu" })} />);
+      const artArea = container.querySelector("[class*='bg-green-800']");
       expect(artArea).not.toBeNull();
     });
 
-    it("shows spell art area with indigo background", () => {
-      const { container } = render(<Card card={makeCard({ type: "spell" })} />);
-      const artArea = container.querySelector("[class*='bg-indigo']");
+    it("shows spell art area with faction-specific background", () => {
+      const { container } = render(<Card card={makeCard({ type: "spell", faction: "wei" })} />);
+      const artArea = container.querySelector("[class*='bg-blue-800']");
       expect(artArea).not.toBeNull();
     });
 
-    it("shows weapon art area with amber background", () => {
-      const { container } = render(<Card card={makeCard({ type: "weapon" })} />);
-      const artArea = container.querySelector("[class*='bg-amber']");
+    it("shows weapon art area with faction-specific background", () => {
+      const { container } = render(<Card card={makeCard({ type: "weapon", faction: "qun" })} />);
+      const artArea = container.querySelector("[class*='bg-amber-800']");
       expect(artArea).not.toBeNull();
     });
 

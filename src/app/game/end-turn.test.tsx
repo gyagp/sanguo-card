@@ -42,7 +42,36 @@ vi.mock("../../hooks/useGameState", () => ({
   useGameState: vi.fn(() => mockState),
 }));
 
+const mockGainNode = { connect: vi.fn(), gain: { value: 0, setValueAtTime: vi.fn(), linearRampToValueAtTime: vi.fn() } };
+globalThis.AudioContext = vi.fn().mockImplementation(() => ({
+  createGain: vi.fn(() => mockGainNode),
+  createOscillator: vi.fn(() => ({ connect: vi.fn(), start: vi.fn(), stop: vi.fn(), frequency: { value: 0, setValueAtTime: vi.fn(), linearRampToValueAtTime: vi.fn() }, type: 'sine' })),
+  createBufferSource: vi.fn(() => ({ connect: vi.fn(), start: vi.fn(), stop: vi.fn(), buffer: null })),
+  destination: {},
+  currentTime: 0,
+  close: vi.fn(),
+  resume: vi.fn(),
+  suspend: vi.fn(),
+  state: 'running',
+})) as unknown as typeof AudioContext;
+
+vi.mock("./audio-manager", () => {
+  const noop = vi.fn();
+  const instance = {
+    startBGM: noop, stopBGM: noop, setMuted: noop, setVolume: noop,
+    playCardPlay: noop, playAttack: noop, playDamage: noop, playHeroPower: noop,
+    playTurnStart: noop, playVictory: noop, playDefeat: noop, playCardDraw: noop,
+    muted: false, volume: 1,
+  };
+  return { AudioManager: { getInstance: vi.fn(() => instance) } };
+});
+
 import GamePage from "./page";
+
+function renderGamePage() {
+  render(<GamePage />);
+  fireEvent.click(screen.getByText("随机卡组"));
+}
 
 describe("End Turn button acceptance criteria", () => {
   afterEach(() => {
@@ -57,13 +86,13 @@ describe("End Turn button acceptance criteria", () => {
 
   describe("AC1: End Turn button calls endTurn and starts opponent simulated turn", () => {
     it("renders an End Turn button", () => {
-      render(<GamePage />);
+      renderGamePage();
       const btn = screen.getByRole("button", { name: /结束回合/ });
       expect(btn).toBeDefined();
     });
 
     it("calls endTurn when clicked", () => {
-      render(<GamePage />);
+      renderGamePage();
       const btn = screen.getByRole("button", { name: /结束回合/ });
       fireEvent.click(btn);
       expect(mockState.endTurn).toHaveBeenCalledTimes(1);
@@ -72,34 +101,34 @@ describe("End Turn button acceptance criteria", () => {
 
   describe("AC2: Button shows active/disabled state based on whose turn", () => {
     it("button is enabled during player turn", () => {
-      render(<GamePage />);
+      renderGamePage();
       const btn = screen.getByRole("button", { name: /结束回合/ });
       expect(btn).not.toBeDisabled();
     });
 
     it("button is disabled during opponent turn", () => {
       mockState.isOpponentTurn = true;
-      render(<GamePage />);
+      renderGamePage();
       const btn = screen.getByRole("button", { name: /结束回合/ });
       expect(btn).toBeDisabled();
     });
 
     it("button is disabled when there is a winner", () => {
       mockState.winner = 0;
-      render(<GamePage />);
+      renderGamePage();
       const btn = screen.getByRole("button", { name: /结束回合/ });
       expect(btn).toBeDisabled();
     });
 
     it("button has active styling during player turn", () => {
-      render(<GamePage />);
+      renderGamePage();
       const btn = screen.getByRole("button", { name: /结束回合/ });
       expect(btn.className).toContain("bg-amber-700");
     });
 
     it("button has disabled styling during opponent turn", () => {
       mockState.isOpponentTurn = true;
-      render(<GamePage />);
+      renderGamePage();
       const btn = screen.getByRole("button", { name: /结束回合/ });
       expect(btn.className).toContain("bg-gray-600");
       expect(btn.className).toContain("cursor-not-allowed");
@@ -108,25 +137,25 @@ describe("End Turn button acceptance criteria", () => {
 
   describe("AC3: Turn indicator displays whose turn it is", () => {
     it("shows player turn indicator during player turn", () => {
-      render(<GamePage />);
+      renderGamePage();
       expect(screen.getByText("你的回合")).toBeDefined();
     });
 
     it("shows opponent turn indicator during opponent turn", () => {
       mockState.isOpponentTurn = true;
-      render(<GamePage />);
+      renderGamePage();
       expect(screen.getByText("对手回合")).toBeDefined();
     });
 
     it("turn indicator has green styling during player turn", () => {
-      render(<GamePage />);
+      renderGamePage();
       const indicator = screen.getByText("你的回合");
       expect(indicator.className).toContain("bg-green-700");
     });
 
     it("turn indicator has red styling during opponent turn", () => {
       mockState.isOpponentTurn = true;
-      render(<GamePage />);
+      renderGamePage();
       const indicator = screen.getByText("对手回合");
       expect(indicator.className).toContain("bg-red-700");
     });
@@ -135,14 +164,14 @@ describe("End Turn button acceptance criteria", () => {
   describe("AC4: Visual turn timer bar animates during the turn", () => {
     it("shows timer bar during opponent turn", () => {
       mockState.isOpponentTurn = true;
-      const { container } = render(<GamePage />);
-      const timerBar = container.querySelector("[class*='animate-']");
+      renderGamePage();
+      const timerBar = document.querySelector("[class*='animate-']");
       expect(timerBar).not.toBeNull();
     });
 
     it("does not show timer bar during player turn", () => {
-      const { container } = render(<GamePage />);
-      const animatedElements = container.querySelectorAll("[class*='animate-']");
+      renderGamePage();
+      const animatedElements = document.querySelectorAll("[class*='animate-']");
       const shrinkBars = Array.from(animatedElements).filter(el =>
         el.className.includes("shrink")
       );

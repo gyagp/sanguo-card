@@ -33,12 +33,12 @@ describe("Animation acceptance criteria", () => {
 
     it("BoardMinionCard applies popIn animation style", () => {
       expect(pageContent).toMatch(/animation === "popIn"/);
-      expect(pageContent).toMatch(/popIn 0\.4s/);
+      expect(pageContent).toMatch(/popIn \$\{0\.4 \* animMultiplier\}s/);
     });
 
     it("BoardMinionCard applies legendaryEntrance animation style", () => {
       expect(pageContent).toMatch(/animation === "legendaryEntrance"/);
-      expect(pageContent).toMatch(/legendaryEntrance 0\.7s/);
+      expect(pageContent).toMatch(/legendaryEntrance \$\{0\.7 \* animMultiplier\}s/);
     });
 
     it("CSS defines legendaryEntrance keyframe", () => {
@@ -95,12 +95,12 @@ describe("Animation acceptance criteria", () => {
 
     it("BoardMinionCard applies lunge animation style", () => {
       expect(pageContent).toMatch(/animation === "lunge"/);
-      expect(pageContent).toMatch(/lunge 0\.3s/);
+      expect(pageContent).toMatch(/lunge \$\{0\.3 \* animMultiplier\}s/);
     });
 
     it("BoardMinionCard applies shake animation style", () => {
       expect(pageContent).toMatch(/animation === "shake"/);
-      expect(pageContent).toMatch(/shake 0\.3s/);
+      expect(pageContent).toMatch(/shake \$\{0\.3 \* animMultiplier\}s/);
     });
   });
 
@@ -132,7 +132,7 @@ describe("Animation acceptance criteria", () => {
     it("BoardMinionCard renders 5 shatter fragments when dying", () => {
       expect(pageContent).toMatch(/SHARD_CLIPS/);
       expect(pageContent).toMatch(/clipPath:\s*clip/);
-      expect(pageContent).toMatch(/shatterFragment 0\.6s/);
+      expect(pageContent).toMatch(/shatterFragment \$\{0\.6 \* animMultiplier\}s/);
     });
 
     it("dying minions are interleaved at their original board position", () => {
@@ -178,7 +178,7 @@ describe("Animation acceptance criteria", () => {
     });
 
     it("hero damage auto-clears after 800ms via safeTimeout", () => {
-      expect(pageContent).toMatch(/safeTimeout\(\(\)\s*=>\s*setHeroDmg\(null\),\s*800\)/);
+      expect(pageContent).toMatch(/safeTimeout\(\(\)\s*=>\s*setHeroDmg\(null\),\s*800 \* animMultiplier\)/);
     });
   });
 

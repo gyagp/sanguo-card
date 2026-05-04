@@ -21,9 +21,9 @@ vi.mock("next/link", () => ({
 describe("Main Menu (page.tsx)", () => {
   it("renders Play, Deck Builder, and Settings buttons", () => {
     const { container } = render(<Home />);
-    expect(container.textContent).toContain("Play");
-    expect(container.textContent).toContain("Deck Builder");
-    expect(container.textContent).toContain("Settings");
+    expect(container.textContent).toContain("开始对战");
+    expect(container.textContent).toContain("组建卡组");
+    expect(container.textContent).toContain("设置");
   });
 
   it("links to /game, /deck-builder, /settings", () => {
@@ -38,7 +38,7 @@ describe("Main Menu (page.tsx)", () => {
   it("Play links to /game", () => {
     const { container } = render(<Home />);
     const playLink = Array.from(container.querySelectorAll("a")).find((a) =>
-      a.textContent?.includes("Play"),
+      a.textContent?.includes("开始对战"),
     );
     expect(playLink).toBeTruthy();
     expect(playLink!.getAttribute("href")).toBe("/game");
@@ -47,7 +47,7 @@ describe("Main Menu (page.tsx)", () => {
   it("Deck Builder links to /deck-builder", () => {
     const { container } = render(<Home />);
     const link = Array.from(container.querySelectorAll("a")).find((a) =>
-      a.textContent?.includes("Deck Builder"),
+      a.textContent?.includes("组建卡组"),
     );
     expect(link).toBeTruthy();
     expect(link!.getAttribute("href")).toBe("/deck-builder");
@@ -56,7 +56,7 @@ describe("Main Menu (page.tsx)", () => {
   it("Settings links to /settings", () => {
     const { container } = render(<Home />);
     const link = Array.from(container.querySelectorAll("a")).find((a) =>
-      a.textContent?.includes("Settings"),
+      a.textContent?.includes("设置"),
     );
     expect(link).toBeTruthy();
     expect(link!.getAttribute("href")).toBe("/settings");

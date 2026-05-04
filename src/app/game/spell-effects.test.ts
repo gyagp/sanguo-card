@@ -108,7 +108,7 @@ describe("Spell casting visual effects", () => {
     });
 
     it("flash overlay uses spellFlash animation", () => {
-      expect(pageContent).toMatch(/animation:\s*["']?spellFlash\s+0\.6s/);
+      expect(pageContent).toMatch(/spellFlash \$\{0\.6 \* animMultiplier\}s/);
     });
 
     it("flash duration is approximately 600ms", () => {
