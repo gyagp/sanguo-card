@@ -1,15 +1,18 @@
 # Autopo test Session
 
 ## Work Unit
-Apply faction-specific color palettes to SVG art — recolor each card's SVG clothing/armor to match faction theme (魏=blue, 蜀=green, 吴=red, 群=amber, neutral=gray)
+Create Gemini API image generation script — build a Node.js script that calls the Gemini 2.0 flash preview image generation API to generate cartoon-style card art PNGs for all 34 cards, saving them to public/card-art/[cardName].png
 
 ## Acceptance Criteria
-- Wei faction card SVGs use blue-dominant color scheme for clothing/armor
-- Shu faction card SVGs use green-dominant color scheme
-- Wu faction card SVGs use red-dominant color scheme
-- Qun faction card SVGs use amber/yellow-dominant color scheme
-- Neutral card SVGs use gray color scheme
-- Each card still has a unique, distinguishable illustration
+- scripts/generate-card-art.ts exists
+- Script reads card definitions from src/game/cards.ts
+- Script calls POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-preview-image-generation:generateContent with responseModalities: ['TEXT', 'IMAGE']
+- Generates faction-appropriate prompts: 三国武将卡通风格 for minions, 法术效果场景 for spells, 武器造型 for weapons
+- Prompts include faction color direction (魏=blue, 蜀=green, 吴=red, 群=amber)
+- Saves base64-decoded PNG to public/card-art/[cardName].png
+- Script handles rate limiting with delays between requests
+- Script skips cards that already have generated PNGs (idempotent)
+- GEMINI_API_KEY read from environment variable
 
 ## Rules
 # Rules

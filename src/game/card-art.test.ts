@@ -24,6 +24,13 @@ const FACTION_COLORS: Record<string, { dominant: RegExp[]; label: string }> = {
   },
 };
 
+const commonMinions = allCards.filter(
+  (c) => c.type === "minion" && c.rarity === "common" && getCardArt(c.name)
+);
+const rareMinions = allCards.filter(
+  (c) => c.type === "minion" && c.rarity === "rare" && getCardArt(c.name)
+);
+
 function countColorMatches(svg: string, patterns: RegExp[]): number {
   let count = 0;
   for (const p of patterns) {
