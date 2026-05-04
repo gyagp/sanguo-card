@@ -17,7 +17,7 @@ export default function Home() {
             三国卡牌
           </h1>
           <p className="text-lg tracking-widest text-yellow-200/60">
-            Sanguo Card
+            三国卡牌对战
           </p>
         </div>
 

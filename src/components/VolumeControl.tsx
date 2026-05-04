@@ -55,7 +55,7 @@ export default function VolumeControl() {
       <button
         onClick={handleToggleMute}
         className="text-white hover:text-yellow-300 transition-colors w-6 text-center"
-        aria-label={muted ? 'Unmute' : 'Mute'}
+        aria-label={muted ? '取消静音' : '静音'}
       >
         {muted || volume === 0 ? '🔇' : volume < 50 ? '🔉' : '🔊'}
       </button>
@@ -66,7 +66,7 @@ export default function VolumeControl() {
         value={volume}
         onChange={handleVolumeChange}
         className="w-20 h-1.5 accent-yellow-400 cursor-pointer"
-        aria-label="Volume"
+        aria-label="音量"
       />
       <span className="text-white text-xs w-8 text-right">{muted ? 0 : volume}%</span>
     </div>

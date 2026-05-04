@@ -42,8 +42,8 @@ describe('SettingsPage', () => {
 
   it('integrates VolumeControl component', () => {
     render(<SettingsPage />);
-    expect(screen.getAllByLabelText('Volume').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByLabelText(/mute/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByLabelText('音量').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByLabelText(/静音/).length).toBeGreaterThanOrEqual(1);
   });
 
   it('renders animation speed dropdown with default normal', () => {

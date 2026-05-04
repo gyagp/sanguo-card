@@ -41,8 +41,8 @@ describe('VolumeControl', () => {
   describe('AC: VolumeControl React component exists', () => {
     it('renders without crashing', () => {
       render(<VolumeControl />);
-      expect(screen.getByLabelText('Volume')).toBeDefined();
-      expect(screen.getByLabelText(/mute/i)).toBeDefined();
+      expect(screen.getByLabelText('音量')).toBeDefined();
+      expect(screen.getByLabelText(/静音/)).toBeDefined();
     });
 
     it('is exported as default from VolumeControl.tsx', () => {
@@ -54,7 +54,7 @@ describe('VolumeControl', () => {
   describe('AC: Slider adjusts master volume 0-100%', () => {
     it('renders a range input with min=0 and max=100', () => {
       render(<VolumeControl />);
-      const slider = screen.getByLabelText('Volume') as HTMLInputElement;
+      const slider = screen.getByLabelText('音量') as HTMLInputElement;
       expect(slider.type).toBe('range');
       expect(slider.min).toBe('0');
       expect(slider.max).toBe('100');
@@ -62,68 +62,68 @@ describe('VolumeControl', () => {
 
     it('defaults to 100', () => {
       render(<VolumeControl />);
-      const slider = screen.getByLabelText('Volume') as HTMLInputElement;
+      const slider = screen.getByLabelText('音量') as HTMLInputElement;
       expect(slider.value).toBe('100');
     });
 
     it('calls AudioManager.setVolume with normalized value on change', () => {
       render(<VolumeControl />);
-      const slider = screen.getByLabelText('Volume');
+      const slider = screen.getByLabelText('音量');
       fireEvent.change(slider, { target: { value: '50' } });
       expect(mockAudioManager.setVolume).toHaveBeenCalledWith(0.5);
     });
 
     it('setting volume to 0 shows muted icon', () => {
       render(<VolumeControl />);
-      fireEvent.change(screen.getByLabelText('Volume'), { target: { value: '0' } });
-      expect(screen.getByLabelText(/mute/i).textContent).toBe('🔇');
+      fireEvent.change(screen.getByLabelText('音量'), { target: { value: '0' } });
+      expect(screen.getByLabelText(/静音/).textContent).toBe('🔇');
     });
 
     it('shows low volume icon when < 50', () => {
       render(<VolumeControl />);
-      fireEvent.change(screen.getByLabelText('Volume'), { target: { value: '30' } });
-      expect(screen.getByLabelText(/mute/i).textContent).toBe('🔉');
+      fireEvent.change(screen.getByLabelText('音量'), { target: { value: '30' } });
+      expect(screen.getByLabelText(/静音/).textContent).toBe('🔉');
     });
 
     it('shows high volume icon when >= 50', () => {
       render(<VolumeControl />);
-      const slider = screen.getByLabelText('Volume');
+      const slider = screen.getByLabelText('音量');
       expect(slider).toBeDefined();
-      expect(screen.getByLabelText(/mute/i).textContent).toBe('🔊');
+      expect(screen.getByLabelText(/静音/).textContent).toBe('🔊');
     });
   });
 
   describe('AC: Mute button toggles all audio', () => {
     it('renders a mute button with aria-label', () => {
       render(<VolumeControl />);
-      expect(screen.getByLabelText(/mute/i).tagName).toBe('BUTTON');
+      expect(screen.getByLabelText(/静音/).tagName).toBe('BUTTON');
     });
 
     it('calls AudioManager.toggleMute on click', () => {
       render(<VolumeControl />);
-      fireEvent.click(screen.getByLabelText(/mute/i));
+      fireEvent.click(screen.getByLabelText(/静音/));
       expect(mockAudioManager.toggleMute).toHaveBeenCalled();
     });
 
     it('shows muted icon after muting', () => {
       mockAudioManager.toggleMute.mockReturnValue(true);
       render(<VolumeControl />);
-      fireEvent.click(screen.getByLabelText(/mute/i));
-      expect(screen.getByLabelText('Unmute').textContent).toBe('🔇');
+      fireEvent.click(screen.getByLabelText(/静音/));
+      expect(screen.getByLabelText('取消静音').textContent).toBe('🔇');
     });
 
     it('displays 0% when muted', () => {
       mockAudioManager.toggleMute.mockReturnValue(true);
       render(<VolumeControl />);
-      fireEvent.click(screen.getByLabelText(/mute/i));
+      fireEvent.click(screen.getByLabelText(/静音/));
       expect(screen.getByText('0%')).toBeDefined();
     });
 
     it('unmutes when slider is moved while muted', () => {
       mockAudioManager.toggleMute.mockReturnValueOnce(true).mockReturnValueOnce(false);
       render(<VolumeControl />);
-      fireEvent.click(screen.getByLabelText(/mute/i));
-      fireEvent.change(screen.getByLabelText('Volume'), { target: { value: '60' } });
+      fireEvent.click(screen.getByLabelText(/静音/));
+      fireEvent.change(screen.getByLabelText('音量'), { target: { value: '60' } });
       expect(mockAudioManager.toggleMute).toHaveBeenCalledTimes(2);
     });
   });
@@ -131,21 +131,21 @@ describe('VolumeControl', () => {
   describe('AC: Volume preference persists in localStorage', () => {
     it('saves volume to localStorage on slider change', () => {
       render(<VolumeControl />);
-      fireEvent.change(screen.getByLabelText('Volume'), { target: { value: '42' } });
+      fireEvent.change(screen.getByLabelText('音量'), { target: { value: '42' } });
       expect(storage['sanguo-card-volume']).toBe('42');
     });
 
     it('saves muted state to localStorage on toggle', () => {
       mockAudioManager.toggleMute.mockReturnValue(true);
       render(<VolumeControl />);
-      fireEvent.click(screen.getByLabelText(/mute/i));
+      fireEvent.click(screen.getByLabelText(/静音/));
       expect(storage['sanguo-card-muted']).toBe('true');
     });
 
     it('restores volume from localStorage on mount', () => {
       storage['sanguo-card-volume'] = '37';
       render(<VolumeControl />);
-      const slider = screen.getByLabelText('Volume') as HTMLInputElement;
+      const slider = screen.getByLabelText('音量') as HTMLInputElement;
       expect(slider.value).toBe('37');
     });
 

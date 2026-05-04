@@ -1,12 +1,11 @@
 # Autopo test Session
 
 ## Work Unit
-Localize layout metadata and loading screen — change lang to zh, translate title/description/keywords to Chinese, fix traditional chars in loading.tsx to simplified
+Localize VolumeControl aria-labels and home page English subtitle — translate remaining English strings
 
 ## Acceptance Criteria
-- layout.tsx has lang='zh'
-- All metadata (title, description, keywords, OG tags) in Chinese
-- loading.tsx uses simplified 三国卡牌
+- VolumeControl aria-labels in Chinese
+- Home page subtitle in Chinese or removed
 
 ## Rules
 # Rules
