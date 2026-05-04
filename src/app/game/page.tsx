@@ -4,8 +4,16 @@ import { useGameState } from "../../hooks/useGameState";
 import Card from "../../components/Card";
 import VolumeControl from "../../components/VolumeControl";
 import { cards } from "../../game/cards";
-import { createDeck, BoardMinion, PlayerState, Card as CardType, MAX_BOARD_SIZE } from "../../game/types";
+import { createDeck, BoardMinion, PlayerState, Card as CardType, MAX_BOARD_SIZE, MAX_DECK_SIZE, Deck } from "../../game/types";
 import { useMemo, useState, useEffect, useRef, useCallback, forwardRef } from "react";
+
+const STORAGE_KEY = 'sanguo-card-decks';
+
+interface SavedDeck {
+  id: string;
+  name: string;
+  cards: CardType[];
+}
 
 type AnimKind = "popIn" | "legendaryEntrance" | "lunge" | "shake" | "death";
 
@@ -136,13 +144,25 @@ interface DyingMinion {
   expiry: number;
 }
 
-function buildDeck(): CardType[] {
+function buildRandomDeck(): CardType[] {
   const pool = [...cards];
   const deck: CardType[] = [];
-  while (deck.length < 30) {
+  while (deck.length < MAX_DECK_SIZE) {
     deck.push(pool[deck.length % pool.length]);
   }
   return deck;
+}
+
+function loadSavedDecks(): SavedDeck[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((d: SavedDeck) => d && d.id && d.name && Array.isArray(d.cards) && d.cards.length === MAX_DECK_SIZE);
+  } catch {
+    return [];
+  }
 }
 
 function ManaBar({ mana, maxMana }: { mana: number; maxMana: number }) {
@@ -482,8 +502,8 @@ function VictoryDefeatOverlay({ winner, onPlayAgain }: { winner: 0 | 1 | "draw";
   const type = isVictory ? "victory" : isDraw ? "draw" : "defeat";
   const particlesRef = useRef(makeResultParticles(isVictory || isDraw ? "victory" : "defeat"));
 
-  const title = isVictory ? "VICTORY" : isDraw ? "DRAW" : "DEFEAT";
-  const subtitle = isVictory ? "胜利!" : isDraw ? "平局!" : "失败!";
+  const title = isVictory ? "胜利" : isDraw ? "平局" : "失败";
+  const subtitle = isVictory ? "大获全胜！" : isDraw ? "不分胜负！" : "卷土重来！";
 
   const bgClass = isVictory
     ? "from-yellow-900/80 via-black/80 to-yellow-900/80"
@@ -541,10 +561,49 @@ function VictoryDefeatOverlay({ winner, onPlayAgain }: { winner: 0 | 1 | "draw";
   );
 }
 
-export default function GamePage() {
-  const [deck1, deck2] = useMemo(() => {
-    return [createDeck(buildDeck()), createDeck(buildDeck())];
+function DeckSelectScreen({ onStart }: { onStart: (deck: Deck) => void }) {
+  const [savedDecks, setSavedDecks] = useState<SavedDeck[]>([]);
+
+  useEffect(() => {
+    setSavedDecks(loadSavedDecks());
   }, []);
+
+  return (
+    <div className="flex flex-col items-center justify-center h-screen bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 text-white p-4">
+      <h1 className="text-2xl sm:text-3xl font-bold text-amber-400 mb-8">选择卡组</h1>
+
+      <div className="flex flex-col gap-3 w-full max-w-md">
+        <button
+          onClick={() => onStart(createDeck(buildRandomDeck()))}
+          className="px-6 py-4 rounded-lg font-bold text-lg bg-gradient-to-r from-green-700 to-green-900 hover:from-green-600 hover:to-green-800 border border-green-500/50 shadow-lg transition-all hover:scale-105 cursor-pointer"
+        >
+          随机卡组
+        </button>
+
+        {savedDecks.length > 0 && (
+          <div className="mt-4 border-t border-gray-700 pt-4">
+            <p className="text-sm text-gray-400 mb-3">已保存的卡组</p>
+            {savedDecks.map(deck => (
+              <button
+                key={deck.id}
+                onClick={() => onStart(createDeck(deck.cards))}
+                className="w-full px-6 py-3 mb-2 rounded-lg font-bold text-left bg-gradient-to-r from-amber-800 to-amber-950 hover:from-amber-700 hover:to-amber-900 border border-amber-600/50 shadow-lg transition-all hover:scale-[1.02] cursor-pointer"
+              >
+                {deck.name}
+                <span className="text-xs text-amber-400/70 ml-2">({deck.cards.length}张)</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function GameInner({ playerDeck }: { playerDeck: Deck }) {
+  const [deck1, deck2] = useMemo(() => {
+    return [playerDeck, createDeck(buildRandomDeck())];
+  }, [playerDeck]);
 
   const { gameState, winner, playCard, endTurn, attack, attackHero, useHeroPower, isOpponentTurn, resetGame } = useGameState(deck1, deck2);
 
@@ -879,7 +938,7 @@ export default function GamePage() {
       {/* Player hand */}
       <div className="flex items-center justify-center gap-0.5 sm:gap-1 md:gap-2 py-0.5 sm:py-1.5 md:py-2 min-h-[4rem] sm:min-h-[5.5rem] md:min-h-[8rem] px-2 sm:px-3 shrink-0 flex-wrap">
         {player.hand.map((card, i) => (
-          <div key={i} className="shrink-0 scale-[0.28] sm:scale-[0.4] md:scale-50 origin-bottom -mx-8 sm:-mx-6 md:-mx-5" ref={el => { if (el) handCardRefs.current.set(i, el); else handCardRefs.current.delete(i); }}>
+          <div key={i} className="shrink-0 scale-[0.28] sm:scale-[0.4] md:scale-[0.5] origin-bottom -mx-8 sm:-mx-6 md:-mx-5" ref={el => { if (el) handCardRefs.current.set(i, el); else handCardRefs.current.delete(i); }}>
             <Card
               card={card}
               onClick={(e) => handlePlayCard(i, (e.currentTarget as HTMLElement))}
@@ -948,4 +1007,14 @@ export default function GamePage() {
       )}
     </div>
   );
+}
+
+export default function GamePage() {
+  const [playerDeck, setPlayerDeck] = useState<Deck | null>(null);
+
+  if (!playerDeck) {
+    return <DeckSelectScreen onStart={setPlayerDeck} />;
+  }
+
+  return <GameInner playerDeck={playerDeck} />;
 }

@@ -1,4 +1,5 @@
 import { Card as CardData } from "../game/types";
+import { getCardArt } from "../game/card-art";
 
 const rarityStyles: Record<CardData["rarity"], string> = {
   common: "border-gray-400 shadow-gray-400/40",
@@ -22,10 +23,19 @@ const factionBg: Record<CardData["faction"], string> = {
   neutral: "bg-gray-800/80",
 };
 
-const typeIcon: Record<CardData["type"], string> = {
-  minion: "⚔️",
-  spell: "✨",
-  weapon: "🗡️",
+const factionArtBg: Record<CardData["faction"], string> = {
+  wei: "bg-blue-800/50",
+  shu: "bg-green-800/50",
+  wu: "bg-red-800/50",
+  qun: "bg-amber-800/50",
+  neutral: "bg-gray-700/50",
+};
+
+const rarityBanner: Record<CardData["rarity"], string> = {
+  common: "",
+  rare: "ring-1 ring-blue-400/30",
+  epic: "ring-1 ring-purple-400/30",
+  legendary: "ring-2 ring-orange-400/50 shadow-[0_0_12px_rgba(251,191,36,0.3)]",
 };
 
 interface CardProps {
@@ -40,6 +50,7 @@ interface CardProps {
 export default function Card({ card, onClick, className = "", draggable: isDraggable, handIndex, insufficientMana }: CardProps) {
   const isMinion = card.type === "minion";
   const isWeapon = card.type === "weapon";
+  const art = getCardArt(card.name);
 
   const handleDragStart = (e: React.DragEvent) => {
     if (insufficientMana) {
@@ -58,42 +69,52 @@ export default function Card({ card, onClick, className = "", draggable: isDragg
       draggable={isDraggable && !insufficientMana}
       onDragStart={handleDragStart}
       className={`
-        relative w-44 h-64 rounded-xl border-3 select-none
+        relative w-44 h-64 rounded-xl border-3 select-none overflow-hidden
         transition-all duration-200 ease-out
         hover:scale-110 hover:z-10 hover:shadow-lg
         ${insufficientMana ? "opacity-50 cursor-not-allowed grayscale-[40%]" : "cursor-pointer"}
         ${rarityStyles[card.rarity]}
         ${rarityGlow[card.rarity]}
+        ${rarityBanner[card.rarity]}
         ${factionBg[card.faction]}
         ${className}
       `}
     >
+      {/* Legendary shimmer */}
+      {card.rarity === "legendary" && (
+        <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/10 via-transparent to-orange-400/10 pointer-events-none animate-pulse" />
+      )}
+
       {/* Mana crystal */}
       <div className="absolute -top-2 -left-2 w-10 h-10 rounded-full bg-blue-600 border-2 border-blue-300 flex items-center justify-center text-white font-bold text-lg shadow-md z-10">
         {card.cost}
       </div>
 
-      {/* Card type badge */}
-      <div className="absolute top-1 right-2 text-lg" title={card.type}>
-        {typeIcon[card.type]}
-      </div>
-
       {/* Card art area */}
       <div className={`
-        mx-3 mt-8 h-24 rounded-lg flex items-center justify-center text-4xl
-        ${card.type === "spell" ? "bg-indigo-700/60" : card.type === "weapon" ? "bg-amber-800/60" : "bg-emerald-800/60"}
+        mx-2.5 mt-7 h-28 rounded-lg flex items-center justify-center overflow-hidden
+        ${factionArtBg[card.faction]}
       `}>
-        {typeIcon[card.type]}
+        {art ? (
+          <div
+            className="w-full h-full flex items-center justify-center p-1"
+            dangerouslySetInnerHTML={{ __html: art }}
+          />
+        ) : (
+          <div className="text-5xl opacity-60">
+            {card.type === "spell" ? "✨" : card.type === "weapon" ? "🗡️" : "⚔️"}
+          </div>
+        )}
       </div>
 
-      {/* Name */}
-      <div className="mx-2 mt-2 text-center">
-        <p className="text-white font-bold text-sm truncate">{card.name}</p>
+      {/* Name banner */}
+      <div className="mx-1 mt-1.5 text-center bg-black/30 rounded py-0.5 px-1">
+        <p className="text-white font-bold text-sm truncate drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">{card.name}</p>
       </div>
 
       {/* Description */}
-      <div className="mx-3 mt-1 h-14 overflow-hidden">
-        <p className="text-gray-200 text-xs text-center leading-tight">{card.description}</p>
+      <div className="mx-2.5 mt-1 h-12 overflow-hidden">
+        <p className="text-gray-200 text-[11px] text-center leading-tight">{card.description}</p>
       </div>
 
       {/* Attack & Health */}

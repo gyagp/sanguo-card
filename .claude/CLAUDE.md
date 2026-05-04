@@ -1,13 +1,12 @@
-# Autopo review Session
+# Autopo test Session
 
 ## Work Unit
-Write README with game description, features, setup instructions, and screenshots placeholder
+Wire deck builder to game — let player select a saved deck before starting a battle
 
 ## Acceptance Criteria
-- README.md has game description
-- Includes setup/run instructions
-- Lists features and tech stack
-- Replaces boilerplate content
+- Game page reads saved decks from localStorage
+- Player can choose a deck or use random deck
+- Selected deck is used in initializeGame
 
 ## Rules
 # Rules

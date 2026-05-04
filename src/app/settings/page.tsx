@@ -40,22 +40,22 @@ export default function SettingsPage() {
 
       <main className="relative z-10 flex flex-col items-center gap-8 px-8 w-full max-w-md">
         <h1 className="text-4xl font-bold tracking-wider text-yellow-400 drop-shadow-[0_2px_8px_rgba(234,179,8,0.4)]">
-          Settings
+          设置
         </h1>
 
         <div className="flex flex-col gap-4 w-full">
           <section className="rounded-lg border border-yellow-600/40 bg-red-950/60 p-5 shadow-lg">
-            <h2 className="text-lg font-semibold text-yellow-300 mb-3">Audio</h2>
+            <h2 className="text-lg font-semibold text-yellow-300 mb-3">音频</h2>
             <div className="flex items-center justify-center">
               <VolumeControl />
             </div>
           </section>
 
           <section className="rounded-lg border border-yellow-600/40 bg-red-950/60 p-5 shadow-lg">
-            <h2 className="text-lg font-semibold text-yellow-300 mb-4">Game</h2>
+            <h2 className="text-lg font-semibold text-yellow-300 mb-4">游戏</h2>
             <div className="flex flex-col gap-4">
               <div className="flex items-center justify-between">
-                <label className="text-yellow-100 text-sm">Animation Speed</label>
+                <label className="text-yellow-100 text-sm">动画速度</label>
                 <select
                   value={animationSpeed}
                   onChange={(e) =>
@@ -63,14 +63,14 @@ export default function SettingsPage() {
                   }
                   className="bg-red-900/80 border border-yellow-600/40 text-yellow-100 text-sm rounded px-2 py-1 outline-none focus:border-yellow-500"
                 >
-                  <option value="fast">Fast</option>
-                  <option value="normal">Normal</option>
-                  <option value="slow">Slow</option>
+                  <option value="fast">快速</option>
+                  <option value="normal">正常</option>
+                  <option value="slow">慢速</option>
                 </select>
               </div>
 
               <div className="flex items-center justify-between">
-                <label className="text-yellow-100 text-sm">Auto End Turn</label>
+                <label className="text-yellow-100 text-sm">自动结束回合</label>
                 <button
                   onClick={() => updateSetting(STORAGE_KEY_AUTO_END_TURN, !autoEndTurn, setAutoEndTurn)}
                   className={`w-12 h-6 rounded-full transition-colors ${
@@ -86,7 +86,7 @@ export default function SettingsPage() {
               </div>
 
               <div className="flex items-center justify-between">
-                <label className="text-yellow-100 text-sm">Show Damage Numbers</label>
+                <label className="text-yellow-100 text-sm">显示伤害数字</label>
                 <button
                   onClick={() => updateSetting(STORAGE_KEY_SHOW_DAMAGE_NUMBERS, !showDamageNumbers, setShowDamageNumbers)}
                   className={`w-12 h-6 rounded-full transition-colors ${
@@ -109,7 +109,7 @@ export default function SettingsPage() {
           className="group flex items-center justify-center gap-2 rounded-lg border border-yellow-600/40 bg-red-950/60 px-8 py-3 text-lg font-semibold text-yellow-100 shadow-lg transition-all hover:border-yellow-500/70 hover:bg-red-900/80 hover:shadow-yellow-900/30 hover:scale-105 active:scale-100 w-full"
         >
           <span className="text-xl transition-transform group-hover:scale-110">←</span>
-          Back to Menu
+          返回主菜单
         </Link>
       </main>
     </div>

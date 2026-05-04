@@ -1,9 +1,9 @@
 import Link from "next/link";
 
 const menuItems = [
-  { label: "Play", href: "/game", icon: "⚔" },
-  { label: "Deck Builder", href: "/deck-builder", icon: "📜" },
-  { label: "Settings", href: "/settings", icon: "⚙" },
+  { label: "开始对战", href: "/game", icon: "⚔" },
+  { label: "组建卡组", href: "/deck-builder", icon: "📜" },
+  { label: "设置", href: "/settings", icon: "⚙" },
 ] as const;
 
 export default function Home() {

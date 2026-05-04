@@ -145,7 +145,7 @@ export function createPlayerState(deck: Deck): PlayerState {
 }
 
 export function initializeGame(deck1: Deck, deck2: Deck): GameState {
-  return {
+  const state: GameState = {
     players: [createPlayerState(deck1), createPlayerState(deck2)],
     board: [[], []],
     turn: 0,
@@ -153,6 +153,12 @@ export function initializeGame(deck1: Deck, deck2: Deck): GameState {
     turnPhase: "start",
     activePlayer: 0,
   };
+
+  // Opening hand: player 1 draws 3, player 2 draws 4 (coin advantage)
+  for (let i = 0; i < 3; i++) drawCard(state.players[0]);
+  for (let i = 0; i < 4; i++) drawCard(state.players[1]);
+
+  return state;
 }
 
 export function startTurn(state: GameState): DrawResult {

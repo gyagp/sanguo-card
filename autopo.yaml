@@ -108,6 +108,28 @@ goals:
       - 60fps gameplay with no jank
       - Beautiful loading screen
     priority: 8
+  - id: chinese-localization
+    description: 全中文化 — 所有界面文本、卡牌名称和描述均使用中文
+    acceptance:
+      - 所有卡牌名称和描述使用中文（三国人名、技能描述）
+      - 所有UI文本使用中文（菜单、按钮、提示）
+      - 卡牌图鉴页筛选器使用中文标签
+      - 设置页使用中文
+      - 胜负画面使用中文
+    priority: 9
+    depends_on: [polish]
+  - id: card-art
+    description: 精美卡通风格人物卡牌插画 — 每张卡牌都有独特的SVG卡通插画
+    acceptance:
+      - 每张卡牌都有独特的卡通风格SVG插画
+      - 随从卡显示角色形象（三国武将造型）
+      - 法术卡显示法术效果场景
+      - 武器卡显示武器造型
+      - 传说卡有金色光效和闪烁动画
+      - 卡牌插画区域占卡牌面积的40%以上
+      - 不同势力（魏蜀吴群）有不同的配色风格
+    priority: 10
+    depends_on: [chinese-localization]
 settings:
   max_iterations: 150
   max_time_hours: 48
