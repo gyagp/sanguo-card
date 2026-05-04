@@ -1,13 +1,15 @@
 # Autopo test Session
 
 ## Work Unit
-Enhance legendary card gold glow and sparkle animation — replace simple pulse with multi-layer shimmer, floating gold particles, and animated border glow
+Apply faction-specific color palettes to SVG art — recolor each card's SVG clothing/armor to match faction theme (魏=blue, 蜀=green, 吴=red, 群=amber, neutral=gray)
 
 ## Acceptance Criteria
-- Legendary cards have animated gold particle effects (not just a single pulse)
-- Legendary cards have animated glowing border effect
-- Animation uses CSS keyframes, no setTimeout/setInterval
-- No dead code or unused variables
+- Wei faction card SVGs use blue-dominant color scheme for clothing/armor
+- Shu faction card SVGs use green-dominant color scheme
+- Wu faction card SVGs use red-dominant color scheme
+- Qun faction card SVGs use amber/yellow-dominant color scheme
+- Neutral card SVGs use gray color scheme
+- Each card still has a unique, distinguishable illustration
 
 ## Rules
 # Rules
