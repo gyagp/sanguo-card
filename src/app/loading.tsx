@@ -10,7 +10,7 @@ export default function Loading() {
 
         <div className="flex flex-col items-center gap-3">
           <h2 className="text-2xl font-bold tracking-widest text-yellow-400 drop-shadow-md">
-            三國卡牌
+            三国卡牌
           </h2>
           <div className="flex gap-1.5">
             <span className="h-2.5 w-2.5 animate-bounce rounded-full bg-yellow-400 [animation-delay:0ms]" />

@@ -1,12 +1,12 @@
 # Autopo test Session
 
 ## Work Unit
-Localize deck builder page — translate all English UI text to Chinese (headers, buttons, filters, placeholders, empty states)
+Localize layout metadata and loading screen — change lang to zh, translate title/description/keywords to Chinese, fix traditional chars in loading.tsx to simplified
 
 ## Acceptance Criteria
-- All deck builder text is in Chinese
-- No English strings remain in deck-builder/page.tsx
-- Deck builder functionality unchanged
+- layout.tsx has lang='zh'
+- All metadata (title, description, keywords, OG tags) in Chinese
+- loading.tsx uses simplified 三国卡牌
 
 ## Rules
 # Rules

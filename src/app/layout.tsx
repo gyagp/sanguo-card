@@ -13,23 +13,23 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Sanguo Card - Three Kingdoms Card Game",
+  title: "三国卡牌 - 三国题材策略卡牌游戏",
   description:
-    "A strategic card game inspired by the Three Kingdoms era. Build decks, summon heroes, and battle opponents in this Chinese-themed collectible card game.",
-  keywords: ["card game", "Three Kingdoms", "strategy", "sanguo", "CCG"],
+    "一款以三国时代为背景的策略卡牌游戏。组建卡组、召唤英雄、与对手对战。",
+  keywords: ["卡牌游戏", "三国", "策略", "三国卡牌", "CCG"],
   openGraph: {
-    title: "Sanguo Card - Three Kingdoms Card Game",
+    title: "三国卡牌 - 三国题材策略卡牌游戏",
     description:
-      "Build decks, summon heroes, and battle opponents in this Chinese-themed collectible card game.",
+      "组建卡组、召唤英雄、与对手对战。一款三国题材的收集式卡牌游戏。",
     type: "website",
-    locale: "en_US",
-    siteName: "Sanguo Card",
+    locale: "zh_CN",
+    siteName: "三国卡牌",
   },
   twitter: {
     card: "summary",
-    title: "Sanguo Card - Three Kingdoms Card Game",
+    title: "三国卡牌 - 三国题材策略卡牌游戏",
     description:
-      "Build decks, summon heroes, and battle opponents in this Chinese-themed collectible card game.",
+      "组建卡组、召唤英雄、与对手对战。一款三国题材的收集式卡牌游戏。",
   },
 };
 
@@ -40,7 +40,7 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="en"
+      lang="zh"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">{children}</body>

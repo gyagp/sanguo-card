@@ -8,9 +8,9 @@ describe("Loading (root)", () => {
     expect(container.firstChild).toBeTruthy();
   });
 
-  it("displays the game title 三國卡牌", () => {
+  it("displays the game title 三国卡牌", () => {
     render(<Loading />);
-    expect(screen.getAllByText("三國卡牌").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("三国卡牌").length).toBeGreaterThan(0);
   });
 
   it("renders the sword emoji", () => {
