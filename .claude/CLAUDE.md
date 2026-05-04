@@ -1,14 +1,12 @@
-# Autopo test Session
+# Autopo execute Session
 
 ## Work Unit
-Update Card component to load PNG art from /card-art/[name].png — replace inline SVG rendering with <img> tag pointing to generated PNG, keeping SVG as fallback
+Update card-art tests to verify PNG loading path and maintain existing SVG fallback tests
 
 ## Acceptance Criteria
-- Card.tsx loads art from /card-art/[cardName].png as primary source
-- Falls back to existing inline SVG art if PNG fails to load (onerror handler)
-- Card art image area occupies at least 40% of card height
-- Images use object-fit: cover for consistent display
-- No layout shift when images load
+- Tests verify getCardArt still works for SVG fallback
+- Existing passing tests remain passing
+- npm test exits with 0 failures
 
 ## Rules
 # Rules
