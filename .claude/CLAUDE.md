@@ -1,11 +1,11 @@
 # Autopo test Session
 
 ## Work Unit
-Localize VolumeControl aria-labels and home page English subtitle — translate remaining English strings
+Update all test files to match localized text — fix assertions that reference old English strings, ensure tests pass
 
 ## Acceptance Criteria
-- VolumeControl aria-labels in Chinese
-- Home page subtitle in Chinese or removed
+- npm test exits with 0 failures
+- No test asserts English strings that were changed to Chinese
 
 ## Rules
 # Rules
