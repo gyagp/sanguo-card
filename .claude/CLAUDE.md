@@ -1,11 +1,13 @@
 # Autopo test Session
 
 ## Work Unit
-Update all test files to match localized text — fix assertions that reference old English strings, ensure tests pass
+Enhance legendary card gold glow and sparkle animation — replace simple pulse with multi-layer shimmer, floating gold particles, and animated border glow
 
 ## Acceptance Criteria
-- npm test exits with 0 failures
-- No test asserts English strings that were changed to Chinese
+- Legendary cards have animated gold particle effects (not just a single pulse)
+- Legendary cards have animated glowing border effect
+- Animation uses CSS keyframes, no setTimeout/setInterval
+- No dead code or unused variables
 
 ## Rules
 # Rules

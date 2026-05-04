@@ -175,6 +175,70 @@ describe("Card component", () => {
     });
   });
 
+  describe("legendary card gold glow and particle animations", () => {
+    it("applies legendaryCardGlow animation on the card element", () => {
+      const { container } = render(<Card card={makeCard({ rarity: "legendary" })} />);
+      const cardEl = container.firstElementChild as HTMLElement;
+      expect(cardEl.style.animation).toContain("legendaryCardGlow");
+    });
+
+    it("does NOT apply legendaryCardGlow animation on non-legendary cards", () => {
+      const { container } = render(<Card card={makeCard({ rarity: "rare" })} />);
+      const cardEl = container.firstElementChild as HTMLElement;
+      expect(cardEl.style.animation).toBeFalsy();
+    });
+
+    it("renders animated border glow overlay for legendary cards", () => {
+      const { container } = render(<Card card={makeCard({ rarity: "legendary" })} />);
+      const borderGlow = container.querySelector("[style*='legendaryBorderGlow']");
+      expect(borderGlow).not.toBeNull();
+    });
+
+    it("renders shimmer sweep overlay for legendary cards", () => {
+      const { container } = render(<Card card={makeCard({ rarity: "legendary" })} />);
+      const shimmer = container.querySelector("[style*='legendaryCardShimmer']");
+      expect(shimmer).not.toBeNull();
+    });
+
+    it("renders 6 floating gold particles for legendary cards", () => {
+      const { container } = render(<Card card={makeCard({ rarity: "legendary" })} />);
+      const particles = container.querySelectorAll("[style*='legendaryFloat']");
+      expect(particles.length).toBe(6);
+    });
+
+    it("does NOT render glow/shimmer/particles for non-legendary cards", () => {
+      const { container } = render(<Card card={makeCard({ rarity: "epic" })} />);
+      expect(container.querySelector("[style*='legendaryBorderGlow']")).toBeNull();
+      expect(container.querySelector("[style*='legendaryCardShimmer']")).toBeNull();
+      expect(container.querySelectorAll("[style*='legendaryFloat']").length).toBe(0);
+    });
+
+    it("particles use CSS keyframe animations, not setTimeout/setInterval", () => {
+      const { container } = render(<Card card={makeCard({ rarity: "legendary" })} />);
+      const particles = container.querySelectorAll("[style*='legendaryFloat']");
+      particles.forEach((p) => {
+        const style = (p as HTMLElement).style.animation;
+        expect(style).toContain("legendaryFloat");
+      });
+    });
+
+    it("particles have staggered animation delays", () => {
+      const { container } = render(<Card card={makeCard({ rarity: "legendary" })} />);
+      const particles = container.querySelectorAll("[style*='legendaryFloat']");
+      const delays = Array.from(particles).map((p) => (p as HTMLElement).style.animation);
+      const uniqueDelays = new Set(delays);
+      expect(uniqueDelays.size).toBeGreaterThan(1);
+    });
+
+    it("particles have radial-gradient gold background", () => {
+      const { container } = render(<Card card={makeCard({ rarity: "legendary" })} />);
+      const particles = container.querySelectorAll("[style*='legendaryFloat']");
+      particles.forEach((p) => {
+        expect((p as HTMLElement).style.background).toContain("radial-gradient");
+      });
+    });
+  });
+
   describe("hover animation classes", () => {
     it("has scale hover class for enlarge effect", () => {
       const { container } = render(<Card card={makeCard()} />);

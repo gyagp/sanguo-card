@@ -79,10 +79,45 @@ export default function Card({ card, onClick, className = "", draggable: isDragg
         ${factionBg[card.faction]}
         ${className}
       `}
+      style={card.rarity === "legendary" ? { animation: "legendaryCardGlow 2.5s ease-in-out infinite" } : undefined}
     >
-      {/* Legendary shimmer */}
+      {/* Legendary multi-layer glow */}
       {card.rarity === "legendary" && (
-        <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/10 via-transparent to-orange-400/10 pointer-events-none animate-pulse" />
+        <>
+          {/* Animated border glow */}
+          <div
+            className="absolute -inset-[2px] rounded-xl pointer-events-none z-0"
+            style={{
+              background: "linear-gradient(135deg, rgba(255,215,0,0.6), rgba(255,165,0,0.3), rgba(255,215,0,0.6))",
+              animation: "legendaryBorderGlow 2s ease-in-out infinite",
+            }}
+          />
+          {/* Shimmer sweep */}
+          <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-xl z-[1]">
+            <div
+              className="absolute inset-0"
+              style={{
+                background: "linear-gradient(90deg, transparent 0%, rgba(255,215,0,0.15) 45%, rgba(255,255,255,0.25) 50%, rgba(255,215,0,0.15) 55%, transparent 100%)",
+                animation: "legendaryCardShimmer 3s ease-in-out infinite",
+              }}
+            />
+          </div>
+          {/* Floating gold particles */}
+          {[0, 1, 2, 3, 4, 5].map((i) => (
+            <div
+              key={i}
+              className="absolute bottom-2 rounded-full pointer-events-none z-[2]"
+              style={{
+                width: `${3 + (i % 3)}px`,
+                height: `${3 + (i % 3)}px`,
+                left: `${12 + i * 14}%`,
+                background: "radial-gradient(circle, rgba(255,215,0,0.9), rgba(255,165,0,0.4))",
+                ["--float-x" as string]: `${(i % 2 === 0 ? 1 : -1) * (5 + i * 2)}px`,
+                animation: `legendaryFloat ${2 + (i % 3) * 0.5}s ease-in-out ${i * 0.4}s infinite`,
+              }}
+            />
+          ))}
+        </>
       )}
 
       {/* Mana crystal */}
