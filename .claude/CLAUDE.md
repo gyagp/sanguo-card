@@ -1,11 +1,11 @@
-# Autopo execute Session
+# Autopo test Session
 
 ## Work Unit
-Tests for spell effects, weapon attacks, spell damage bonus, event triggers, and spell immunity
+Audit all 34 cards — verify every card's description text matches its implemented effect, fix any gaps
 
 ## Acceptance Criteria
-- Tests cover spell effects, weapon durability, spellDamage bonus, 诸葛亮 end-of-turn, 司马懿 battlecry, 吕布 spell immunity, 丈八蛇矛 splash
-- All tests pass
+- Every card's description matches its mechanical effect
+- No card has a described ability that is unimplemented
 - npm run build succeeds
 
 ## Rules

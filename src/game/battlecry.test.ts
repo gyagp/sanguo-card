@@ -289,12 +289,12 @@ describe("曹操 battlecry — steals enemy minion with <=3 attack", () => {
   });
 });
 
-describe("司马懿 battlecry — returns last played spell to hand", () => {
-  it("returns current player's last played spell to hand", () => {
+describe("司马懿 battlecry — copies opponent's last-turn spells to hand", () => {
+  it("copies all of opponent's spells to hand", () => {
     const state = makeState();
     state.activePlayer = 0;
     const spellCard = makeCard({ name: "TestSpell", type: "spell", cost: 1 });
-    state.spellsPlayed[0].push({ ...spellCard });
+    state.spellsPlayed[1].push({ ...spellCard });
 
     const simayi = findCard("司马懿");
     simayi.cost = 0;
@@ -306,28 +306,27 @@ describe("司马懿 battlecry — returns last played spell to hand", () => {
     expect(hand.some((c) => c.name === "TestSpell")).toBe(true);
   });
 
-  it("does nothing when current player has no spells played", () => {
+  it("does nothing when opponent has no spells played", () => {
     const state = makeState();
     state.activePlayer = 0;
-    state.spellsPlayed[0] = [];
-    state.spellsPlayed[1].push(makeCard({ name: "EnemySpell", type: "spell" }));
+    state.spellsPlayed[1] = [];
+    state.spellsPlayed[0].push(makeCard({ name: "OwnSpell", type: "spell" }));
 
     const simayi = findCard("司马懿");
     simayi.cost = 0;
     state.players[0].hand = [simayi];
     state.players[0].hero.mana = 10;
-    const handSizeBefore = 0; // hand will be empty after playing simayi
 
     playCard(state, 0);
-    // Should not have added enemy's spell
-    expect(state.players[0].hand.some((c) => c.name === "EnemySpell")).toBe(false);
+    // Should not have added own spell
+    expect(state.players[0].hand.some((c) => c.name === "OwnSpell")).toBe(false);
   });
 
-  it("returns the LAST spell, not first", () => {
+  it("copies ALL opponent spells, not just the last", () => {
     const state = makeState();
     state.activePlayer = 0;
-    state.spellsPlayed[0].push(makeCard({ name: "FirstSpell", type: "spell" }));
-    state.spellsPlayed[0].push(makeCard({ name: "SecondSpell", type: "spell" }));
+    state.spellsPlayed[1].push(makeCard({ name: "FirstSpell", type: "spell" }));
+    state.spellsPlayed[1].push(makeCard({ name: "SecondSpell", type: "spell" }));
 
     const simayi = findCard("司马懿");
     simayi.cost = 0;
@@ -336,16 +335,15 @@ describe("司马懿 battlecry — returns last played spell to hand", () => {
 
     playCard(state, 0);
     const hand = state.players[0].hand;
+    expect(hand.some((c) => c.name === "FirstSpell")).toBe(true);
     expect(hand.some((c) => c.name === "SecondSpell")).toBe(true);
-    expect(hand.filter((c) => c.name === "FirstSpell")).toHaveLength(0);
   });
 
-  it("does not add spell when hand is full (MAX_HAND_SIZE)", () => {
+  it("does not add spells when hand is full (MAX_HAND_SIZE)", () => {
     const state = makeState();
     state.activePlayer = 0;
-    state.spellsPlayed[0].push(makeCard({ name: "TestSpell", type: "spell" }));
+    state.spellsPlayed[1].push(makeCard({ name: "TestSpell", type: "spell" }));
 
-    // Place simayi on board directly, simulate battlecry manually
     const simayi = findCard("司马懿");
     // Fill hand to MAX_HAND_SIZE
     state.players[0].hand = [];

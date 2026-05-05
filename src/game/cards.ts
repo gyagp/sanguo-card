@@ -114,7 +114,7 @@ export const cards: Card[] = [
 
   // === 稀有 (10) ===
   {
-    name: "张飞", cost: 5, attack: 5, health: 5, description: "冲锋。战吼：获得嘲讽直到下一回合",
+    name: "张飞", cost: 5, attack: 5, health: 5, description: "冲锋。战吼：获得嘲讽",
     rarity: "rare", type: "minion", faction: "shu",
     charge: true,
     battlecry: (state: GameState, context) => {
@@ -142,7 +142,7 @@ export const cards: Card[] = [
     },
   },
   {
-    name: "夏侯惇", cost: 5, attack: 4, health: 5, description: "战吼：对一个敌人造成2点伤害并获得+2攻击力",
+    name: "夏侯惇", cost: 5, attack: 4, health: 5, description: "战吼：对一个敌方随从造成2点伤害并获得+2攻击力",
     rarity: "rare", type: "minion", faction: "wei",
     battlecry: (state: GameState, context) => {
       const enemy = context.player === 0 ? 1 : 0;
@@ -404,11 +404,12 @@ export const cards: Card[] = [
     name: "司马懿", cost: 9, attack: 5, health: 7, description: "战吼：将对手上回合使用的所有法术复制到你的手牌",
     rarity: "legendary", type: "minion", faction: "wei",
     battlecry: (state: GameState, context) => {
-      const mySpells = state.spellsPlayed[context.player];
-      if (mySpells.length > 0) {
-        const lastSpell = mySpells[mySpells.length - 1];
-        if (state.players[context.player].hand.length < MAX_HAND_SIZE) {
-          state.players[context.player].hand.push({ ...lastSpell });
+      const enemy = context.player === 0 ? 1 : 0;
+      const enemySpells = state.spellsPlayed[enemy];
+      const myHand = state.players[context.player].hand;
+      for (const spell of enemySpells) {
+        if (myHand.length < MAX_HAND_SIZE) {
+          myHand.push({ ...spell });
         }
       }
       return state;
