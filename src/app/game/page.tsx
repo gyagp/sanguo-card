@@ -6,6 +6,7 @@ import VolumeControl from "../../components/VolumeControl";
 import { AudioManager } from "./audio-manager";
 import { cards } from "../../game/cards";
 import { AIDifficulty } from "../../game/ai";
+import { addGold, addXP } from "../../game/player-store";
 import { createDeck, BoardMinion, PlayerState, Card as CardType, MAX_BOARD_SIZE, MAX_DECK_SIZE, Deck, Faction, FACTION_SYNERGIES, DECK_FACTION_THRESHOLD } from "../../game/types";
 import { useMemo, useState, useEffect, useRef, useCallback, forwardRef } from "react";
 
@@ -650,7 +651,7 @@ function FactionBonusIndicator({ player }: { player: PlayerState }) {
   );
 }
 
-function VictoryDefeatOverlay({ winner, onPlayAgain }: { winner: 0 | 1 | "draw"; onPlayAgain: () => void }) {
+function VictoryDefeatOverlay({ winner, onPlayAgain, rewards }: { winner: 0 | 1 | "draw"; onPlayAgain: () => void; rewards: { gold: number; xp: number } | null }) {
   const isVictory = winner === 0;
   const isDraw = winner === "draw";
   const type = isVictory ? "victory" : isDraw ? "draw" : "defeat";
@@ -703,6 +704,15 @@ function VictoryDefeatOverlay({ winner, onPlayAgain }: { winner: 0 | 1 | "draw";
         >
           {subtitle}
         </div>
+        {rewards && (
+          <div
+            className="flex gap-6 text-xl font-bold text-white/90"
+            style={{ animation: "resultSubtitleIn 1.2s ease-out 0.8s both" }}
+          >
+            <span className="text-yellow-400">+{rewards.gold} 金币</span>
+            <span className="text-cyan-400">+{rewards.xp} 经验</span>
+          </div>
+        )}
         <button
           onClick={onPlayAgain}
           className="mt-8 px-8 py-3 rounded-lg text-lg font-bold text-white bg-gradient-to-r from-amber-600 to-amber-800 hover:from-amber-500 hover:to-amber-700 border border-amber-500/50 shadow-lg cursor-pointer transition-all hover:scale-105"
@@ -795,6 +805,7 @@ function GameInner({ playerDeck, difficulty }: { playerDeck: Deck; difficulty: A
   const [animationSpeed, setAnimationSpeed] = useState<AnimationSpeed>('normal');
   const [autoEndTurn, setAutoEndTurn] = useState(false);
   const [showDamageNumbers, setShowDamageNumbers] = useState(true);
+  const [rewards, setRewards] = useState<{ gold: number; xp: number } | null>(null);
   const animMultiplier = getAnimationMultiplier(animationSpeed);
 
   useEffect(() => {
@@ -1112,6 +1123,12 @@ function GameInner({ playerDeck, difficulty }: { playerDeck: Deck; difficulty: A
     audioRef.current.stopBGM();
     if (winner === 0) audioRef.current.playVictory();
     else audioRef.current.playDefeat();
+    const isVictory = winner === 0;
+    const gold = isVictory ? 30 : 10;
+    const xp = isVictory ? 50 : 20;
+    addGold(gold);
+    addXP(xp);
+    setRewards({ gold, xp });
   }, [winner]);
 
   const prevHandLen = useRef(player.hand.length);
@@ -1130,7 +1147,7 @@ function GameInner({ playerDeck, difficulty }: { playerDeck: Deck; difficulty: A
 
       {/* Victory/Defeat overlay */}
       {winner !== null && (
-        <VictoryDefeatOverlay winner={winner} onPlayAgain={resetGame} />
+        <VictoryDefeatOverlay winner={winner} onPlayAgain={() => { setRewards(null); resetGame(); }} rewards={rewards} />
       )}
 
       {/* Opponent hero */}

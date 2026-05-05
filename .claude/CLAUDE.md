@@ -1,13 +1,14 @@
-# Autopo execute Session
+# Autopo test Session
 
 ## Work Unit
-Tests for card upgrade system — verify upgrade costs, stat bonuses per level, max level cap, insufficient resources
+Game reward integration — hook into game end to award gold (victory: 30, defeat: 10) and XP (victory: 50, defeat: 20); update useGameState or game page to call addGold/addXP on match conclusion
 
 ## Acceptance Criteria
-- Each upgrade level applies correct stat bonus
-- Cannot upgrade past level 3
-- Insufficient gold or duplicates rejects upgrade
-- All tests pass
+- Victory awards 30 gold and 50 XP
+- Defeat awards 10 gold and 20 XP
+- Rewards persisted via player-store
+- Game page shows reward summary on match end
+- npm run build succeeds
 
 ## Rules
 # Rules
