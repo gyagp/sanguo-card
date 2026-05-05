@@ -61,6 +61,30 @@ export const DEFAULT_PACK: CardPack = {
   guaranteedRarity: "rare",
 };
 
+export const LEVEL_UNLOCKS: Record<number, string> = {
+  1: "基础对战",
+  3: "商店",
+  5: "组建卡组",
+  7: "卡牌升级",
+};
+
+export function getXPProgress(profile: PlayerProfile): {
+  current: number;
+  needed: number;
+  percent: number;
+} {
+  const maxLevel = XP_THRESHOLDS.length;
+  if (profile.level >= maxLevel) {
+    return { current: 0, needed: 0, percent: 100 };
+  }
+  const currentThreshold = XP_THRESHOLDS[profile.level - 1];
+  const nextThreshold = XP_THRESHOLDS[profile.level];
+  const current = profile.xp - currentThreshold;
+  const needed = nextThreshold - currentThreshold;
+  const percent = Math.min(100, Math.round((current / needed) * 100));
+  return { current, needed, percent };
+}
+
 export const STARTER_CARDS: string[] = [
   "乡勇",
   "斥候骑兵",

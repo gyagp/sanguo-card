@@ -1,4 +1,9 @@
+"use client";
+
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import { loadPlayer } from "../game/player-store";
+import { PlayerProfile, XP_THRESHOLDS, getXPProgress, LEVEL_UNLOCKS } from "../game/progression";
 
 const menuItems = [
   { label: "开始对战", href: "/game", icon: "⚔" },
@@ -10,6 +15,15 @@ const menuItems = [
 ] as const;
 
 export default function Home() {
+  const [profile, setProfile] = useState<PlayerProfile | null>(null);
+
+  useEffect(() => {
+    setProfile(loadPlayer());
+  }, []);
+
+  const xp = profile ? getXPProgress(profile) : null;
+  const isMaxLevel = profile ? profile.level >= XP_THRESHOLDS.length : false;
+
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-red-950 via-red-900 to-yellow-900">
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-yellow-900/20 via-transparent to-transparent" />
@@ -23,6 +37,59 @@ export default function Home() {
             三国卡牌对战
           </p>
         </div>
+
+        {profile && (
+          <div className="w-full rounded-lg border border-yellow-600/40 bg-red-950/60 px-5 py-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">🏯</span>
+                <span className="text-yellow-400 font-bold text-xl">Lv.{profile.level}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-yellow-500 text-lg">💰</span>
+                <span className="text-yellow-100 font-bold text-lg">{profile.gold}</span>
+              </div>
+            </div>
+
+            <div className="mb-1 flex items-center justify-between text-xs text-yellow-200/60">
+              <span>经验值</span>
+              {isMaxLevel ? (
+                <span className="text-yellow-400">满级</span>
+              ) : (
+                <span>{xp!.current} / {xp!.needed}</span>
+              )}
+            </div>
+            <div className="w-full h-3 bg-red-900/60 rounded-full overflow-hidden border border-yellow-600/20">
+              <div
+                className="h-full bg-gradient-to-r from-yellow-600 to-yellow-400 rounded-full transition-all duration-500"
+                style={{ width: `${isMaxLevel ? 100 : xp!.percent}%` }}
+              />
+            </div>
+
+            <div className="mt-3 pt-3 border-t border-yellow-600/20">
+              <p className="text-xs text-yellow-200/50 mb-2">等级解锁</p>
+              <div className="grid grid-cols-2 gap-1.5">
+                {Object.entries(LEVEL_UNLOCKS).map(([lvl, feature]) => {
+                  const unlocked = profile.level >= Number(lvl);
+                  return (
+                    <div
+                      key={lvl}
+                      className={`flex items-center gap-1.5 text-xs rounded px-2 py-1 ${
+                        unlocked
+                          ? "text-yellow-300 bg-yellow-900/20"
+                          : "text-yellow-200/30 bg-red-900/20"
+                      }`}
+                    >
+                      <span>{unlocked ? "✓" : "🔒"}</span>
+                      <span>Lv.{lvl}</span>
+                      <span className="truncate">{feature}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
 
         <nav className="flex flex-col gap-4 w-full">
           {menuItems.map(({ label, href, icon }) => (

@@ -8,6 +8,8 @@ import {
   PACK_PRICE,
   DEFAULT_PACK,
   STARTER_CARDS,
+  LEVEL_UNLOCKS,
+  getXPProgress,
 } from "./progression";
 
 describe("progression interfaces", () => {
@@ -87,5 +89,39 @@ describe("progression constants", () => {
     expect(STARTER_CARDS).toHaveLength(10);
     const uniqueCards = new Set(STARTER_CARDS);
     expect(uniqueCards.size).toBe(10);
+  });
+});
+
+describe("getXPProgress", () => {
+  test("calculates progress for mid-level player", () => {
+    const profile: PlayerProfile = { gold: 0, xp: 150, level: 2, ownedCards: [] };
+    const result = getXPProgress(profile);
+    expect(result.current).toBe(50);
+    expect(result.needed).toBe(150);
+    expect(result.percent).toBe(33);
+  });
+
+  test("returns 100% for max level", () => {
+    const profile: PlayerProfile = { gold: 0, xp: 3200, level: 10, ownedCards: [] };
+    const result = getXPProgress(profile);
+    expect(result.percent).toBe(100);
+    expect(result.current).toBe(0);
+    expect(result.needed).toBe(0);
+  });
+
+  test("returns 0% at start of level", () => {
+    const profile: PlayerProfile = { gold: 0, xp: 100, level: 2, ownedCards: [] };
+    const result = getXPProgress(profile);
+    expect(result.current).toBe(0);
+    expect(result.percent).toBe(0);
+  });
+});
+
+describe("LEVEL_UNLOCKS", () => {
+  test("defines expected unlock milestones", () => {
+    expect(LEVEL_UNLOCKS[1]).toBe("基础对战");
+    expect(LEVEL_UNLOCKS[3]).toBe("商店");
+    expect(LEVEL_UNLOCKS[5]).toBe("组建卡组");
+    expect(LEVEL_UNLOCKS[7]).toBe("卡牌升级");
   });
 });

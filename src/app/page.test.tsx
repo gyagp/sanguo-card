@@ -18,6 +18,15 @@ vi.mock("next/link", () => ({
   ),
 }));
 
+vi.mock("../game/player-store", () => ({
+  loadPlayer: vi.fn(() => ({
+    gold: 200,
+    xp: 150,
+    level: 3,
+    ownedCards: [],
+  })),
+}));
+
 describe("Main Menu (page.tsx)", () => {
   it("renders Play, Deck Builder, and Settings buttons", () => {
     const { container } = render(<Home />);
@@ -90,5 +99,28 @@ describe("Main Menu (page.tsx)", () => {
       expect(link.getAttribute("href")).toBeTruthy();
       expect(link.getAttribute("href")).not.toBe("#");
     });
+  });
+
+  it("shows player level", () => {
+    const { container } = render(<Home />);
+    expect(container.textContent).toContain("Lv.3");
+  });
+
+  it("shows gold amount", () => {
+    const { container } = render(<Home />);
+    expect(container.textContent).toContain("200");
+  });
+
+  it("shows XP progress", () => {
+    const { container } = render(<Home />);
+    expect(container.textContent).toContain("经验值");
+  });
+
+  it("shows level unlock milestones", () => {
+    const { container } = render(<Home />);
+    expect(container.textContent).toContain("等级解锁");
+    expect(container.textContent).toContain("基础对战");
+    expect(container.textContent).toContain("商店");
+    expect(container.textContent).toContain("组建卡组");
   });
 });

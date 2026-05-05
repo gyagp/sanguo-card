@@ -5,6 +5,10 @@ vi.mock("next/font/google", () => ({
   Geist_Mono: () => ({ variable: "--font-geist-mono" }),
 }));
 
+vi.mock("../components/PlayerHeader", () => ({
+  default: () => null,
+}));
+
 describe("Layout metadata", () => {
   it("exports metadata with Chinese title, description, and keywords", async () => {
     const { metadata } = await import("./layout");

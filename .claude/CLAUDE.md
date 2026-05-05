@@ -1,14 +1,12 @@
 # Autopo test Session
 
 ## Work Unit
-Card upgrade UI in collection page — add upgrade panel when selecting an owned card: show current level, stat preview for next level, cost (gold + duplicates needed), upgrade button with confirmation
+Player profile display — add player level, XP bar, and gold display to main menu and as a header component; show level-up unlock messages (e.g., level 3 unlocks shop, level 5 unlocks deck builder)
 
 ## Acceptance Criteria
-- Selecting owned card shows upgrade panel
-- Displays current and next-level stats
-- Shows gold and duplicate cost
-- Upgrade button disabled if insufficient resources
-- Successful upgrade updates display immediately
+- Main menu shows player level, XP progress, gold
+- Level-up unlocks displayed as milestones
+- Header component reusable across pages
 - npm run build succeeds
 
 ## Rules
