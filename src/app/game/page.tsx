@@ -5,6 +5,7 @@ import Card from "../../components/Card";
 import VolumeControl from "../../components/VolumeControl";
 import { AudioManager } from "./audio-manager";
 import { cards } from "../../game/cards";
+import { AIDifficulty } from "../../game/ai";
 import { createDeck, BoardMinion, PlayerState, Card as CardType, MAX_BOARD_SIZE, MAX_DECK_SIZE, Deck } from "../../game/types";
 import { useMemo, useState, useEffect, useRef, useCallback, forwardRef } from "react";
 
@@ -589,20 +590,46 @@ function VictoryDefeatOverlay({ winner, onPlayAgain }: { winner: 0 | 1 | "draw";
   );
 }
 
-function DeckSelectScreen({ onStart }: { onStart: (deck: Deck) => void }) {
+function DeckSelectScreen({ onStart }: { onStart: (deck: Deck, difficulty: AIDifficulty) => void }) {
   const [savedDecks, setSavedDecks] = useState<SavedDeck[]>([]);
+  const [difficulty, setDifficulty] = useState<AIDifficulty>("normal");
 
   useEffect(() => {
     setSavedDecks(loadSavedDecks());
   }, []);
 
+  const difficultyOptions: { value: AIDifficulty; label: string; desc: string; color: string }[] = [
+    { value: "easy", label: "简单", desc: "适合新手", color: "from-green-700 to-green-900 border-green-500/50" },
+    { value: "normal", label: "普通", desc: "均衡挑战", color: "from-amber-700 to-amber-900 border-amber-500/50" },
+    { value: "hard", label: "困难", desc: "高手对决", color: "from-red-700 to-red-900 border-red-500/50" },
+  ];
+
   return (
     <div className="flex flex-col items-center justify-center h-screen bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 text-white p-4">
-      <h1 className="text-2xl sm:text-3xl font-bold text-amber-400 mb-8">选择卡组</h1>
+      <h1 className="text-2xl sm:text-3xl font-bold text-amber-400 mb-6">选择难度</h1>
+
+      <div className="flex gap-3 mb-8 w-full max-w-md">
+        {difficultyOptions.map((opt) => (
+          <button
+            key={opt.value}
+            onClick={() => setDifficulty(opt.value)}
+            className={`flex-1 px-3 py-3 rounded-lg font-bold text-center border-2 transition-all cursor-pointer ${
+              difficulty === opt.value
+                ? `bg-gradient-to-r ${opt.color} scale-105 shadow-lg`
+                : "bg-gray-800 border-gray-600/50 opacity-60 hover:opacity-80"
+            }`}
+          >
+            <div className="text-lg">{opt.label}</div>
+            <div className="text-xs text-white/60 mt-0.5">{opt.desc}</div>
+          </button>
+        ))}
+      </div>
+
+      <h2 className="text-xl font-bold text-amber-400 mb-4">选择卡组</h2>
 
       <div className="flex flex-col gap-3 w-full max-w-md">
         <button
-          onClick={() => onStart(createDeck(buildRandomDeck()))}
+          onClick={() => onStart(createDeck(buildRandomDeck()), difficulty)}
           className="px-6 py-4 rounded-lg font-bold text-lg bg-gradient-to-r from-green-700 to-green-900 hover:from-green-600 hover:to-green-800 border border-green-500/50 shadow-lg transition-all hover:scale-105 cursor-pointer"
         >
           随机卡组
@@ -614,7 +641,7 @@ function DeckSelectScreen({ onStart }: { onStart: (deck: Deck) => void }) {
             {savedDecks.map(deck => (
               <button
                 key={deck.id}
-                onClick={() => onStart(createDeck(deck.cards))}
+                onClick={() => onStart(createDeck(deck.cards), difficulty)}
                 className="w-full px-6 py-3 mb-2 rounded-lg font-bold text-left bg-gradient-to-r from-amber-800 to-amber-950 hover:from-amber-700 hover:to-amber-900 border border-amber-600/50 shadow-lg transition-all hover:scale-[1.02] cursor-pointer"
               >
                 {deck.name}
@@ -628,12 +655,12 @@ function DeckSelectScreen({ onStart }: { onStart: (deck: Deck) => void }) {
   );
 }
 
-function GameInner({ playerDeck }: { playerDeck: Deck }) {
+function GameInner({ playerDeck, difficulty }: { playerDeck: Deck; difficulty: AIDifficulty }) {
   const [deck1, deck2] = useMemo(() => {
     return [playerDeck, createDeck(buildRandomDeck())];
   }, [playerDeck]);
 
-  const { gameState, winner, playCard, endTurn, attack, attackHero, useHeroPower, isOpponentTurn, resetGame } = useGameState(deck1, deck2, "normal");
+  const { gameState, winner, playCard, endTurn, attack, attackHero, useHeroPower, isOpponentTurn, resetGame } = useGameState(deck1, deck2, difficulty);
 
   const [selectedAttacker, setSelectedAttacker] = useState<number | null>(null);
 
@@ -1110,10 +1137,11 @@ function GameInner({ playerDeck }: { playerDeck: Deck }) {
 
 export default function GamePage() {
   const [playerDeck, setPlayerDeck] = useState<Deck | null>(null);
+  const [difficulty, setDifficulty] = useState<AIDifficulty>("normal");
 
   if (!playerDeck) {
-    return <DeckSelectScreen onStart={setPlayerDeck} />;
+    return <DeckSelectScreen onStart={(deck, diff) => { setPlayerDeck(deck); setDifficulty(diff); }} />;
   }
 
-  return <GameInner playerDeck={playerDeck} />;
+  return <GameInner playerDeck={playerDeck} difficulty={difficulty} />;
 }
