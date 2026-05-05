@@ -1,14 +1,13 @@
-# Autopo execute Session
+# Autopo test Session
 
 ## Work Unit
-Integration test — full game simulation with each faction deck verifying all mechanics interact correctly, no crashes, build succeeds
+Player progression data model — define TypeScript interfaces for PlayerProfile (gold, xp, level), OwnedCard (cardName, count, upgradeLevel), CardPack, and reward structures; create src/game/progression.ts with types and constants (XP thresholds, upgrade costs, pack prices, starter cards)
 
 ## Acceptance Criteria
-- 4 simulated games (one per faction) complete without errors
-- Faction passives trigger during gameplay
-- Hero power upgrades apply correctly
+- PlayerProfile, OwnedCard, CardPack interfaces exported
+- Constants for XP curve, upgrade costs, pack price defined
+- Starter card list defined (all 10 common cards)
 - npm run build succeeds
-- All tests pass
 
 ## Rules
 # Rules
