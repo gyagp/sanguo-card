@@ -3,6 +3,7 @@ import Link from "next/link";
 const menuItems = [
   { label: "开始对战", href: "/game", icon: "⚔" },
   { label: "组建卡组", href: "/deck-builder", icon: "📜" },
+  { label: "卡牌收藏", href: "/collection", icon: "🃏" },
   { label: "商店", href: "/shop", icon: "🏪" },
   { label: "卡牌图鉴", href: "/cards", icon: "📖" },
   { label: "设置", href: "/settings", icon: "⚙" },

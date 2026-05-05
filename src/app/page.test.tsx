@@ -26,13 +26,14 @@ describe("Main Menu (page.tsx)", () => {
     expect(container.textContent).toContain("设置");
   });
 
-  it("links to /game, /deck-builder, /settings", () => {
+  it("links to /game, /deck-builder, /settings, /collection", () => {
     const { container } = render(<Home />);
     const links = container.querySelectorAll("a");
     const hrefs = Array.from(links).map((a) => a.getAttribute("href"));
     expect(hrefs).toContain("/game");
     expect(hrefs).toContain("/deck-builder");
     expect(hrefs).toContain("/settings");
+    expect(hrefs).toContain("/collection");
   });
 
   it("Play links to /game", () => {
@@ -62,15 +63,24 @@ describe("Main Menu (page.tsx)", () => {
     expect(link!.getAttribute("href")).toBe("/settings");
   });
 
+  it("Collection links to /collection", () => {
+    const { container } = render(<Home />);
+    const link = Array.from(container.querySelectorAll("a")).find((a) =>
+      a.textContent?.includes("卡牌收藏"),
+    );
+    expect(link).toBeTruthy();
+    expect(link!.getAttribute("href")).toBe("/collection");
+  });
+
   it("renders the game title", () => {
     const { container } = render(<Home />);
     expect(container.textContent).toContain("三国卡牌");
   });
 
-  it("has exactly five navigation links", () => {
+  it("has exactly six navigation links", () => {
     const { container } = render(<Home />);
     const links = container.querySelectorAll("a");
-    expect(links).toHaveLength(5);
+    expect(links).toHaveLength(6);
   });
 
   it("does not render any broken or empty links", () => {

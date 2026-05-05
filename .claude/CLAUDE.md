@@ -1,14 +1,14 @@
 # Autopo test Session
 
 ## Work Unit
-Shop page — create /shop route with card pack purchase UI: display gold balance, buy pack button, pack opening animation (reveal 5 cards one by one with rarity glow), add-to-collection confirmation
+Collection page — create /collection route showing all 34 cards in a grid: owned cards in color with count/level, unowned cards grayed out with lock icon; show overall progress (X/34 cards), filter by faction/rarity; tap owned card to see upgrade option
 
 ## Acceptance Criteria
-- Route /shop accessible from main menu
-- Shows current gold balance
-- Buy pack button opens pack and reveals 5 cards
-- Cards visually distinguished by rarity
-- New cards added to collection after reveal
+- Route /collection accessible from main menu
+- Owned cards displayed with count and upgrade level
+- Unowned cards shown grayed/locked
+- Progress bar shows X/34 collected
+- Filter by faction and rarity works
 - npm run build succeeds
 
 ## Rules
