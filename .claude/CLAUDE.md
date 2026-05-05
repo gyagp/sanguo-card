@@ -1,13 +1,14 @@
 # Autopo test Session
 
 ## Work Unit
-Main menu navigation update and build verification — add Shop and Collection links to main menu, ensure all new routes accessible, run npm run build to verify no errors
+Define adventure data model — Chapter, Stage, BossStage interfaces and 5-chapter/30-stage campaign data with enemy decks, rewards, boss rules, and star rating criteria
 
 ## Acceptance Criteria
-- Main menu has links to /shop and /collection
-- All navigation works correctly
-- npm run build succeeds with zero errors
-- All tests pass
+- AdventureChapter, AdventureStage, BossRule types exported from src/game/adventure-data.ts
+- 5 chapters with 6 stages each (5 normal + 1 boss) = 30 stages defined
+- Each stage has enemyDeck (card names array), difficulty, rewards (gold/xp/cards), starThresholds (hp% and turn count)
+- Boss stages have special rules (extraMana, fieldEffect, uniqueHeroPower)
+- npm run build succeeds
 
 ## Rules
 # Rules
