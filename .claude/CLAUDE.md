@@ -1,13 +1,14 @@
 # Autopo test Session
 
 ## Work Unit
-Game reward integration — hook into game end to award gold (victory: 30, defeat: 10) and XP (victory: 50, defeat: 20); update useGameState or game page to call addGold/addXP on match conclusion
+Shop page — create /shop route with card pack purchase UI: display gold balance, buy pack button, pack opening animation (reveal 5 cards one by one with rarity glow), add-to-collection confirmation
 
 ## Acceptance Criteria
-- Victory awards 30 gold and 50 XP
-- Defeat awards 10 gold and 20 XP
-- Rewards persisted via player-store
-- Game page shows reward summary on match end
+- Route /shop accessible from main menu
+- Shows current gold balance
+- Buy pack button opens pack and reveals 5 cards
+- Cards visually distinguished by rarity
+- New cards added to collection after reveal
 - npm run build succeeds
 
 ## Rules

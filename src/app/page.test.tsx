@@ -67,10 +67,10 @@ describe("Main Menu (page.tsx)", () => {
     expect(container.textContent).toContain("三国卡牌");
   });
 
-  it("has exactly four navigation links", () => {
+  it("has exactly five navigation links", () => {
     const { container } = render(<Home />);
     const links = container.querySelectorAll("a");
-    expect(links).toHaveLength(4);
+    expect(links).toHaveLength(5);
   });
 
   it("does not render any broken or empty links", () => {
