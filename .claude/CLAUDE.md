@@ -1,12 +1,12 @@
 # Autopo execute Session
 
 ## Work Unit
-Tests for Shu brotherhood mechanics — adjacency bonus, trio detection, recalculation on death
+Tests for Wu rush mechanics — charge bonus, weapon buff, combo chain
 
 ## Acceptance Criteria
-- Tests cover adjacent Shu buff
-- Tests cover brotherhood trio bonus
-- Tests cover buff removal on death
+- Tests cover charge attack bonus
+- Tests cover weapon-to-minion buff
+- Tests cover combo chain escalation
 - All tests pass
 
 ## Rules
