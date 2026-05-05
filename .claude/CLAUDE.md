@@ -1,14 +1,13 @@
 # Autopo test Session
 
 ## Work Unit
-Adventure map UI — chapter selection and stage grid page at /adventure with locked/unlocked/starred visual states
+Pre-battle screen — show stage info (enemy hero, deck preview, rewards, special rules) with Start Battle button
 
 ## Acceptance Criteria
-- src/app/adventure/page.tsx renders chapter tabs and stage grid
-- Locked stages show lock icon, cleared stages show 1-3 stars
-- Boss stages visually distinct from normal stages
-- Clicking unlocked stage navigates to pre-battle screen
-- Main menu has Adventure link
+- src/app/adventure/stage/[chapterId]/[stageId]/page.tsx shows stage details
+- Displays enemy info, reward preview, boss rules if applicable
+- Start Battle button initiates game with correct enemy deck and rules
+- Back button returns to adventure map
 - npm run build succeeds
 
 ## Rules

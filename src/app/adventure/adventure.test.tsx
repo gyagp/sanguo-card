@@ -122,7 +122,7 @@ describe("AdventurePage", () => {
     const stageButton = screen.getByText(ch1.stages[0].name).closest("button")!;
     fireEvent.click(stageButton);
 
-    expect(pushMock).toHaveBeenCalledWith(`/adventure/${ch1.stages[0].id}`);
+    expect(pushMock).toHaveBeenCalledWith(`/adventure/stage/${ch1.id}/${ch1.stages[0].id}`);
   });
 
   it("locked stages are not clickable (no button)", () => {

@@ -136,7 +136,7 @@ export default function AdventurePage() {
               stage={stage}
               progress={progress}
               unlocked={isStageUnlocked(stage.id, progress)}
-              onClick={() => router.push(`/adventure/${stage.id}`)}
+              onClick={() => router.push(`/adventure/stage/${chapter.id}/${stage.id}`)}
             />
           ))}
         </div>
