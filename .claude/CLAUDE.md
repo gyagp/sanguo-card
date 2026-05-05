@@ -1,14 +1,13 @@
-# Autopo test Session
+# Autopo execute Session
 
 ## Work Unit
-Card pack system — implement openCardPack in player-store: deduct gold, generate 5 random cards with rarity weights (70% common, 20% rare, 8% epic, 2% legendary), enforce pity guarantee (at least 1 rare+), add cards to collection
+Tests for card pack system — verify rarity weights, pity guarantee, gold deduction, edge cases (not enough gold, all cards owned)
 
 ## Acceptance Criteria
-- openCardPack deducts pack price from gold
-- Returns 5 cards with correct rarity distribution
-- At least 1 card is rare or above guaranteed
-- Fails gracefully if insufficient gold
-- npm run build succeeds
+- Pity guarantee always provides ≥1 rare+
+- Gold deducted exactly once per pack
+- Error returned when gold insufficient
+- All tests pass
 
 ## Rules
 # Rules
