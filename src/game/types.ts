@@ -38,6 +38,7 @@ export interface EffectContext {
   event: GameEvent;
   sourceCard: Card | BoardMinion;
   player: 0 | 1;
+  spellDamage?: number;
 }
 
 export type Effect = (state: GameState, context: EffectContext) => GameState;
@@ -62,6 +63,7 @@ export interface Card {
   spellDamage?: number;
   freeze?: boolean;
   immune?: boolean;
+  effect?: Effect;
 }
 
 export interface HeroPower {
@@ -243,6 +245,7 @@ export function startTurn(state: GameState): DrawResult {
     minion.windfuryAttacksLeft = minion.windfury ? 2 : 1;
   }
 
+  player.hero.isImmune = false;
   player.heroPowerUsed = false;
   player.heroHasAttacked = false;
   player.heroWindfuryAttacksLeft = player.weapon ? (player.weapon.windfury ? 2 : 1) : 0;
@@ -355,6 +358,23 @@ export function playCard(
     player.hero.mana -= card.cost;
     player.hand.splice(handIndex, 1);
     gameEventBus.emit({ type: "spell_played", player: state.activePlayer, source: card });
+
+    if (card.effect) {
+      const spellDamage = player.board.reduce(
+        (sum, m) => sum + (m.spellDamage ?? 0),
+        0
+      );
+      const context: EffectContext = {
+        event: { type: "spell_played", player: state.activePlayer, source: card },
+        sourceCard: card,
+        player: state.activePlayer,
+        spellDamage,
+      };
+      state = card.effect(state, context);
+      checkEnrage(state);
+      removeDeadMinions(state);
+    }
+
     return { success: true };
   }
 

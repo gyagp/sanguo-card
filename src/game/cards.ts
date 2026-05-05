@@ -1,4 +1,4 @@
-import { Card, GameState, BoardMinion, MAX_BOARD_SIZE } from "./types";
+import { Card, GameState, BoardMinion, MAX_BOARD_SIZE, EffectContext, drawCard, STARTING_HP } from "./types";
 
 export const cards: Card[] = [
   // === 普通 (10) ===
@@ -69,14 +69,44 @@ export const cards: Card[] = [
   {
     name: "烽火", cost: 1, attack: 0, health: 0, description: "对一个随从造成2点伤害",
     rarity: "common", type: "spell", faction: "neutral",
+    effect: (state: GameState, context: EffectContext) => {
+      const damage = 2 + (context.spellDamage ?? 0);
+      const enemy = state.players[context.player === 0 ? 1 : 0];
+      if (enemy.board.length > 0) {
+        const target = enemy.board[Math.floor(Math.random() * enemy.board.length)];
+        target.currentHealth -= damage;
+      }
+      return state;
+    },
   },
   {
     name: "征兵令", cost: 3, attack: 0, health: 0, description: "召唤两个1/1的乡勇",
     rarity: "common", type: "spell", faction: "neutral",
+    effect: (state: GameState, context: EffectContext) => {
+      const player = state.players[context.player];
+      for (let i = 0; i < 2 && player.board.length < MAX_BOARD_SIZE; i++) {
+        const token: BoardMinion = {
+          name: "乡勇", cost: 0, attack: 1, health: 1, description: "", rarity: "common",
+          type: "minion", faction: "neutral",
+          currentAttack: 1, currentHealth: 1,
+          summoningSickness: true, hasAttacked: false, hasDivineShield: false,
+          isStealth: false, isFrozen: false, isImmune: false,
+          windfuryAttacksLeft: 1, enrageActive: false, enrageBonus: 0,
+          factionAttackBonus: 0, factionHealthBonus: 0,
+        };
+        player.board.push(token);
+      }
+      return state;
+    },
   },
   {
     name: "草药", cost: 2, attack: 0, health: 0, description: "恢复5点生命值",
     rarity: "common", type: "spell", faction: "neutral",
+    effect: (state: GameState, context: EffectContext) => {
+      const hero = state.players[context.player].hero;
+      hero.health = Math.min(hero.health + 5, STARTING_HP);
+      return state;
+    },
   },
 
   // === 稀有 (10) ===
@@ -150,10 +180,26 @@ export const cards: Card[] = [
   {
     name: "伏兵", cost: 3, attack: 0, health: 0, description: "对所有敌方随从造成3点伤害",
     rarity: "rare", type: "spell", faction: "neutral",
+    effect: (state: GameState, context: EffectContext) => {
+      const damage = 3 + (context.spellDamage ?? 0);
+      const enemy = state.players[context.player === 0 ? 1 : 0];
+      for (const minion of enemy.board) {
+        minion.currentHealth -= damage;
+      }
+      return state;
+    },
   },
   {
     name: "草船借箭", cost: 4, attack: 0, health: 0, description: "抽3张牌。若你没有手牌，改为抽5张",
     rarity: "rare", type: "spell", faction: "wu",
+    effect: (state: GameState, context: EffectContext) => {
+      const player = state.players[context.player];
+      const count = player.hand.length === 0 ? 5 : 3;
+      for (let i = 0; i < count; i++) {
+        drawCard(player);
+      }
+      return state;
+    },
   },
   {
     name: "青龙偃月刀", cost: 3, attack: 3, health: 3, description: "3攻击力，3耐久度。装备时获得风怒",
@@ -227,10 +273,27 @@ export const cards: Card[] = [
   {
     name: "连环计", cost: 6, attack: 0, health: 0, description: "冻结所有敌方随从。对每个被冻结的随从造成2点伤害",
     rarity: "epic", type: "spell", faction: "wu",
+    effect: (state: GameState, context: EffectContext) => {
+      const damage = 2 + (context.spellDamage ?? 0);
+      const enemy = state.players[context.player === 0 ? 1 : 0];
+      for (const minion of enemy.board) {
+        minion.isFrozen = true;
+        minion.currentHealth -= damage;
+      }
+      return state;
+    },
   },
   {
     name: "空城计", cost: 4, attack: 0, health: 0, description: "你的英雄在下回合前免疫。抽2张牌",
     rarity: "epic", type: "spell", faction: "shu",
+    effect: (state: GameState, context: EffectContext) => {
+      const player = state.players[context.player];
+      player.hero.isImmune = true;
+      for (let i = 0; i < 2; i++) {
+        drawCard(player);
+      }
+      return state;
+    },
   },
   {
     name: "方天画戟", cost: 5, attack: 5, health: 2, description: "5攻击力，2耐久度。战吼：摧毁敌方武器",
@@ -325,5 +388,15 @@ export const cards: Card[] = [
   {
     name: "火烧赤壁", cost: 10, attack: 0, health: 0, description: "对所有敌方随从造成8点伤害。对敌方英雄造成4点伤害",
     rarity: "legendary", type: "spell", faction: "wu",
+    effect: (state: GameState, context: EffectContext) => {
+      const minionDamage = 8 + (context.spellDamage ?? 0);
+      const heroDamage = 4 + (context.spellDamage ?? 0);
+      const enemy = state.players[context.player === 0 ? 1 : 0];
+      for (const minion of enemy.board) {
+        minion.currentHealth -= minionDamage;
+      }
+      enemy.hero.health -= heroDamage;
+      return state;
+    },
   },
 ];

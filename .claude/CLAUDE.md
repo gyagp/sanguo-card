@@ -1,12 +1,13 @@
-# Autopo execute Session
+# Autopo test Session
 
 ## Work Unit
-Difficulty deck quality tests — verify card pool filtering by difficulty
+Implement spell effect execution in playCard — add Effect field to spell cards and execute on play (damage, heal, draw, AoE, summon, transform, buff)
 
 ## Acceptance Criteria
-- Test Easy deck has no rare/epic/legendary cards
-- Test Hard deck includes legendary cards
-- All tests pass with vitest run
+- Card interface has optional 'effect' field of type Effect for spells
+- playCard executes spell effect function when playing a spell card
+- Spell damage bonus from spellDamage minions is calculated and passed via EffectContext
+- npm run build succeeds
 
 ## Rules
 # Rules
