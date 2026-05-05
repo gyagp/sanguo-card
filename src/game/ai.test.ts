@@ -23,6 +23,13 @@ function makeMinion(overrides: Partial<BoardMinion> = {}): BoardMinion {
     currentHealth: 1,
     summoningSickness: false,
     hasAttacked: false,
+    hasDivineShield: false,
+    isStealth: false,
+    isFrozen: false,
+    isImmune: false,
+    windfuryAttacksLeft: 1,
+    enrageActive: false,
+    enrageBonus: 0, factionAttackBonus: 0, factionHealthBonus: 0,
     ...overrides,
   };
 }
@@ -36,6 +43,8 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     maxMana: 0,
     weapon: null,
     heroPowerUsed: false,
+    heroHasAttacked: false,
+    heroWindfuryAttacksLeft: 0,
     ...overrides,
   };
 }
@@ -227,7 +236,7 @@ describe('findLethal', () => {
 
   it('ignores minions that already attacked', () => {
     const attackers = [
-      makeMinion({ currentAttack: 10, hasAttacked: true }),
+      makeMinion({ currentAttack: 10, hasAttacked: true, windfuryAttacksLeft: 0 }),
       makeMinion({ currentAttack: 2 }),
     ];
     expect(findLethal(attackers, 5)).toBe(false);

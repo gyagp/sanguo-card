@@ -56,6 +56,13 @@ function placeMinion(
     currentHealth: 3,
     summoningSickness: false,
     hasAttacked: false,
+    hasDivineShield: false,
+    isStealth: false,
+    isFrozen: false,
+    isImmune: false,
+    windfuryAttacksLeft: 1,
+    enrageActive: false,
+    enrageBonus: 0, factionAttackBonus: 0, factionHealthBonus: 0,
     ...overrides,
   };
   state.players[playerIdx].board.push(minion);

@@ -159,8 +159,15 @@ interface DyingMinion {
   expiry: number;
 }
 
-function buildRandomDeck(): CardType[] {
-  const pool = [...cards];
+function buildRandomDeck(difficulty?: AIDifficulty): CardType[] {
+  let pool: CardType[];
+  if (difficulty === 'easy') {
+    pool = cards.filter(c => c.rarity === 'common');
+  } else if (difficulty === 'normal') {
+    pool = cards.filter(c => c.rarity === 'common' || c.rarity === 'rare');
+  } else {
+    pool = [...cards];
+  }
   const deck: CardType[] = [];
   while (deck.length < MAX_DECK_SIZE) {
     deck.push(pool[deck.length % pool.length]);
@@ -451,7 +458,7 @@ const BoardZone = forwardRef<HTMLDivElement, {
                   minion={minions[i]}
                   onClick={() => onMinionClick?.(i)}
                   selected={!isEnemy && selectedIndex === i}
-                  exhausted={!isEnemy && (minions[i].hasAttacked || minions[i].summoningSickness)}
+                  exhausted={!isEnemy && ((minions[i].hasAttacked && minions[i].windfuryAttacksLeft <= 0) || minions[i].summoningSickness)}
                   targetable={isEnemy && !!hasAttackerSelected}
                   animation={animations?.get(i)}
                   damageNumber={damageNumbers?.get(i) ?? null}
@@ -657,8 +664,8 @@ function DeckSelectScreen({ onStart }: { onStart: (deck: Deck, difficulty: AIDif
 
 function GameInner({ playerDeck, difficulty }: { playerDeck: Deck; difficulty: AIDifficulty }) {
   const [deck1, deck2] = useMemo(() => {
-    return [playerDeck, createDeck(buildRandomDeck())];
-  }, [playerDeck]);
+    return [playerDeck, createDeck(buildRandomDeck(difficulty))];
+  }, [playerDeck, difficulty]);
 
   const { gameState, winner, playCard, endTurn, attack, attackHero, useHeroPower, isOpponentTurn, resetGame } = useGameState(deck1, deck2, difficulty);
 
@@ -861,7 +868,7 @@ function GameInner({ playerDeck, difficulty }: { playerDeck: Deck; difficulty: A
     if (isOpponentTurn) return;
     if (gameState.activePlayer !== 0) return;
     const minion = player.board[index];
-    if (minion.hasAttacked || minion.summoningSickness) return;
+    if ((minion.hasAttacked && minion.windfuryAttacksLeft <= 0) || minion.summoningSickness) return;
     setSelectedAttacker(selectedAttacker === index ? null : index);
   };
 
@@ -943,9 +950,10 @@ function GameInner({ playerDeck, difficulty }: { playerDeck: Deck; difficulty: A
     const hasPlayableCard = p.hand.some(c =>
       c.cost <= p.hero.mana && (c.type === 'spell' || p.board.length < MAX_BOARD_SIZE)
     );
-    const hasAvailableAttack = p.board.some(m => !m.hasAttacked && !m.summoningSickness && m.currentAttack > 0);
+    const hasAvailableAttack = p.board.some(m => !(m.hasAttacked && m.windfuryAttacksLeft <= 0) && !m.summoningSickness && m.currentAttack > 0);
+    const canHeroAttack = p.weapon !== null && !p.heroHasAttacked;
     const canUseHeroPower = !p.heroPowerUsed && p.hero.mana >= p.hero.heroPower.cost;
-    if (!hasPlayableCard && !hasAvailableAttack && !canUseHeroPower) {
+    if (!hasPlayableCard && !hasAvailableAttack && !canHeroAttack && !canUseHeroPower) {
       autoEndTurnTimerRef.current = setTimeout(() => {
         endTurn();
         setSelectedAttacker(null);

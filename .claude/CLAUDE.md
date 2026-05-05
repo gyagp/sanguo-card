@@ -1,13 +1,13 @@
 # Autopo test Session
 
 ## Work Unit
-Add keyword and effect fields to Card/BoardMinion types and create the event/trigger system types
+Difficulty-based deck quality — Easy/Normal/Hard AI get different card pool quality (Easy: commons only, Normal: commons+rares, Hard: full pool with epics/legendaries)
 
 ## Acceptance Criteria
-- Card type has optional keyword fields: taunt, charge, divineShield, deathrattle, battlecry, stealth, windfury, enrage, spellDamage, freeze, immune
-- BoardMinion has runtime state: hasDivineShield, isStealth, isFrozen, isImmune, windfuryAttacksLeft, enrageActive, keywords parsed from card
-- GameEvent type defined (minion_played, minion_died, turn_start, turn_end, spell_played, attack, hero_damaged)
-- Effect function type defined: (state, context) => GameState
+- AI deck generation function accepts difficulty parameter
+- Easy AI decks contain only common cards
+- Normal AI decks contain common and rare cards
+- Hard AI decks contain all rarities including epics and legendaries
 - npm run build succeeds
 
 ## Rules

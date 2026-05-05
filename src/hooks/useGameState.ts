@@ -16,17 +16,22 @@ import {
   AttackResult,
   HeroPowerResult,
 } from "../game/types";
-import { AIDifficulty, createAI, AIDecision } from "../game/ai";
+import { AIDifficulty, createAI, AIDecision, AIStrategy } from "../game/ai";
+import { BossAI } from "../game/boss-ai";
 
 function cloneState(state: GameState): GameState {
   return JSON.parse(JSON.stringify(state));
 }
 
-function collectAIDecisions(state: GameState, difficulty: AIDifficulty): AIDecision[] {
-  const ai = createAI(difficulty);
+function collectAIDecisions(state: GameState, difficulty: AIDifficulty, bossAI?: BossAI): AIDecision[] {
+  const ai: AIStrategy = bossAI ?? createAI(difficulty);
   const decisions: AIDecision[] = [];
 
   const sim = cloneState(state);
+
+  if (bossAI) {
+    bossAI.applyTurnStartEffect(sim);
+  }
 
   if (ai.shouldUseHeroPower(sim)) {
     decisions.push({ type: 'useHeroPower' });
@@ -71,7 +76,7 @@ function executeAIDecision(state: GameState, decision: AIDecision): GameState {
   return next;
 }
 
-export function useGameState(deck1: Deck, deck2: Deck, aiDifficulty?: AIDifficulty) {
+export function useGameState(deck1: Deck, deck2: Deck, aiDifficulty?: AIDifficulty, bossAI?: BossAI) {
   const [gameState, setGameState] = useState<GameState>(() => {
     const state = initializeGame(deck1, deck2);
     startTurn(state);
@@ -124,13 +129,18 @@ export function useGameState(deck1: Deck, deck2: Deck, aiDifficulty?: AIDifficul
     const next = cloneState(gameState);
     engineEndTurn(next);
     startTurn(next);
+
+    if (bossAI) {
+      bossAI.applyTurnStartEffect(next);
+    }
+
     setGameState(next);
     setIsOpponentTurn(true);
 
     clearAITimers();
 
     if (aiDifficulty) {
-      const decisions = collectAIDecisions(next, aiDifficulty);
+      const decisions = collectAIDecisions(next, aiDifficulty, bossAI);
       const actionDecisions = decisions.filter(d => d.type !== 'endTurn');
       // 2s budget: 200ms initial pause, up to 1800ms for actions, 200ms before endTurn
       const delayPerAction = actionDecisions.length > 0
@@ -174,7 +184,7 @@ export function useGameState(deck1: Deck, deck2: Deck, aiDifficulty?: AIDifficul
       }, 2000);
       aiTimersRef.current.push(timer);
     }
-  }, [gameState, aiDifficulty, clearAITimers]);
+  }, [gameState, aiDifficulty, bossAI, clearAITimers]);
 
   const heroPower = useCallback((): HeroPowerResult => {
     const next = cloneState(gameState);

@@ -1,6 +1,6 @@
-import { GameState, PlayerState, Card, BoardMinion } from './types';
+import { GameState, PlayerState, Card, BoardMinion, Faction, FACTION_SYNERGIES } from './types';
 
-export type AIDifficulty = 'easy' | 'normal' | 'hard';
+export type AIDifficulty = 'easy' | 'normal' | 'hard' | 'boss';
 
 export type AIDecisionType = 'playCard' | 'attack' | 'useHeroPower' | 'endTurn';
 
@@ -34,6 +34,23 @@ const HERO_HEALTH_WEIGHT = 0.5;
 const MANA_ADVANTAGE_WEIGHT = 0.3;
 const TRADE_KILL_BONUS = 5;
 const TRADE_SURVIVE_BONUS = 3;
+const FACTION_SYNERGY_WEIGHT = 2;
+
+export function countFactionMinions(board: BoardMinion[], faction: Faction): number {
+  return board.filter(m => m.faction === faction).length;
+}
+
+export function evaluateFactionSynergy(board: BoardMinion[]): number {
+  let score = 0;
+  for (const faction of ['shu', 'wei', 'wu', 'qun'] as const) {
+    const count = countFactionMinions(board, faction);
+    if (count >= FACTION_SYNERGIES[faction].requiredCount) {
+      const bonus = FACTION_SYNERGIES[faction];
+      score += count * (bonus.attackBonus + bonus.healthBonus);
+    }
+  }
+  return score;
+}
 
 export function evaluateBoard(state: GameState, playerIndex: 0 | 1): number {
   const player = state.players[playerIndex];
@@ -54,6 +71,9 @@ export function evaluateBoard(state: GameState, playerIndex: 0 | 1): number {
   score += player.hand.length * MANA_ADVANTAGE_WEIGHT;
   score -= opponent.hand.length * MANA_ADVANTAGE_WEIGHT;
 
+  score += evaluateFactionSynergy(player.board) * FACTION_SYNERGY_WEIGHT;
+  score -= evaluateFactionSynergy(opponent.board) * FACTION_SYNERGY_WEIGHT;
+
   return score;
 }
 
@@ -67,12 +87,13 @@ export function getPlayableCards(hand: Card[], currentMana: number): number[] {
   return indices;
 }
 
-export function getBestManaUsage(hand: Card[], currentMana: number): number[] {
+export function getBestManaUsage(hand: Card[], currentMana: number, board?: BoardMinion[]): number[] {
   const playable = getPlayableCards(hand, currentMana);
   if (playable.length === 0) return [];
 
   let bestCombo: number[] = [];
   let bestManaSpent = 0;
+  let bestSynergyScore = -1;
 
   const subsetCount = 1 << playable.length;
   for (let mask = 1; mask < subsetCount; mask++) {
@@ -86,9 +107,34 @@ export function getBestManaUsage(hand: Card[], currentMana: number): number[] {
       }
     }
 
-    if (totalCost <= currentMana && totalCost > bestManaSpent) {
-      bestManaSpent = totalCost;
-      bestCombo = combo;
+    if (totalCost <= currentMana && totalCost >= bestManaSpent) {
+      let synergyScore = 0;
+      if (board) {
+        const factionCounts = new Map<Faction, number>();
+        for (const m of board) {
+          if (m.faction !== "neutral") {
+            factionCounts.set(m.faction, (factionCounts.get(m.faction) ?? 0) + 1);
+          }
+        }
+        for (const idx of combo) {
+          const f = hand[idx].faction;
+          if (f !== "neutral") {
+            factionCounts.set(f, (factionCounts.get(f) ?? 0) + 1);
+          }
+        }
+        for (const [faction, count] of factionCounts) {
+          if (faction !== "neutral" && count >= FACTION_SYNERGIES[faction as Exclude<Faction, "neutral">].requiredCount) {
+            const bonus = FACTION_SYNERGIES[faction as Exclude<Faction, "neutral">];
+            synergyScore += count * (bonus.attackBonus + bonus.healthBonus);
+          }
+        }
+      }
+
+      if (totalCost > bestManaSpent || synergyScore > bestSynergyScore) {
+        bestManaSpent = totalCost;
+        bestSynergyScore = synergyScore;
+        bestCombo = combo;
+      }
     }
   }
 
@@ -135,8 +181,8 @@ export function findLethal(
 ): boolean {
   let totalDamage = 0;
   for (const minion of attackers) {
-    if (!minion.summoningSickness && !minion.hasAttacked) {
-      totalDamage += minion.currentAttack;
+    if (!minion.summoningSickness && !(minion.hasAttacked && minion.windfuryAttacksLeft <= 0)) {
+      totalDamage += minion.currentAttack * Math.max(minion.windfuryAttacksLeft, 0);
     }
   }
   return totalDamage >= opponentHeroHealth;
@@ -150,14 +196,19 @@ export function getAIAttackDecisions(state: GameState): AttackDecision[] {
   const opponentHealth = state.players[opponentIndex].hero.health;
 
   const available = aiBoard.filter(
-    (m) => !m.summoningSickness && !m.hasAttacked,
+    (m) => !m.summoningSickness && !(m.hasAttacked && m.windfuryAttacksLeft <= 0),
   );
 
   if (findLethal(available, opponentHealth)) {
-    return available.map((_, i) => {
-      const boardIndex = aiBoard.indexOf(available[i]);
-      return { type: 'attack' as const, attackerIndex: boardIndex, targetIndex: 'hero' as const };
-    });
+    const decisions: AttackDecision[] = [];
+    for (const minion of available) {
+      const boardIndex = aiBoard.indexOf(minion);
+      const attacks = Math.max(minion.windfuryAttacksLeft, 0);
+      for (let a = 0; a < attacks; a++) {
+        decisions.push({ type: 'attack' as const, attackerIndex: boardIndex, targetIndex: 'hero' as const });
+      }
+    }
+    return decisions;
   }
 
   const decisions: AttackDecision[] = [];
@@ -168,7 +219,7 @@ export function getAIAttackDecisions(state: GameState): AttackDecision[] {
     const trades: TradeScore[] = [];
     for (let a = 0; a < aiBoard.length; a++) {
       const attacker = aiBoard[a];
-      if (attacker.summoningSickness || attacker.hasAttacked) continue;
+      if (attacker.summoningSickness || (attacker.hasAttacked && attacker.windfuryAttacksLeft <= 0)) continue;
       for (let d = 0; d < opponentBoard.length; d++) {
         trades.push({
           attackerIndex: a,
@@ -196,12 +247,15 @@ export function getAIAttackDecisions(state: GameState): AttackDecision[] {
 
   for (let a = 0; a < aiBoard.length; a++) {
     const minion = aiBoard[a];
-    if (minion.summoningSickness || minion.hasAttacked || usedAttackers.has(a)) continue;
-    decisions.push({
-      type: 'attack',
-      attackerIndex: a,
-      targetIndex: 'hero',
-    });
+    if (minion.summoningSickness || (minion.hasAttacked && minion.windfuryAttacksLeft <= 0) || usedAttackers.has(a)) continue;
+    const remainingAttacks = Math.max(minion.windfuryAttacksLeft, 0);
+    for (let r = 0; r < remainingAttacks; r++) {
+      decisions.push({
+        type: 'attack',
+        attackerIndex: a,
+        targetIndex: 'hero',
+      });
+    }
   }
 
   return decisions;
@@ -239,7 +293,7 @@ function getRandomAttackDecisions(state: GameState): AttackDecision[] {
 
   for (let a = 0; a < aiBoard.length; a++) {
     const minion = aiBoard[a];
-    if (minion.summoningSickness || minion.hasAttacked) continue;
+    if (minion.summoningSickness || (minion.hasAttacked && minion.windfuryAttacksLeft <= 0)) continue;
     if (opponentBoard.length > 0 && Math.random() < 0.5) {
       const targetIdx = Math.floor(Math.random() * opponentBoard.length);
       decisions.push({ type: 'attack', attackerIndex: a, targetIndex: targetIdx });
@@ -250,7 +304,7 @@ function getRandomAttackDecisions(state: GameState): AttackDecision[] {
   return decisions;
 }
 
-function getOnCurvePlayDecisions(state: GameState): PlayCardDecision[] {
+export function getOnCurvePlayDecisions(state: GameState): PlayCardDecision[] {
   const player = state.players[state.activePlayer];
   const playable = getPlayableCards(player.hand, player.hero.mana);
   if (playable.length === 0) return [];
@@ -267,9 +321,9 @@ function getOnCurvePlayDecisions(state: GameState): PlayCardDecision[] {
   return decisions;
 }
 
-function getOptimalPlayDecisions(state: GameState): PlayCardDecision[] {
+export function getOptimalPlayDecisions(state: GameState): PlayCardDecision[] {
   const player = state.players[state.activePlayer];
-  const bestCombo = getBestManaUsage(player.hand, player.hero.mana);
+  const bestCombo = getBestManaUsage(player.hand, player.hero.mana, player.board);
   return bestCombo.map(idx => ({ type: 'playCard' as const, cardIndex: idx }));
 }
 
@@ -322,8 +376,8 @@ class HardAI implements AIStrategy {
     if (player.heroPowerUsed || player.hero.mana < player.hero.heroPower.cost) return false;
     const manaAfter = player.hero.mana - player.hero.heroPower.cost;
     const playable = getPlayableCards(player.hand, manaAfter);
-    const bestWithout = getBestManaUsage(player.hand, player.hero.mana);
-    const bestWith = getBestManaUsage(player.hand, manaAfter);
+    const bestWithout = getBestManaUsage(player.hand, player.hero.mana, player.board);
+    const bestWith = getBestManaUsage(player.hand, manaAfter, player.board);
     const manaUsedWithout = bestWithout.reduce((s, i) => s + player.hand[i].cost, 0);
     const manaUsedWith = bestWith.reduce((s, i) => s + player.hand[i].cost, 0) + player.hero.heroPower.cost;
     return manaUsedWith >= manaUsedWithout;
@@ -335,5 +389,6 @@ export function createAI(difficulty: AIDifficulty): AIStrategy {
     case 'easy': return new EasyAI();
     case 'normal': return new NormalAI();
     case 'hard': return new HardAI();
+    case 'boss': return new HardAI();
   }
 }

@@ -72,6 +72,8 @@ function makePlayerState(): PlayerState {
     maxMana: 0,
     weapon: null,
     heroPowerUsed: false,
+    heroHasAttacked: false,
+    heroWindfuryAttacksLeft: 0,
   };
 }
 
@@ -437,7 +439,7 @@ describe("playCard", () => {
     expect(result.success).toBe(true);
     expect(state.players[0].hero.mana).toBe(3);
     expect(state.players[0].hand).toHaveLength(0);
-    expect(state.players[0].weapon).toEqual({ name: "Axe", attack: 3, durability: 2 });
+    expect(state.players[0].weapon).toEqual({ name: "Axe", attack: 3, durability: 2, windfury: undefined });
   });
 
   it("MAX_BOARD_SIZE is 7", () => {
@@ -458,6 +460,7 @@ function makeBoardMinion(overrides: Partial<BoardMinion> = {}): BoardMinion {
     isImmune: false,
     windfuryAttacksLeft: 1,
     enrageActive: false,
+    enrageBonus: 0, factionAttackBonus: 0, factionHealthBonus: 0,
     ...overrides,
   };
 }
@@ -756,7 +759,7 @@ describe("Effect function type", () => {
     };
     const state = initializeGame(makeDeck(), makeDeck());
     const context: EffectContext = {
-      event: { type: "battlecry" as GameEventType, player: 0 },
+      event: { type: "minion_played", player: 0 },
       sourceCard: makeCard(),
       player: 0,
     };
@@ -773,5 +776,174 @@ describe("Effect function type", () => {
     expect(context.event.type).toBe("minion_played");
     expect(context.sourceCard.name).toBe("Test");
     expect(context.player).toBe(0);
+  });
+});
+
+describe("Battlecry execution in playCard", () => {
+  function setupGame(mana: number, handCards: Card[]): GameState {
+    const state = initializeGame(makeDeck(), makeDeck());
+    state.players[0].hero.mana = mana;
+    state.players[0].maxMana = mana;
+    state.players[0].hand = [...handCards];
+    return state;
+  }
+
+  it("calls battlecry when a minion with battlecry is played", () => {
+    let called = false;
+    const card = makeCard({
+      cost: 1,
+      type: "minion",
+      battlecry: (state: GameState, _context: EffectContext) => {
+        called = true;
+        return state;
+      },
+    });
+    const state = setupGame(5, [card]);
+    playCard(state, 0);
+    expect(called).toBe(true);
+  });
+
+  it("does not call battlecry for cards without one", () => {
+    const card = makeCard({ cost: 1, type: "minion" });
+    const state = setupGame(5, [card]);
+    const result = playCard(state, 0);
+    expect(result.success).toBe(true);
+  });
+
+  it("battlecry receives correct EffectContext", () => {
+    let receivedContext: EffectContext | null = null;
+    const card = makeCard({
+      name: "TestBattlecry",
+      cost: 1,
+      type: "minion",
+      battlecry: (state: GameState, context: EffectContext) => {
+        receivedContext = context;
+        return state;
+      },
+    });
+    const state = setupGame(5, [card]);
+    playCard(state, 0);
+    expect(receivedContext).not.toBeNull();
+    expect(receivedContext!.player).toBe(0);
+    expect(receivedContext!.sourceCard.name).toBe("TestBattlecry");
+    expect(receivedContext!.event.type).toBe("minion_played");
+  });
+
+  it("张飞 battlecry grants taunt", () => {
+    const card = makeCard({
+      name: "张飞",
+      cost: 5,
+      attack: 5,
+      health: 5,
+      type: "minion",
+      charge: true,
+      battlecry: (state: GameState, context: EffectContext) => {
+        const board = state.players[context.player].board;
+        const self = board[board.length - 1];
+        self.taunt = true;
+        return state;
+      },
+    });
+    const state = setupGame(10, [card]);
+    playCard(state, 0);
+    expect(state.players[0].board[0].taunt).toBe(true);
+  });
+
+  it("孙权 battlecry grants +2/+2 and divine shield to friendly minions", () => {
+    const state = setupGame(10, []);
+    state.players[0].board = [
+      makeBoardMinion({ name: "Soldier", currentAttack: 2, currentHealth: 3 }),
+    ];
+    const sunquan = makeCard({
+      name: "孙权",
+      cost: 7,
+      attack: 5,
+      health: 7,
+      type: "minion",
+      battlecry: (st: GameState, ctx: EffectContext) => {
+        const board = st.players[ctx.player].board;
+        for (const minion of board) {
+          if (minion.name !== "孙权") {
+            minion.currentAttack += 2;
+            minion.currentHealth += 2;
+            minion.hasDivineShield = true;
+          }
+        }
+        return st;
+      },
+    });
+    state.players[0].hand = [sunquan];
+    playCard(state, 0);
+    const soldier = state.players[0].board[0];
+    expect(soldier.currentAttack).toBe(4);
+    expect(soldier.currentHealth).toBe(5);
+    expect(soldier.hasDivineShield).toBe(true);
+  });
+
+  it("运粮车 battlecry heals hero for 2", () => {
+    const card = makeCard({
+      name: "运粮车",
+      cost: 2,
+      attack: 1,
+      health: 4,
+      type: "minion",
+      battlecry: (state: GameState, context: EffectContext) => {
+        state.players[context.player].hero.health += 2;
+        return state;
+      },
+    });
+    const state = setupGame(5, [card]);
+    state.players[0].hero.health = 20;
+    playCard(state, 0);
+    expect(state.players[0].hero.health).toBe(22);
+  });
+
+  it("damage battlecry removes dead minions (弓弩手 deals 1 damage)", () => {
+    const card = makeCard({
+      name: "弓弩手",
+      cost: 2,
+      attack: 3,
+      health: 2,
+      type: "minion",
+      battlecry: (state: GameState, context: EffectContext) => {
+        const enemy = context.player === 0 ? 1 : 0;
+        const targets = state.players[enemy].board;
+        if (targets.length > 0) {
+          targets[0].currentHealth -= 1;
+        }
+        return state;
+      },
+    });
+    const state = setupGame(5, [card]);
+    state.players[1].board = [makeBoardMinion({ name: "Weak", currentAttack: 1, currentHealth: 1 })];
+    playCard(state, 0);
+    expect(state.players[1].board).toHaveLength(0);
+  });
+
+  it("太史慈 battlecry mutual combat removes dead minions", () => {
+    const card = makeCard({
+      name: "太史慈",
+      cost: 5,
+      attack: 4,
+      health: 6,
+      type: "minion",
+      battlecry: (state: GameState, context: EffectContext) => {
+        const enemy = context.player === 0 ? 1 : 0;
+        const enemyBoard = state.players[enemy].board;
+        if (enemyBoard.length > 0) {
+          const board = state.players[context.player].board;
+          const self = board[board.length - 1];
+          const target = enemyBoard[0];
+          self.currentHealth -= target.currentAttack;
+          target.currentHealth -= self.currentAttack;
+        }
+        return state;
+      },
+    });
+    const state = setupGame(10, [card]);
+    state.players[1].board = [makeBoardMinion({ name: "Weak", currentAttack: 2, currentHealth: 3 })];
+    playCard(state, 0);
+    expect(state.players[1].board).toHaveLength(0);
+    expect(state.players[0].board[0].currentHealth).toBe(4);
   });
 });

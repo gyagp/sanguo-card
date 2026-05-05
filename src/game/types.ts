@@ -4,6 +4,19 @@ export type CardType = "minion" | "spell" | "weapon";
 
 export type Faction = "wei" | "shu" | "wu" | "qun" | "neutral";
 
+export interface FactionSynergyBonus {
+  requiredCount: number;
+  attackBonus: number;
+  healthBonus: number;
+}
+
+export const FACTION_SYNERGIES: Record<Exclude<Faction, "neutral">, FactionSynergyBonus> = {
+  shu: { requiredCount: 2, attackBonus: 1, healthBonus: 0 },
+  wei: { requiredCount: 2, attackBonus: 0, healthBonus: 1 },
+  wu: { requiredCount: 2, attackBonus: 1, healthBonus: 1 },
+  qun: { requiredCount: 2, attackBonus: 2, healthBonus: 0 },
+};
+
 export type GameEventType =
   | "minion_played"
   | "minion_died"
@@ -16,14 +29,14 @@ export type GameEventType =
 export interface GameEvent {
   type: GameEventType;
   player: 0 | 1;
-  source?: BoardMinion | Card;
+  source?: BoardMinion | Card | { kind: "hero"; player: 0 | 1 };
   target?: BoardMinion | { kind: "hero"; player: 0 | 1 };
   value?: number;
 }
 
 export interface EffectContext {
   event: GameEvent;
-  sourceCard: Card;
+  sourceCard: Card | BoardMinion;
   player: 0 | 1;
 }
 
@@ -61,6 +74,7 @@ export interface Hero {
   health: number;
   mana: number;
   heroPower: HeroPower;
+  isImmune?: boolean;
 }
 
 export type GamePhase = "mulligan" | "playing" | "ended";
@@ -137,12 +151,16 @@ export interface BoardMinion extends Card {
   isImmune: boolean;
   windfuryAttacksLeft: number;
   enrageActive: boolean;
+  enrageBonus: number;
+  factionAttackBonus: number;
+  factionHealthBonus: number;
 }
 
 export interface Weapon {
   name: string;
   attack: number;
   durability: number;
+  windfury?: boolean;
 }
 
 export interface PlayerState {
@@ -153,6 +171,8 @@ export interface PlayerState {
   maxMana: number;
   weapon: Weapon | null;
   heroPowerUsed: boolean;
+  heroHasAttacked: boolean;
+  heroWindfuryAttacksLeft: number;
 }
 
 export type TurnPhase = "start" | "play" | "combat" | "end";
@@ -183,6 +203,8 @@ export function createPlayerState(deck: Deck): PlayerState {
     maxMana: 0,
     weapon: null,
     heroPowerUsed: false,
+    heroHasAttacked: false,
+    heroWindfuryAttacksLeft: 0,
   };
 }
 
@@ -217,24 +239,60 @@ export function startTurn(state: GameState): DrawResult {
   for (const minion of player.board) {
     minion.summoningSickness = false;
     minion.hasAttacked = false;
+    minion.isFrozen = false;
+    minion.windfuryAttacksLeft = minion.windfury ? 2 : 1;
   }
 
   player.heroPowerUsed = false;
+  player.heroHasAttacked = false;
+  player.heroWindfuryAttacksLeft = player.weapon ? (player.weapon.windfury ? 2 : 1) : 0;
 
   const result = drawCard(player);
 
   state.turnPhase = "play";
+
+  gameEventBus.emit({ type: "turn_start", player: state.activePlayer });
+
   return result;
 }
 
 export function endTurn(state: GameState): void {
   state.turnPhase = "end";
+  gameEventBus.emit({ type: "turn_end", player: state.activePlayer });
   state.activePlayer = state.activePlayer === 0 ? 1 : 0;
 }
 
 export interface PlayCardResult {
   success: boolean;
   error?: string;
+}
+
+export function recalculateFactionSynergies(player: PlayerState): void {
+  const factionCounts = new Map<Faction, number>();
+  for (const minion of player.board) {
+    if (minion.faction !== "neutral") {
+      factionCounts.set(minion.faction, (factionCounts.get(minion.faction) ?? 0) + 1);
+    }
+  }
+
+  for (const minion of player.board) {
+    if (minion.faction === "neutral") continue;
+    const synergy = FACTION_SYNERGIES[minion.faction];
+    const count = factionCounts.get(minion.faction) ?? 0;
+    const oldAtkBonus = minion.factionAttackBonus;
+    const oldHpBonus = minion.factionHealthBonus;
+
+    if (count >= synergy.requiredCount) {
+      minion.factionAttackBonus = synergy.attackBonus;
+      minion.factionHealthBonus = synergy.healthBonus;
+    } else {
+      minion.factionAttackBonus = 0;
+      minion.factionHealthBonus = 0;
+    }
+
+    minion.currentAttack += minion.factionAttackBonus - oldAtkBonus;
+    minion.currentHealth += minion.factionHealthBonus - oldHpBonus;
+  }
 }
 
 export function playCard(
@@ -271,14 +329,32 @@ export function playCard(
       isImmune: card.immune ?? false,
       windfuryAttacksLeft: card.windfury ? 2 : 1,
       enrageActive: false,
+      enrageBonus: 0,
+      factionAttackBonus: 0,
+      factionHealthBonus: 0,
     };
     player.board.push(minion);
+    recalculateFactionSynergies(player);
+    gameEventBus.emit({ type: "minion_played", player: state.activePlayer, source: minion });
+
+    if (card.battlecry) {
+      const context: EffectContext = {
+        event: { type: "minion_played", player: state.activePlayer, source: minion },
+        sourceCard: card,
+        player: state.activePlayer,
+      };
+      state = card.battlecry(state, context);
+      checkEnrage(state);
+      removeDeadMinions(state);
+    }
+
     return { success: true };
   }
 
   if (card.type === "spell") {
     player.hero.mana -= card.cost;
     player.hand.splice(handIndex, 1);
+    gameEventBus.emit({ type: "spell_played", player: state.activePlayer, source: card });
     return { success: true };
   }
 
@@ -289,7 +365,9 @@ export function playCard(
       name: card.name,
       attack: card.attack,
       durability: card.health,
+      windfury: card.windfury,
     };
+    player.heroWindfuryAttacksLeft = card.windfury ? 2 : 1;
     return { success: true };
   }
 
@@ -301,9 +379,63 @@ export interface AttackResult {
   error?: string;
 }
 
+export function checkEnrage(state: GameState): void {
+  for (let playerIdx = 0; playerIdx < 2; playerIdx++) {
+    for (const minion of state.players[playerIdx].board) {
+      if (!minion.enrage) continue;
+      const isDamaged = minion.currentHealth < minion.health;
+      if (isDamaged && !minion.enrageActive) {
+        const context: EffectContext = {
+          event: { type: "attack", player: playerIdx as 0 | 1, source: minion },
+          sourceCard: minion,
+          player: playerIdx as 0 | 1,
+        };
+        minion.enrage(state, context);
+      } else if (!isDamaged && minion.enrageActive) {
+        minion.currentAttack -= minion.enrageBonus;
+        minion.enrageBonus = 0;
+        minion.enrageActive = false;
+      }
+    }
+  }
+}
+
 export function removeDeadMinions(state: GameState): void {
-  for (const player of state.players) {
-    player.board = player.board.filter((m) => m.currentHealth > 0);
+  let hasDeaths = true;
+  while (hasDeaths) {
+    const dying: { minion: BoardMinion; owner: 0 | 1 }[] = [];
+    for (let playerIdx = 0; playerIdx < 2; playerIdx++) {
+      for (const minion of state.players[playerIdx].board) {
+        if (minion.currentHealth <= 0) {
+          dying.push({ minion, owner: playerIdx as 0 | 1 });
+        }
+      }
+    }
+
+    if (dying.length === 0) {
+      hasDeaths = false;
+      break;
+    }
+
+    for (const { minion, owner } of dying) {
+      if (minion.deathrattle) {
+        const context: EffectContext = {
+          event: { type: "minion_died", player: owner, source: minion },
+          sourceCard: minion,
+          player: owner,
+        };
+        minion.deathrattle(state, context);
+      }
+      gameEventBus.emit({ type: "minion_died", player: owner, source: minion });
+    }
+
+    checkEnrage(state);
+
+    const dyingSet = new Set(dying.map(d => d.minion));
+    for (const player of state.players) {
+      player.board = player.board.filter((m) => !dyingSet.has(m));
+      recalculateFactionSynergies(player);
+    }
   }
 }
 
@@ -322,7 +454,8 @@ export function attackMinion(
   defenderIndex: number,
 ): AttackResult {
   const attacker = state.players[state.activePlayer];
-  const defender = state.players[state.activePlayer === 0 ? 1 : 0];
+  const defenderPlayerIdx = state.activePlayer === 0 ? 1 : 0;
+  const defender = state.players[defenderPlayerIdx];
 
   if (attackerIndex < 0 || attackerIndex >= attacker.board.length) {
     return { success: false, error: "Invalid attacker index" };
@@ -332,20 +465,55 @@ export function attackMinion(
   }
 
   const attackingMinion = attacker.board[attackerIndex];
+  const defendingMinion = defender.board[defenderIndex];
 
   if (attackingMinion.summoningSickness) {
     return { success: false, error: "Minion has summoning sickness" };
   }
-  if (attackingMinion.hasAttacked) {
+  if (attackingMinion.windfuryAttacksLeft <= 0 || attackingMinion.hasAttacked) {
     return { success: false, error: "Minion has already attacked this turn" };
   }
+  if (attackingMinion.isFrozen) {
+    return { success: false, error: "Minion is frozen" };
+  }
+  if (defendingMinion.isStealth) {
+    return { success: false, error: "Cannot target stealthed minion" };
+  }
 
-  const defendingMinion = defender.board[defenderIndex];
+  const hasTaunt = defender.board.some(m => m.taunt);
+  if (hasTaunt && !defendingMinion.taunt) {
+    return { success: false, error: "Must attack a minion with taunt" };
+  }
 
-  attackingMinion.currentHealth -= defendingMinion.currentAttack;
-  defendingMinion.currentHealth -= attackingMinion.currentAttack;
-  attackingMinion.hasAttacked = true;
+  if (defendingMinion.hasDivineShield) {
+    defendingMinion.hasDivineShield = false;
+  } else if (!defendingMinion.isImmune) {
+    defendingMinion.currentHealth -= attackingMinion.currentAttack;
+  }
 
+  if (attackingMinion.hasDivineShield) {
+    attackingMinion.hasDivineShield = false;
+  } else if (!attackingMinion.isImmune) {
+    attackingMinion.currentHealth -= defendingMinion.currentAttack;
+  }
+
+  if (attackingMinion.isStealth) {
+    attackingMinion.isStealth = false;
+  }
+
+  attackingMinion.windfuryAttacksLeft--;
+  if (attackingMinion.windfuryAttacksLeft <= 0) {
+    attackingMinion.hasAttacked = true;
+  }
+
+  gameEventBus.emit({
+    type: "attack",
+    player: state.activePlayer,
+    source: attackingMinion,
+    target: defendingMinion,
+  });
+
+  checkEnrage(state);
   removeDeadMinions(state);
 
   return { success: true };
@@ -367,15 +535,57 @@ export function attackHero(
   if (attackingMinion.summoningSickness) {
     return { success: false, error: "Minion has summoning sickness" };
   }
-  if (attackingMinion.hasAttacked) {
+  if (attackingMinion.windfuryAttacksLeft <= 0 || attackingMinion.hasAttacked) {
     return { success: false, error: "Minion has already attacked this turn" };
   }
   if (attackingMinion.currentAttack <= 0) {
     return { success: false, error: "Minion has 0 attack" };
   }
+  if (attackingMinion.isFrozen) {
+    return { success: false, error: "Minion is frozen" };
+  }
 
-  defender.hero.health -= attackingMinion.currentAttack;
-  attackingMinion.hasAttacked = true;
+  const hasTaunt = defender.board.some(m => m.taunt);
+  if (hasTaunt) {
+    return { success: false, error: "Must attack a minion with taunt" };
+  }
+
+  const damage = attackingMinion.currentAttack;
+  if (defender.hero.isImmune) {
+    attackingMinion.windfuryAttacksLeft--;
+    if (attackingMinion.windfuryAttacksLeft <= 0) {
+      attackingMinion.hasAttacked = true;
+    }
+    if (attackingMinion.isStealth) {
+      attackingMinion.isStealth = false;
+    }
+    return { success: true };
+  }
+  defender.hero.health -= damage;
+
+  if (attackingMinion.isStealth) {
+    attackingMinion.isStealth = false;
+  }
+
+  attackingMinion.windfuryAttacksLeft--;
+  if (attackingMinion.windfuryAttacksLeft <= 0) {
+    attackingMinion.hasAttacked = true;
+  }
+
+  gameEventBus.emit({
+    type: "attack",
+    player: state.activePlayer,
+    source: attackingMinion,
+    target: { kind: "hero", player: state.activePlayer === 0 ? 1 : 0 },
+  });
+
+  if (damage > 0) {
+    gameEventBus.emit({
+      type: "hero_damaged",
+      player: state.activePlayer === 0 ? 1 : 0,
+      value: damage,
+    });
+  }
 
   const result3 = checkWinCondition(state);
   if (result3 !== null) {
@@ -384,6 +594,160 @@ export function attackHero(
 
   return { success: true };
 }
+
+export interface HeroAttackResult {
+  success: boolean;
+  error?: string;
+}
+
+export function heroAttack(
+  state: GameState,
+  targetPlayerIndex: 0 | 1,
+  targetMinionIndex?: number,
+): HeroAttackResult {
+  const attackerPlayer = state.players[state.activePlayer];
+
+  if (!attackerPlayer.weapon) {
+    return { success: false, error: "Hero has no weapon equipped" };
+  }
+
+  if (attackerPlayer.heroWindfuryAttacksLeft <= 0 || attackerPlayer.heroHasAttacked) {
+    return { success: false, error: "Hero has already attacked this turn" };
+  }
+
+  if (targetPlayerIndex === state.activePlayer) {
+    return { success: false, error: "Cannot attack your own side" };
+  }
+
+  const defender = state.players[targetPlayerIndex];
+  const weaponAttack = attackerPlayer.weapon.attack;
+
+  if (targetMinionIndex !== undefined) {
+    if (targetMinionIndex < 0 || targetMinionIndex >= defender.board.length) {
+      return { success: false, error: "Invalid target minion index" };
+    }
+
+    const targetMinion = defender.board[targetMinionIndex];
+
+    if (targetMinion.isStealth) {
+      return { success: false, error: "Cannot target stealthed minion" };
+    }
+
+    const hasTaunt = defender.board.some(m => m.taunt);
+    if (hasTaunt && !targetMinion.taunt) {
+      return { success: false, error: "Must attack a minion with taunt" };
+    }
+
+    if (targetMinion.hasDivineShield) {
+      targetMinion.hasDivineShield = false;
+    } else if (!targetMinion.isImmune) {
+      targetMinion.currentHealth -= weaponAttack;
+    }
+
+    if (!attackerPlayer.hero.isImmune) {
+      attackerPlayer.hero.health -= targetMinion.currentAttack;
+    }
+
+    attackerPlayer.heroWindfuryAttacksLeft--;
+    if (attackerPlayer.heroWindfuryAttacksLeft <= 0) {
+      attackerPlayer.heroHasAttacked = true;
+    }
+    attackerPlayer.weapon.durability--;
+    if (attackerPlayer.weapon.durability <= 0) {
+      attackerPlayer.weapon = null;
+    }
+
+    gameEventBus.emit({
+      type: "attack",
+      player: state.activePlayer,
+      source: { kind: "hero", player: state.activePlayer },
+      target: targetMinion,
+    });
+
+    checkEnrage(state);
+    removeDeadMinions(state);
+
+    const winner = checkWinCondition(state);
+    if (winner !== null) {
+      state.phase = "ended";
+    }
+
+    return { success: true };
+  }
+
+  // Attacking enemy hero
+  const hasTaunt = defender.board.some(m => m.taunt);
+  if (hasTaunt) {
+    return { success: false, error: "Must attack a minion with taunt" };
+  }
+
+  if (!defender.hero.isImmune) {
+    defender.hero.health -= weaponAttack;
+  }
+
+  attackerPlayer.heroWindfuryAttacksLeft--;
+  if (attackerPlayer.heroWindfuryAttacksLeft <= 0) {
+    attackerPlayer.heroHasAttacked = true;
+  }
+  attackerPlayer.weapon.durability--;
+  if (attackerPlayer.weapon.durability <= 0) {
+    attackerPlayer.weapon = null;
+  }
+
+  gameEventBus.emit({
+    type: "attack",
+    player: state.activePlayer,
+    source: { kind: "hero", player: state.activePlayer },
+    target: { kind: "hero", player: targetPlayerIndex },
+  });
+
+  if (!defender.hero.isImmune && weaponAttack > 0) {
+    gameEventBus.emit({
+      type: "hero_damaged",
+      player: targetPlayerIndex,
+      value: weaponAttack,
+    });
+  }
+
+  const winner = checkWinCondition(state);
+  if (winner !== null) {
+    state.phase = "ended";
+  }
+
+  return { success: true };
+}
+
+export type EventListener = (event: GameEvent) => void;
+
+export class EventBus {
+  private listeners: Map<GameEventType, EventListener[]> = new Map();
+
+  on(type: GameEventType, listener: EventListener): void {
+    const list = this.listeners.get(type) ?? [];
+    list.push(listener);
+    this.listeners.set(type, list);
+  }
+
+  off(type: GameEventType, listener: EventListener): void {
+    const list = this.listeners.get(type);
+    if (!list) return;
+    this.listeners.set(type, list.filter(l => l !== listener));
+  }
+
+  emit(event: GameEvent): void {
+    const list = this.listeners.get(event.type);
+    if (!list) return;
+    for (const listener of list) {
+      listener(event);
+    }
+  }
+
+  clear(): void {
+    this.listeners.clear();
+  }
+}
+
+export const gameEventBus = new EventBus();
 
 export interface HeroPowerResult {
   success: boolean;
