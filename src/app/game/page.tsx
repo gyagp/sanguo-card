@@ -334,13 +334,19 @@ function BoardMinionCard({ minion, onClick, selected, exhausted, targetable, ani
   return (
     <div
       onClick={(e) => { e.stopPropagation(); onClick?.(); }}
-      className={`relative w-12 h-[4.25rem] sm:w-20 sm:h-[6.5rem] md:w-24 md:h-32 bg-amber-900 border-2 ${borderColor} rounded-lg flex flex-col items-center justify-between p-0.5 sm:p-1 text-white text-[8px] sm:text-[10px] md:text-sm shadow-md transition-all duration-200 ${cursor} ${opacity}`}
-      style={animStyle}
+      className={`relative w-12 h-[4.25rem] sm:w-20 sm:h-[6.5rem] md:w-24 md:h-32 border-2 ${borderColor} rounded-lg flex flex-col items-center justify-between p-0.5 sm:p-1 text-white text-[8px] sm:text-[10px] md:text-sm shadow-md transition-all duration-200 ${cursor} ${opacity} overflow-hidden`}
+      style={{
+        ...animStyle,
+        backgroundImage: `url(/card-art/${encodeURIComponent(minion.name)}.png)`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundColor: "#78350f",
+      }}
     >
       <span className="bg-blue-700 rounded-full w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center font-bold text-[8px] sm:text-[10px]">
         {minion.cost}
       </span>
-      <span className="font-bold text-center leading-tight truncate max-w-full">{minion.name}</span>
+      <span className="font-bold text-center leading-tight truncate max-w-full drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">{minion.name}</span>
       <div className="flex w-full justify-between px-0.5 sm:px-1">
         <span className="bg-yellow-600 rounded px-0.5 sm:px-1 font-bold">{minion.currentAttack}</span>
         <span className="bg-red-700 rounded px-0.5 sm:px-1 font-bold">{minion.currentHealth}</span>
@@ -627,7 +633,7 @@ function GameInner({ playerDeck }: { playerDeck: Deck }) {
     return [playerDeck, createDeck(buildRandomDeck())];
   }, [playerDeck]);
 
-  const { gameState, winner, playCard, endTurn, attack, attackHero, useHeroPower, isOpponentTurn, resetGame } = useGameState(deck1, deck2);
+  const { gameState, winner, playCard, endTurn, attack, attackHero, useHeroPower, isOpponentTurn, resetGame } = useGameState(deck1, deck2, "normal");
 
   const [selectedAttacker, setSelectedAttacker] = useState<number | null>(null);
 
