@@ -49,6 +49,8 @@ export const UPGRADE_COSTS: Record<number, number> = {
   5: 800,
 };
 
+export const DUPLICATE_COST_PER_LEVEL: Record<number, number> = { 1: 1, 2: 2, 3: 3 };
+
 export const PACK_PRICE = 100;
 
 export const DEFAULT_PACK: CardPack = {

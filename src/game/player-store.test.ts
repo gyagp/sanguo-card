@@ -8,8 +8,10 @@ import {
   addCards,
   getOwnedCards,
   openCardPack,
+  upgradeCard,
+  getUpgradedStats,
 } from "./player-store";
-import { STARTER_CARDS, XP_THRESHOLDS, PACK_PRICE } from "./progression";
+import { STARTER_CARDS, XP_THRESHOLDS, PACK_PRICE, UPGRADE_COSTS, DUPLICATE_COST_PER_LEVEL } from "./progression";
 import { vi } from "vitest";
 
 beforeEach(() => {
@@ -23,11 +25,11 @@ describe("initializeNewPlayer", () => {
     expect(player.ownedCards.map((c) => c.cardName)).toEqual(STARTER_CARDS);
   });
 
-  it("each starter card has count 2 and upgradeLevel 1", () => {
+  it("each starter card has count 2 and upgradeLevel 0", () => {
     const player = initializeNewPlayer();
     for (const card of player.ownedCards) {
       expect(card.count).toBe(2);
-      expect(card.upgradeLevel).toBe(1);
+      expect(card.upgradeLevel).toBe(0);
     }
   });
 
@@ -125,7 +127,7 @@ describe("addCards", () => {
     const cards = getOwnedCards();
     const card = cards.find((c) => c.cardName === "关羽")!;
     expect(card.count).toBe(1);
-    expect(card.upgradeLevel).toBe(1);
+    expect(card.upgradeLevel).toBe(0);
   });
 });
 
@@ -229,5 +231,131 @@ describe("openCardPack", () => {
     openCardPack();
     const loaded = loadPlayer();
     expect(loaded.gold).toBe(0);
+  });
+});
+
+describe("upgradeCard", () => {
+  it("fails if card is not owned", () => {
+    const result = upgradeCard("不存在的卡");
+    expect(result.success).toBe(false);
+    expect(result.reason).toBe("card_not_owned");
+  });
+
+  it("fails if not enough gold", () => {
+    // Starter cards have count 2, upgradeLevel 0. Need gold for level 1 upgrade.
+    const result = upgradeCard("乡勇");
+    expect(result.success).toBe(false);
+    expect(result.reason).toBe("not_enough_gold");
+  });
+
+  it("fails if not enough duplicates", () => {
+    addGold(1000);
+    // Set count to 1 (need 1 + dupCost = 2 for level 0->1)
+    const player = loadPlayer();
+    const card = player.ownedCards.find((c) => c.cardName === "乡勇")!;
+    card.count = 1;
+    savePlayer(player);
+
+    const result = upgradeCard("乡勇");
+    expect(result.success).toBe(false);
+    expect(result.reason).toBe("not_enough_duplicates");
+  });
+
+  it("upgrades from level 0 to 1, deducting gold and duplicates", () => {
+    addGold(1000);
+    const result = upgradeCard("乡勇");
+    expect(result.success).toBe(true);
+    const card = result.player.ownedCards.find((c) => c.cardName === "乡勇")!;
+    expect(card.upgradeLevel).toBe(1);
+    expect(result.player.gold).toBe(1000 - UPGRADE_COSTS[1]);
+    expect(card.count).toBe(2 - DUPLICATE_COST_PER_LEVEL[1]);
+  });
+
+  it("upgrades through all 3 levels", () => {
+    addGold(10000);
+    // Give enough duplicates
+    addCards([{ cardName: "乡勇", count: 20 }]);
+
+    const r1 = upgradeCard("乡勇");
+    expect(r1.success).toBe(true);
+    expect(r1.player.ownedCards.find((c) => c.cardName === "乡勇")!.upgradeLevel).toBe(1);
+
+    const r2 = upgradeCard("乡勇");
+    expect(r2.success).toBe(true);
+    expect(r2.player.ownedCards.find((c) => c.cardName === "乡勇")!.upgradeLevel).toBe(2);
+
+    const r3 = upgradeCard("乡勇");
+    expect(r3.success).toBe(true);
+    expect(r3.player.ownedCards.find((c) => c.cardName === "乡勇")!.upgradeLevel).toBe(3);
+  });
+
+  it("fails at max level", () => {
+    addGold(10000);
+    addCards([{ cardName: "乡勇", count: 20 }]);
+    upgradeCard("乡勇");
+    upgradeCard("乡勇");
+    upgradeCard("乡勇");
+
+    const result = upgradeCard("乡勇");
+    expect(result.success).toBe(false);
+    expect(result.reason).toBe("max_level");
+  });
+
+  it("gold cost uses correct lookup for each level", () => {
+    addGold(10000);
+    addCards([{ cardName: "乡勇", count: 20 }]);
+
+    let gold = 10000;
+    for (let lvl = 1; lvl <= 3; lvl++) {
+      const result = upgradeCard("乡勇");
+      expect(result.success).toBe(true);
+      gold -= UPGRADE_COSTS[lvl];
+      expect(result.player.gold).toBe(gold);
+    }
+  });
+
+  it("persists upgrade to localStorage", () => {
+    addGold(1000);
+    upgradeCard("乡勇");
+    const loaded = loadPlayer();
+    const card = loaded.ownedCards.find((c) => c.cardName === "乡勇")!;
+    expect(card.upgradeLevel).toBe(1);
+  });
+});
+
+describe("getUpgradedStats", () => {
+  const baseCard = {
+    name: "test",
+    cost: 1,
+    attack: 2,
+    health: 3,
+    description: "",
+    rarity: "common" as const,
+    type: "minion" as const,
+    faction: "neutral" as const,
+  };
+
+  it("returns base stats at level 0", () => {
+    const stats = getUpgradedStats(baseCard, 0);
+    expect(stats.attack).toBe(2);
+    expect(stats.health).toBe(3);
+  });
+
+  it("level 1: +1 attack", () => {
+    const stats = getUpgradedStats(baseCard, 1);
+    expect(stats.attack).toBe(3);
+    expect(stats.health).toBe(3);
+  });
+
+  it("level 2: +1 attack, +1 health", () => {
+    const stats = getUpgradedStats(baseCard, 2);
+    expect(stats.attack).toBe(3);
+    expect(stats.health).toBe(4);
+  });
+
+  it("level 3: +2 attack, +1 health", () => {
+    const stats = getUpgradedStats(baseCard, 3);
+    expect(stats.attack).toBe(4);
+    expect(stats.health).toBe(4);
   });
 });

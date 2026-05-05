@@ -1,6 +1,8 @@
-import { PlayerProfile, OwnedCard, STARTER_CARDS, XP_THRESHOLDS, PACK_PRICE } from "./progression";
-import { Rarity } from "./types";
+import { PlayerProfile, OwnedCard, STARTER_CARDS, XP_THRESHOLDS, PACK_PRICE, UPGRADE_COSTS, DUPLICATE_COST_PER_LEVEL } from "./progression";
+import { Card, Rarity } from "./types";
 import { cards } from "./cards";
+
+const MAX_UPGRADE_LEVEL = 3;
 
 const STORAGE_KEY = "sanguo-card-player";
 
@@ -12,7 +14,7 @@ export function initializeNewPlayer(): PlayerProfile {
     ownedCards: STARTER_CARDS.map((cardName) => ({
       cardName,
       count: 2,
-      upgradeLevel: 1,
+      upgradeLevel: 0,
     })),
   };
 }
@@ -73,7 +75,7 @@ export function addCards(cards: { cardName: string; count: number }[]): PlayerPr
     if (existing) {
       existing.count += count;
     } else {
-      player.ownedCards.push({ cardName, count, upgradeLevel: 1 });
+      player.ownedCards.push({ cardName, count, upgradeLevel: 0 });
     }
   }
   savePlayer(player);
@@ -148,10 +150,62 @@ export function openCardPack(): PackResult {
     if (existing) {
       existing.count += count;
     } else {
-      player.ownedCards.push({ cardName, count, upgradeLevel: 1 });
+      player.ownedCards.push({ cardName, count, upgradeLevel: 0 });
     }
   }
 
   savePlayer(player);
   return { success: true, cards: result, player };
+}
+
+export interface UpgradeResult {
+  success: boolean;
+  reason?: string;
+  player: PlayerProfile;
+}
+
+export function upgradeCard(cardName: string): UpgradeResult {
+  const player = loadPlayer();
+  const owned = player.ownedCards.find((c) => c.cardName === cardName);
+
+  if (!owned) {
+    return { success: false, reason: "card_not_owned", player };
+  }
+
+  if (owned.upgradeLevel >= MAX_UPGRADE_LEVEL) {
+    return { success: false, reason: "max_level", player };
+  }
+
+  const nextLevel = owned.upgradeLevel + 1;
+  const goldCost = UPGRADE_COSTS[nextLevel];
+  const dupCost = DUPLICATE_COST_PER_LEVEL[nextLevel];
+
+  if (player.gold < goldCost) {
+    return { success: false, reason: "not_enough_gold", player };
+  }
+
+  if (owned.count < 1 + dupCost) {
+    return { success: false, reason: "not_enough_duplicates", player };
+  }
+
+  player.gold -= goldCost;
+  owned.count -= dupCost;
+  owned.upgradeLevel += 1;
+
+  savePlayer(player);
+  return { success: true, player };
+}
+
+export function getUpgradedStats(
+  baseCard: Card,
+  upgradeLevel: number
+): { attack: number; health: number } {
+  let attack = baseCard.attack;
+  let health = baseCard.health;
+
+  if (upgradeLevel >= 1) attack += 1;
+  if (upgradeLevel >= 2) health += 1;
+  if (upgradeLevel >= 3) attack += 1;
+
+  return { attack, health };
 }

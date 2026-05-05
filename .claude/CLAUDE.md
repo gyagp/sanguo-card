@@ -1,13 +1,14 @@
-# Autopo execute Session
+# Autopo test Session
 
 ## Work Unit
-Tests for card pack system — verify rarity weights, pity guarantee, gold deduction, edge cases (not enough gold, all cards owned)
+Card upgrade system — implement upgradeCard: consume gold + duplicate cards to increase card level (max 3), each level grants +1 attack or +1 health; add getUpgradedStats helper to compute final stats from base card + level
 
 ## Acceptance Criteria
-- Pity guarantee always provides ≥1 rare+
-- Gold deducted exactly once per pack
-- Error returned when gold insufficient
-- All tests pass
+- upgradeCard validates sufficient gold and duplicate count
+- Card level increments (max 3)
+- getUpgradedStats returns base stats + level bonuses
+- Level 1: +1 attack, Level 2: +1 health, Level 3: +1 attack
+- npm run build succeeds
 
 ## Rules
 # Rules
