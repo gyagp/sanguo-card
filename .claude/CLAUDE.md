@@ -1,12 +1,13 @@
 # Autopo test Session
 
 ## Work Unit
-Player progression data model — define TypeScript interfaces for PlayerProfile (gold, xp, level), OwnedCard (cardName, count, upgradeLevel), CardPack, and reward structures; create src/game/progression.ts with types and constants (XP thresholds, upgrade costs, pack prices, starter cards)
+Player progression store — create src/game/player-store.ts with localStorage-backed CRUD: loadPlayer, savePlayer, initializeNewPlayer (starter cards + 0 gold), addGold, addXP (with auto-level-up), addCards, getOwnedCards
 
 ## Acceptance Criteria
-- PlayerProfile, OwnedCard, CardPack interfaces exported
-- Constants for XP curve, upgrade costs, pack price defined
-- Starter card list defined (all 10 common cards)
+- loadPlayer returns saved data or initializes new player
+- savePlayer persists to localStorage key sanguo-card-player
+- addGold/addXP/addCards mutate and persist correctly
+- Level-up triggers when XP threshold reached
 - npm run build succeeds
 
 ## Rules
