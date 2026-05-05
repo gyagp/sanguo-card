@@ -1,11 +1,11 @@
 # Autopo execute Session
 
 ## Work Unit
-Tests for keyword mechanics — taunt blocking, charge immediate attack, divine shield absorption, freeze skip, windfury double attack, stealth untargetable, enrage activation
+Tests for spell effects, weapon attacks, spell damage bonus, event triggers, and spell immunity
 
 ## Acceptance Criteria
-- Tests cover all keyword interactions
-- All tests pass via vitest run
+- Tests cover spell effects, weapon durability, spellDamage bonus, 诸葛亮 end-of-turn, 司马懿 battlecry, 吕布 spell immunity, 丈八蛇矛 splash
+- All tests pass
 - npm run build succeeds
 
 ## Rules
