@@ -126,7 +126,7 @@ describe('Wu weapon buff', () => {
     expect(wuMinion.wuWeaponBonus).toBe(1);
   });
 
-  it('does NOT buff on face (hero) attacks', () => {
+  it('buffs on face (hero) attacks', () => {
     const state = makeGameState({ wuDeckP0: true });
     state.players[0].weapon = { name: '短刀', attack: 2, durability: 2 };
     state.players[0].heroWindfuryAttacksLeft = 1;
@@ -135,8 +135,8 @@ describe('Wu weapon buff', () => {
     state.board[0] = state.players[0].board;
 
     heroAttack(state, 1);
-    expect(wuMinion.currentAttack).toBe(2);
-    expect(wuMinion.wuWeaponBonus).toBe(0);
+    expect(wuMinion.currentAttack).toBe(3);
+    expect(wuMinion.wuWeaponBonus).toBe(1);
   });
 
   it('does nothing without Wu deck faction bonus', () => {

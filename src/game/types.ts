@@ -415,6 +415,8 @@ export function recalculateFactionSynergies(player: PlayerState): void {
     minion.currentAttack += minion.factionAttackBonus - oldAtkBonus;
     minion.currentHealth += minion.factionHealthBonus - oldHpBonus;
   }
+
+  recalculateShuBonuses(player);
 }
 
 const BROTHERHOOD_NAMES = new Set(["刘备", "关羽", "张飞"]);
@@ -506,7 +508,6 @@ export function playCard(
     };
     player.board.push(minion);
     recalculateFactionSynergies(player);
-    recalculateShuBonuses(player);
 
     if (card.faction === "wu" && card.charge && player.deckFaction === "wu" && player.hasDeckFactionBonus) {
       minion.currentAttack += 1;
@@ -682,7 +683,6 @@ export function removeDeadMinions(state: GameState): void {
     for (const player of state.players) {
       player.board = player.board.filter((m) => !dyingSet.has(m));
       recalculateFactionSynergies(player);
-      recalculateShuBonuses(player);
     }
   }
 }
@@ -987,6 +987,8 @@ export function heroAttack(
       value: weaponAttack,
     });
   }
+
+  applyWuWeaponBuff(attackerPlayer);
 
   const winner = checkWinCondition(state);
   if (winner !== null) {

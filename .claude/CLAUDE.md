@@ -1,13 +1,12 @@
 # Autopo test Session
 
 ## Work Unit
-Implement deck faction bonus — detect 20+ same-faction cards in deck at game start, upgrade hero power (Wei: deal 2 instead of 1, Shu: heal 3 instead of 2, Wu: summon 2/1 instead of 1/1, Qun: equip 2/2 instead of 1/2)
+Update recalculateFactionSynergies to integrate all new faction passives — Wei/Shu/Wu/Qun mechanics hook into existing game flow (playCard, combat, spellCast, turnStart/End)
 
 ## Acceptance Criteria
-- getDeckFaction detects 20+ threshold
-- Hero power upgraded when threshold met
-- Upgraded hero power effects work correctly
-- Mixed decks (<20) get no upgrade
+- All faction passives trigger at correct game events
+- No existing tests break
+- Synergies removed correctly when minions die
 - npm run build succeeds
 
 ## Rules

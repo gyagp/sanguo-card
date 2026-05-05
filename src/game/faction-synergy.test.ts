@@ -87,9 +87,9 @@ describe('recalculateFactionSynergies', () => {
 
     recalculateFactionSynergies(player);
 
-    expect(m1.currentAttack).toBe(4); // 3 + 1
+    expect(m1.currentAttack).toBe(5); // 3 + 1 (faction) + 1 (shu adjacency)
     expect(m1.factionAttackBonus).toBe(1);
-    expect(m2.currentAttack).toBe(3); // 2 + 1
+    expect(m2.currentAttack).toBe(4); // 2 + 1 (faction) + 1 (shu adjacency)
     expect(m2.factionAttackBonus).toBe(1);
   });
 
@@ -163,7 +163,7 @@ describe('recalculateFactionSynergies', () => {
     player.board = [m1, m2];
 
     recalculateFactionSynergies(player);
-    expect(m1.currentAttack).toBe(4);
+    expect(m1.currentAttack).toBe(5); // 3 + 1 (faction) + 1 (adjacency)
 
     // Remove one shu minion
     player.board = [m1];
@@ -182,9 +182,9 @@ describe('recalculateFactionSynergies', () => {
 
     recalculateFactionSynergies(player);
 
-    // Shu gets +1 atk
-    expect(shu1.currentAttack).toBe(3);
-    expect(shu2.currentAttack).toBe(4);
+    // Shu gets +1 atk (faction) + 1 atk (adjacency)
+    expect(shu1.currentAttack).toBe(4);
+    expect(shu2.currentAttack).toBe(5);
     // Wei alone, no bonus
     expect(wei1.currentAttack).toBe(1);
     expect(wei1.currentHealth).toBe(4);
