@@ -1,12 +1,12 @@
 # Autopo execute Session
 
 ## Work Unit
-Tests for Qun chaos mechanics — double battlecry, random spell damage, enemy debuff
+Tests for deck faction bonus and hero power upgrade
 
 ## Acceptance Criteria
-- Tests cover battlecry double trigger with seeded RNG
-- Tests cover spell damage variance
-- Tests cover turn-start enemy debuff
+- Tests cover 20+ threshold detection
+- Tests cover each upgraded hero power effect
+- Tests cover mixed deck no-upgrade
 - All tests pass
 
 ## Rules
