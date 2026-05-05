@@ -1,13 +1,13 @@
-# Autopo test Session
+# Autopo execute Session
 
 ## Work Unit
-Update recalculateFactionSynergies to integrate all new faction passives — Wei/Shu/Wu/Qun mechanics hook into existing game flow (playCard, combat, spellCast, turnStart/End)
+Tests for Wei control mechanics — spell draw, cost reduction, freeze enhancement
 
 ## Acceptance Criteria
-- All faction passives trigger at correct game events
-- No existing tests break
-- Synergies removed correctly when minions die
-- npm run build succeeds
+- Tests cover spell-triggered draw
+- Tests cover mana cost reduction
+- Tests cover enhanced freeze
+- All tests pass
 
 ## Rules
 # Rules
