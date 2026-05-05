@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { cards as allCards } from '../../game/cards';
 import { Card, Rarity, CardType, Faction, MAX_DECK_SIZE, MAX_COPIES_PER_CARD, MAX_COPIES_LEGENDARY } from '../../game/types';
+import { OwnedCard } from '../../game/progression';
+import { loadPlayer, getUpgradedStats } from '../../game/player-store';
 import CardComponent from '../../components/Card';
 
 const STORAGE_KEY = 'sanguo-card-decks';
@@ -42,11 +44,24 @@ export default function DeckBuilderPage() {
   const [filterRarity, setFilterRarity] = useState<FilterRarity>('all');
   const [searchText, setSearchText] = useState('');
   const [view, setView] = useState<'list' | 'editor'>('list');
+  const [ownedCards, setOwnedCards] = useState<OwnedCard[]>([]);
 
   useEffect(() => {
     setSavedDecks(loadDecks());
+    const player = loadPlayer();
+    setOwnedCards(player.ownedCards);
     setMounted(true);
   }, []);
+
+  const getOwned = (cardName: string): OwnedCard | undefined =>
+    ownedCards.find(o => o.cardName === cardName);
+
+  const applyUpgradedStats = (card: Card): Card => {
+    const owned = getOwned(card.name);
+    if (!owned || owned.upgradeLevel === 0) return card;
+    const { attack, health } = getUpgradedStats(card, owned.upgradeLevel);
+    return { ...card, attack, health };
+  };
 
   const persistDecks = useCallback((decks: SavedDeck[]) => {
     setSavedDecks(decks);
@@ -54,6 +69,7 @@ export default function DeckBuilderPage() {
   }, []);
 
   const filteredCards = allCards.filter(card => {
+    if (!getOwned(card.name)) return false;
     if (filterFaction !== 'all' && card.faction !== filterFaction) return false;
     if (filterType !== 'all' && card.type !== filterType) return false;
     if (filterRarity !== 'all' && card.rarity !== filterRarity) return false;
@@ -66,13 +82,16 @@ export default function DeckBuilderPage() {
   const canAdd = (card: Card) => {
     if (currentDeck.length >= MAX_DECK_SIZE) return false;
     const count = countInDeck(card);
+    const owned = getOwned(card.name);
+    const ownedCount = owned ? owned.count : 0;
     const max = card.rarity === 'legendary' ? MAX_COPIES_LEGENDARY : MAX_COPIES_PER_CARD;
-    return count < max;
+    return count < max && count < ownedCount;
   };
 
   const addCard = (card: Card) => {
     if (!canAdd(card)) return;
-    setCurrentDeck(prev => [...prev, card].sort((a, b) => a.cost - b.cost || a.name.localeCompare(b.name)));
+    const upgraded = applyUpgradedStats(card);
+    setCurrentDeck(prev => [...prev, upgraded].sort((a, b) => a.cost - b.cost || a.name.localeCompare(b.name)));
   };
 
   const removeCard = (card: Card) => {
@@ -133,6 +152,19 @@ export default function DeckBuilderPage() {
 
   const summary = deckSummary();
 
+  const getUnownedInDeck = (deck: SavedDeck): string[] => {
+    const unowned: string[] = [];
+    const seen = new Set<string>();
+    for (const card of deck.cards) {
+      if (seen.has(card.name)) continue;
+      seen.add(card.name);
+      if (!getOwned(card.name)) {
+        unowned.push(card.name);
+      }
+    }
+    return unowned;
+  };
+
   const deckEntries: { card: Card; count: number }[] = [];
   const seen = new Set<string>();
   for (const card of currentDeck) {
@@ -171,8 +203,11 @@ export default function DeckBuilderPage() {
               <p className="text-yellow-100/60">暂无卡组，创建你的第一副卡组吧！</p>
             ) : (
               <div className="grid w-full max-w-2xl gap-3">
-                {savedDecks.map(deck => (
-                  <div key={deck.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0 rounded-lg border border-yellow-600/40 bg-red-950/60 px-4 sm:px-5 py-3 sm:py-4 shadow-lg">
+                {savedDecks.map(deck => {
+                  const unowned = getUnownedInDeck(deck);
+                  return (
+                  <div key={deck.id} className="flex flex-col gap-2 rounded-lg border border-yellow-600/40 bg-red-950/60 px-4 sm:px-5 py-3 sm:py-4 shadow-lg">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0">
                     <div>
                       <span className="text-lg font-semibold text-yellow-100">{deck.name}</span>
                       <span className="ml-3 text-sm text-yellow-100/60">{deck.cards.length}/{MAX_DECK_SIZE} 张卡牌</span>
@@ -185,8 +220,15 @@ export default function DeckBuilderPage() {
                         删除
                       </button>
                     </div>
+                    </div>
+                    {unowned.length > 0 && (
+                      <div className="text-sm text-orange-400 border border-orange-500/30 bg-orange-900/20 rounded px-3 py-1.5">
+                        ⚠ 含未拥有卡牌: {unowned.join('、')}
+                      </div>
+                    )}
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -229,22 +271,36 @@ export default function DeckBuilderPage() {
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 justify-items-center">
                   {filteredCards.map(card => {
                     const count = countInDeck(card);
+                    const owned = getOwned(card.name);
+                    const ownedCount = owned ? owned.count : 0;
                     const maxCopies = card.rarity === 'legendary' ? MAX_COPIES_LEGENDARY : MAX_COPIES_PER_CARD;
-                    const atMax = count >= maxCopies;
+                    const effectiveMax = Math.min(maxCopies, ownedCount);
+                    const atMax = count >= effectiveMax;
                     const deckFull = currentDeck.length >= MAX_DECK_SIZE;
+                    const upgraded = applyUpgradedStats(card);
 
                     return (
                       <div key={card.name} className="relative">
                         <CardComponent
-                          card={card}
+                          card={upgraded}
                           onClick={() => { if (!atMax && !deckFull) addCard(card); }}
                           className={atMax || deckFull ? 'opacity-40 cursor-not-allowed !hover:scale-100' : ''}
                         />
-                        {count > 0 && (
-                          <span className="absolute right-1 top-1 z-20 flex h-6 w-6 items-center justify-center rounded-full bg-yellow-400 text-xs font-bold text-red-950 shadow">
-                            {count}
-                          </span>
-                        )}
+                        <div className="absolute right-1 top-1 z-20 flex gap-1">
+                          {owned && owned.upgradeLevel > 0 && (
+                            <span className="flex h-6 items-center justify-center rounded-full bg-green-500 px-1.5 text-xs font-bold text-white shadow">
+                              Lv{owned.upgradeLevel}
+                            </span>
+                          )}
+                          {count > 0 && (
+                            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-yellow-400 text-xs font-bold text-red-950 shadow">
+                              {count}
+                            </span>
+                          )}
+                        </div>
+                        <div className="absolute left-1 bottom-1 z-20 text-xs text-yellow-100/80 bg-black/50 rounded px-1">
+                          拥有: {ownedCount}
+                        </div>
                       </div>
                     );
                   })}
@@ -286,7 +342,10 @@ export default function DeckBuilderPage() {
                   <p className="text-center text-sm text-yellow-100/40">点击卡牌添加到卡组</p>
                 ) : (
                   <div className="flex flex-col gap-1">
-                    {deckEntries.map(({ card, count }) => (
+                    {deckEntries.map(({ card, count }) => {
+                      const owned = getOwned(card.name);
+                      const upgradeLevel = owned?.upgradeLevel ?? 0;
+                      return (
                       <div
                         key={card.name}
                         className="flex items-center justify-between rounded border border-yellow-600/20 bg-red-950/40 px-3 py-1.5 text-sm"
@@ -294,6 +353,12 @@ export default function DeckBuilderPage() {
                         <div className="flex items-center gap-2 min-w-0">
                           <span className="text-xs font-bold text-blue-300">{card.cost}</span>
                           <span className="truncate text-yellow-100">{card.name}</span>
+                          {upgradeLevel > 0 && (
+                            <span className="text-xs text-green-400">+{upgradeLevel}</span>
+                          )}
+                          {card.type === 'minion' && (
+                            <span className="text-xs text-yellow-100/50">{card.attack}/{card.health}</span>
+                          )}
                         </div>
                         <div className="flex items-center gap-1">
                           <span className="text-xs text-yellow-100/60">×{count}</span>
@@ -305,7 +370,8 @@ export default function DeckBuilderPage() {
                           </button>
                         </div>
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>

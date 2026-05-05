@@ -1,12 +1,13 @@
 # Autopo test Session
 
 ## Work Unit
-Player profile display — add player level, XP bar, and gold display to main menu and as a header component; show level-up unlock messages (e.g., level 3 unlocks shop, level 5 unlocks deck builder)
+Deck builder collection integration — restrict deck builder to only use owned cards; apply upgraded stats when building decks; show card count limits based on owned duplicates
 
 ## Acceptance Criteria
-- Main menu shows player level, XP progress, gold
-- Level-up unlocks displayed as milestones
-- Header component reusable across pages
+- Deck builder only shows owned cards
+- Upgraded card stats reflected in deck preview
+- Cannot add more copies than owned
+- Existing decks with unowned cards show warning
 - npm run build succeeds
 
 ## Rules
