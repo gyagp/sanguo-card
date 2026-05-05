@@ -1,14 +1,14 @@
-# Autopo execute Session
+# Autopo test Session
 
 ## Work Unit
-Tests for progression data model and player store — verify initialization, persistence, gold/xp mutations, level-up thresholds, and localStorage round-trip
+Card pack system — implement openCardPack in player-store: deduct gold, generate 5 random cards with rarity weights (70% common, 20% rare, 8% epic, 2% legendary), enforce pity guarantee (at least 1 rare+), add cards to collection
 
 ## Acceptance Criteria
-- New player gets 10 common starter cards
-- Gold add/subtract works correctly
-- XP accumulation triggers level-up at correct thresholds
-- localStorage save/load round-trips without data loss
-- All tests pass
+- openCardPack deducts pack price from gold
+- Returns 5 cards with correct rarity distribution
+- At least 1 card is rare or above guaranteed
+- Fails gracefully if insufficient gold
+- npm run build succeeds
 
 ## Rules
 # Rules
