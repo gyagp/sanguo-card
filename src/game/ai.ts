@@ -61,10 +61,14 @@ export function evaluateFactionSynergy(board: BoardMinion[]): number {
   let score = 0;
   for (const faction of ['shu', 'wei', 'wu', 'qun'] as const) {
     const count = countFactionMinions(board, faction);
-    if (count >= FACTION_SYNERGIES[faction].requiredCount) {
-      const bonus = FACTION_SYNERGIES[faction];
-      score += count * (bonus.attackBonus + bonus.healthBonus);
+    const synergy = FACTION_SYNERGIES[faction];
+    let bestBonus = 0;
+    for (const tier of synergy.tiers) {
+      if (count >= tier.requiredCount) {
+        bestBonus = tier.attackBonus + tier.healthBonus;
+      }
     }
+    score += count * bestBonus;
   }
   return score;
 }
@@ -140,9 +144,15 @@ export function getBestManaUsage(hand: Card[], currentMana: number, board?: Boar
           }
         }
         for (const [faction, count] of factionCounts) {
-          if (faction !== "neutral" && count >= FACTION_SYNERGIES[faction as Exclude<Faction, "neutral">].requiredCount) {
-            const bonus = FACTION_SYNERGIES[faction as Exclude<Faction, "neutral">];
-            synergyScore += count * (bonus.attackBonus + bonus.healthBonus);
+          if (faction !== "neutral") {
+            const synergy = FACTION_SYNERGIES[faction as Exclude<Faction, "neutral">];
+            let bestBonus = 0;
+            for (const tier of synergy.tiers) {
+              if (count >= tier.requiredCount) {
+                bestBonus = tier.attackBonus + tier.healthBonus;
+              }
+            }
+            synergyScore += count * bestBonus;
           }
         }
       }

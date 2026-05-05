@@ -1,11 +1,12 @@
 # Autopo test Session
 
 ## Work Unit
-Audit all 34 cards — verify every card's description text matches its implemented effect, fix any gaps
+Extend faction synergy data model — add tiered synergy bonuses (2/4/6 minions), faction-specific passive abilities, and deck faction bonus threshold (20+ cards) to types.ts
 
 ## Acceptance Criteria
-- Every card's description matches its mechanical effect
-- No card has a described ability that is unimplemented
+- FactionSynergyBonus supports multiple tiers
+- New FactionPassive type exists for faction-specific triggered effects
+- DECK_FACTION_THRESHOLD constant = 20 defined
 - npm run build succeeds
 
 ## Rules

@@ -4,17 +4,48 @@ export type CardType = "minion" | "spell" | "weapon";
 
 export type Faction = "wei" | "shu" | "wu" | "qun" | "neutral";
 
-export interface FactionSynergyBonus {
+export interface FactionSynergyTier {
   requiredCount: number;
   attackBonus: number;
   healthBonus: number;
 }
 
+export interface FactionSynergyBonus {
+  tiers: FactionSynergyTier[];
+}
+
+export type FactionPassiveTrigger = "turn_start" | "turn_end" | "minion_played" | "minion_died" | "spell_played";
+
+export interface FactionPassive {
+  faction: Exclude<Faction, "neutral">;
+  trigger: FactionPassiveTrigger;
+  description: string;
+  effect: (ctx: EffectContext) => void;
+}
+
+export const DECK_FACTION_THRESHOLD = 20;
+
 export const FACTION_SYNERGIES: Record<Exclude<Faction, "neutral">, FactionSynergyBonus> = {
-  shu: { requiredCount: 2, attackBonus: 1, healthBonus: 0 },
-  wei: { requiredCount: 2, attackBonus: 0, healthBonus: 1 },
-  wu: { requiredCount: 2, attackBonus: 1, healthBonus: 1 },
-  qun: { requiredCount: 2, attackBonus: 2, healthBonus: 0 },
+  shu: { tiers: [
+    { requiredCount: 2, attackBonus: 1, healthBonus: 0 },
+    { requiredCount: 4, attackBonus: 2, healthBonus: 0 },
+    { requiredCount: 6, attackBonus: 3, healthBonus: 1 },
+  ]},
+  wei: { tiers: [
+    { requiredCount: 2, attackBonus: 0, healthBonus: 1 },
+    { requiredCount: 4, attackBonus: 0, healthBonus: 2 },
+    { requiredCount: 6, attackBonus: 1, healthBonus: 3 },
+  ]},
+  wu: { tiers: [
+    { requiredCount: 2, attackBonus: 1, healthBonus: 1 },
+    { requiredCount: 4, attackBonus: 1, healthBonus: 2 },
+    { requiredCount: 6, attackBonus: 2, healthBonus: 3 },
+  ]},
+  qun: { tiers: [
+    { requiredCount: 2, attackBonus: 2, healthBonus: 0 },
+    { requiredCount: 4, attackBonus: 3, healthBonus: 0 },
+    { requiredCount: 6, attackBonus: 4, healthBonus: 1 },
+  ]},
 };
 
 export type GameEventType =
@@ -325,13 +356,16 @@ export function recalculateFactionSynergies(player: PlayerState): void {
     const oldAtkBonus = minion.factionAttackBonus;
     const oldHpBonus = minion.factionHealthBonus;
 
-    if (count >= synergy.requiredCount) {
-      minion.factionAttackBonus = synergy.attackBonus;
-      minion.factionHealthBonus = synergy.healthBonus;
-    } else {
-      minion.factionAttackBonus = 0;
-      minion.factionHealthBonus = 0;
+    let bestAtk = 0;
+    let bestHp = 0;
+    for (const tier of synergy.tiers) {
+      if (count >= tier.requiredCount) {
+        bestAtk = tier.attackBonus;
+        bestHp = tier.healthBonus;
+      }
     }
+    minion.factionAttackBonus = bestAtk;
+    minion.factionHealthBonus = bestHp;
 
     minion.currentAttack += minion.factionAttackBonus - oldAtkBonus;
     minion.currentHealth += minion.factionHealthBonus - oldHpBonus;

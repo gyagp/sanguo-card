@@ -3,6 +3,7 @@ import {
   GameState, PlayerState, BoardMinion, Card, Faction,
   FACTION_SYNERGIES, recalculateFactionSynergies, playCard,
   createDeck, createPlayerState, MAX_BOARD_SIZE,
+  DECK_FACTION_THRESHOLD, FactionPassive, FactionSynergyBonus, EffectContext,
 } from './types';
 import {
   countFactionMinions, evaluateFactionSynergy, evaluateBoard,
@@ -57,11 +58,20 @@ function makeGameState(p0Board: BoardMinion[], p1Board: BoardMinion[]): GameStat
 }
 
 describe('FACTION_SYNERGIES definition', () => {
-  it('defines synergy for all non-neutral factions', () => {
-    expect(FACTION_SYNERGIES.shu).toEqual({ requiredCount: 2, attackBonus: 1, healthBonus: 0 });
-    expect(FACTION_SYNERGIES.wei).toEqual({ requiredCount: 2, attackBonus: 0, healthBonus: 1 });
-    expect(FACTION_SYNERGIES.wu).toEqual({ requiredCount: 2, attackBonus: 1, healthBonus: 1 });
-    expect(FACTION_SYNERGIES.qun).toEqual({ requiredCount: 2, attackBonus: 2, healthBonus: 0 });
+  it('defines tiered synergy for all non-neutral factions', () => {
+    for (const faction of ['shu', 'wei', 'wu', 'qun'] as const) {
+      const synergy = FACTION_SYNERGIES[faction];
+      expect(synergy.tiers).toBeDefined();
+      expect(synergy.tiers.length).toBe(3);
+      expect(synergy.tiers[0].requiredCount).toBe(2);
+      expect(synergy.tiers[1].requiredCount).toBe(4);
+      expect(synergy.tiers[2].requiredCount).toBe(6);
+    }
+    // Verify tier 1 bonuses match original values
+    expect(FACTION_SYNERGIES.shu.tiers[0]).toEqual({ requiredCount: 2, attackBonus: 1, healthBonus: 0 });
+    expect(FACTION_SYNERGIES.wei.tiers[0]).toEqual({ requiredCount: 2, attackBonus: 0, healthBonus: 1 });
+    expect(FACTION_SYNERGIES.wu.tiers[0]).toEqual({ requiredCount: 2, attackBonus: 1, healthBonus: 1 });
+    expect(FACTION_SYNERGIES.qun.tiers[0]).toEqual({ requiredCount: 2, attackBonus: 2, healthBonus: 0 });
   });
 });
 
@@ -282,5 +292,66 @@ describe('HardAI uses faction synergy', () => {
     // Should prefer the shu card (index 0) for synergy
     expect(decisions.length).toBe(1);
     expect(decisions[0].cardIndex).toBe(0);
+  });
+});
+
+describe('DECK_FACTION_THRESHOLD', () => {
+  it('is defined as 20', () => {
+    expect(DECK_FACTION_THRESHOLD).toBe(20);
+  });
+});
+
+describe('FactionPassive type', () => {
+  it('can be constructed with required fields', () => {
+    const passive: FactionPassive = {
+      faction: 'shu',
+      trigger: 'turn_start',
+      description: 'Draw a card',
+      effect: (ctx: EffectContext) => {},
+    };
+    expect(passive.faction).toBe('shu');
+    expect(passive.trigger).toBe('turn_start');
+    expect(typeof passive.effect).toBe('function');
+  });
+});
+
+describe('FactionSynergyBonus tiered structure', () => {
+  it('each faction has 3 tiers at 2/4/6 thresholds', () => {
+    for (const faction of ['shu', 'wei', 'wu', 'qun'] as const) {
+      const synergy = FACTION_SYNERGIES[faction];
+      expect(synergy.tiers.map(t => t.requiredCount)).toEqual([2, 4, 6]);
+    }
+  });
+
+  it('higher tiers have equal or better bonuses', () => {
+    for (const faction of ['shu', 'wei', 'wu', 'qun'] as const) {
+      const tiers = FACTION_SYNERGIES[faction].tiers;
+      for (let i = 1; i < tiers.length; i++) {
+        expect(tiers[i].attackBonus + tiers[i].healthBonus).toBeGreaterThanOrEqual(
+          tiers[i - 1].attackBonus + tiers[i - 1].healthBonus
+        );
+      }
+    }
+  });
+});
+
+describe('AI evaluateFactionSynergy uses highest tier only (not accumulated)', () => {
+  it('with 4 shu minions, uses tier 2 bonus only, not tier1+tier2', () => {
+    const board = [
+      makeMinion({ faction: 'shu' }),
+      makeMinion({ faction: 'shu' }),
+      makeMinion({ faction: 'shu' }),
+      makeMinion({ faction: 'shu' }),
+    ];
+    // Tier 2 for shu: attackBonus=2, healthBonus=0 → 4 * 2 = 8
+    // If accumulated (bug): tier1(1)+tier2(2) = 3 → 4*3=12
+    expect(evaluateFactionSynergy(board)).toBe(8);
+  });
+
+  it('with 6 shu minions, uses tier 3 bonus only', () => {
+    const board = Array.from({ length: 6 }, () => makeMinion({ faction: 'shu' }));
+    // Tier 3 for shu: attackBonus=3, healthBonus=1 → 6 * 4 = 24
+    // If accumulated (bug): (1+2+4) = 7 → 6*7=42
+    expect(evaluateFactionSynergy(board)).toBe(24);
   });
 });
