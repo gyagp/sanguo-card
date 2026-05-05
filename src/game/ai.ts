@@ -5,14 +5,15 @@ function pickSpellTarget(card: Card, state: GameState): number | undefined {
   const opponentIndex = state.activePlayer === 0 ? 1 : 0;
   const enemyBoard = state.players[opponentIndex].board;
   if (enemyBoard.length === 0) return undefined;
-  let bestIdx = 0;
+  let bestIdx = -1;
   let bestScore = -Infinity;
   for (let i = 0; i < enemyBoard.length; i++) {
     const m = enemyBoard[i];
+    if (m.spellImmune) continue;
     const score = m.currentAttack * 2 + (m.taunt ? 10 : 0);
     if (score > bestScore) { bestScore = score; bestIdx = i; }
   }
-  return bestIdx;
+  return bestIdx === -1 ? undefined : bestIdx;
 }
 
 export type AIDifficulty = 'easy' | 'normal' | 'hard' | 'boss';

@@ -799,7 +799,7 @@ function GameInner({ playerDeck, difficulty }: { playerDeck: Deck; difficulty: A
 
     if (card.targetType === "enemy_minion" && spellTargetIndex === undefined) {
       const enemy = gameState.players[1];
-      if (enemy.board.length === 0) return;
+      if (enemy.board.length === 0 || enemy.board.every(m => m.spellImmune)) return;
       setPendingSpell({ handIndex, cardEl });
       setSelectedAttacker(null);
       return;
@@ -885,6 +885,7 @@ function GameInner({ playerDeck, difficulty }: { playerDeck: Deck; difficulty: A
 
   const handleEnemyMinionClick = (index: number) => {
     if (pendingSpell !== null) {
+      if (opponent.board[index]?.spellImmune) return;
       const { handIndex, cardEl } = pendingSpell;
       setPendingSpell(null);
       handlePlayCard(handIndex, cardEl, index);
@@ -1104,7 +1105,7 @@ function GameInner({ playerDeck, difficulty }: { playerDeck: Deck; difficulty: A
               onClick={(e) => handlePlayCard(i, (e.currentTarget as HTMLElement))}
               draggable
               handIndex={i}
-              insufficientMana={card.cost > player.hero.mana || (card.type !== 'spell' && player.board.length >= MAX_BOARD_SIZE) || (card.targetType === 'enemy_minion' && opponent.board.length === 0)}
+              insufficientMana={card.cost > player.hero.mana || (card.type !== 'spell' && player.board.length >= MAX_BOARD_SIZE) || (card.targetType === 'enemy_minion' && (opponent.board.length === 0 || opponent.board.every(m => m.spellImmune)))}
             />
           </div>
         ))}

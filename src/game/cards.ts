@@ -220,6 +220,7 @@ export const cards: Card[] = [
     rarity: "epic", type: "minion", faction: "qun",
     charge: true,
     windfury: true,
+    spellImmune: true,
   },
   {
     name: "孙策", cost: 5, attack: 5, health: 5, description: "战吼：将一个敌方随从移回对手手牌",

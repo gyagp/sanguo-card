@@ -1,11 +1,12 @@
 # Autopo test Session
 
 ## Work Unit
-Implement 丈八蛇矛 splash damage — add weapon on-attack hook and splash logic for adjacent minions
+Implement 吕布 spell immunity — add elusive/spellImmune property and enforce spell targeting restriction
 
 ## Acceptance Criteria
-- 丈八蛇矛 deals 1 damage to minions adjacent to the attack target
-- heroAttack checks weapon.onAttack hook
+- Card type has spellImmune field
+- Spells cannot target spellImmune minions
+- 吕布 card has spellImmune: true
 - npm run build succeeds
 
 ## Rules

@@ -66,6 +66,7 @@ export interface Card {
   spellDamage?: number;
   freeze?: boolean;
   immune?: boolean;
+  spellImmune?: boolean;
   effect?: Effect;
   targetType?: SpellTargetType;
 }
