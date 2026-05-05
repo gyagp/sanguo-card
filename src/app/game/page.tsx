@@ -6,7 +6,7 @@ import VolumeControl from "../../components/VolumeControl";
 import { AudioManager } from "./audio-manager";
 import { cards } from "../../game/cards";
 import { AIDifficulty } from "../../game/ai";
-import { createDeck, BoardMinion, PlayerState, Card as CardType, MAX_BOARD_SIZE, MAX_DECK_SIZE, Deck } from "../../game/types";
+import { createDeck, BoardMinion, PlayerState, Card as CardType, MAX_BOARD_SIZE, MAX_DECK_SIZE, Deck, Faction, FACTION_SYNERGIES, DECK_FACTION_THRESHOLD } from "../../game/types";
 import { useMemo, useState, useEffect, useRef, useCallback, forwardRef } from "react";
 
 const STORAGE_KEY = 'sanguo-card-decks';
@@ -530,6 +530,124 @@ function makeResultParticles(type: "victory" | "defeat"): ResultParticle[] {
     size: 3 + Math.random() * 6,
     color: colors[Math.floor(Math.random() * colors.length)],
   }));
+}
+
+const FACTION_NAMES: Record<Faction, string> = {
+  wei: "魏", shu: "蜀", wu: "吴", qun: "群", neutral: "中立",
+};
+
+const FACTION_ICONS: Record<Faction, string> = {
+  wei: "🔵", shu: "🟢", wu: "🔴", qun: "🟡", neutral: "⚪",
+};
+
+const FACTION_COLORS: Record<Faction, string> = {
+  wei: "text-blue-400", shu: "text-green-400", wu: "text-red-400", qun: "text-yellow-400", neutral: "text-gray-400",
+};
+
+const FACTION_DECK_BONUS_DESC: Record<Exclude<Faction, "neutral">, string[]> = {
+  wei: ["法术费用减少1", "使用法术时额外抽一张牌", "冰冻效果持续2回合", "英雄技能升级为霸略·升级"],
+  shu: ["相邻蜀国随从获得+1/+1", "刘备/关羽/张飞同时在场获得+2/+2", "英雄技能升级为仁德·升级"],
+  wu: ["冲锋随从获得+1攻击力", "武器攻击后随机增强一个吴国随从", "同回合打出3+吴国牌获得连击加成", "英雄技能升级为制衡·升级"],
+  qun: ["战吼有50%几率触发两次", "法术伤害随机浮动", "回合开始时削弱敌方随从", "英雄技能升级为乱击·升级"],
+};
+
+function FactionBonusIndicator({ player }: { player: PlayerState }) {
+  const [showDetails, setShowDetails] = useState(false);
+  const detailsRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const faction = player.deckFaction;
+  const hasDeckBonus = player.hasDeckFactionBonus;
+
+  const factionMinions = faction !== "neutral"
+    ? player.board.filter(m => m.faction === faction).length
+    : 0;
+
+  const synergy = faction !== "neutral" ? FACTION_SYNERGIES[faction] : null;
+  const activeTierIndex = synergy
+    ? synergy.tiers.reduce((best, tier, i) => factionMinions >= tier.requiredCount ? i : best, -1)
+    : -1;
+
+  useEffect(() => {
+    return () => {
+      if (detailsRef.current) clearTimeout(detailsRef.current);
+    };
+  }, []);
+
+  const handleToggle = () => {
+    setShowDetails(prev => !prev);
+    if (detailsRef.current) clearTimeout(detailsRef.current);
+    if (!showDetails) {
+      detailsRef.current = setTimeout(() => setShowDetails(false), 5000);
+    }
+  };
+
+  return (
+    <div className="relative">
+      <button
+        onClick={handleToggle}
+        onMouseEnter={() => setShowDetails(true)}
+        onMouseLeave={() => { if (detailsRef.current) clearTimeout(detailsRef.current); setShowDetails(false); }}
+        className={`flex items-center gap-0.5 sm:gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-lg border text-[9px] sm:text-xs transition-all duration-200 ${
+          hasDeckBonus
+            ? "border-amber-500/70 bg-amber-900/40 hover:bg-amber-900/60"
+            : "border-gray-600/50 bg-gray-800/40 hover:bg-gray-800/60"
+        }`}
+      >
+        <span className="text-xs sm:text-sm">{FACTION_ICONS[faction]}</span>
+        <span className={`font-bold ${FACTION_COLORS[faction]}`}>{FACTION_NAMES[faction]}</span>
+        {hasDeckBonus && <span className="text-amber-400 text-[8px] sm:text-[10px]">★</span>}
+        {synergy && (
+          <span className="text-gray-400 ml-0.5">
+            {synergy.tiers.map((tier, i) => (
+              <span key={i} className={`inline-block w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full mx-px ${i <= activeTierIndex ? "bg-amber-400" : "bg-gray-600"}`} />
+            ))}
+          </span>
+        )}
+      </button>
+
+      {showDetails && (
+        <div
+          className="absolute bottom-full left-0 mb-1 w-48 sm:w-56 p-2 sm:p-3 bg-gray-900/95 border border-gray-600 rounded-lg shadow-xl z-40 text-[9px] sm:text-xs"
+          onMouseEnter={() => { if (detailsRef.current) clearTimeout(detailsRef.current); }}
+          onMouseLeave={() => setShowDetails(false)}
+        >
+          <div className={`font-bold mb-1.5 ${FACTION_COLORS[faction]}`}>
+            {FACTION_ICONS[faction]} {FACTION_NAMES[faction]}国势力
+          </div>
+
+          {synergy && (
+            <div className="mb-2">
+              <div className="text-gray-400 mb-1">场上协同 ({factionMinions}个{FACTION_NAMES[faction]}国随从)</div>
+              {synergy.tiers.map((tier, i) => (
+                <div key={i} className={`flex justify-between py-0.5 ${i <= activeTierIndex ? "text-amber-300" : "text-gray-500"}`}>
+                  <span>{i <= activeTierIndex ? "✦" : "○"} {tier.requiredCount}个</span>
+                  <span>+{tier.attackBonus}攻 / +{tier.healthBonus}血</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {faction !== "neutral" && (
+            <div>
+              <div className={`flex items-center gap-1 mb-1 ${hasDeckBonus ? "text-amber-400" : "text-gray-500"}`}>
+                <span>{hasDeckBonus ? "★" : "☆"}</span>
+                <span>牌组加成 ({DECK_FACTION_THRESHOLD}+同势力牌)</span>
+                <span className={`ml-auto text-[8px] px-1 rounded ${hasDeckBonus ? "bg-amber-700/50 text-amber-300" : "bg-gray-700/50 text-gray-500"}`}>
+                  {hasDeckBonus ? "激活" : "未激活"}
+                </span>
+              </div>
+              {hasDeckBonus && (
+                <div className="pl-2 border-l border-amber-700/50">
+                  {FACTION_DECK_BONUS_DESC[faction].map((desc, i) => (
+                    <div key={i} className="text-amber-200/80 py-0.5">• {desc}</div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function VictoryDefeatOverlay({ winner, onPlayAgain }: { winner: 0 | 1 | "draw"; onPlayAgain: () => void }) {
@@ -1111,8 +1229,9 @@ function GameInner({ playerDeck, difficulty }: { playerDeck: Deck; difficulty: A
         ))}
       </div>
 
-      {/* Player hero + hero power */}
+      {/* Player hero + hero power + faction indicator */}
       <div className="flex items-center justify-center gap-1.5 sm:gap-2 px-2 sm:px-3 md:px-4 shrink-0 pb-1">
+        <FactionBonusIndicator player={player} />
         <HeroPortrait player={player} />
         <button
           onClick={() => { audioRef.current.playHeroPower(); useHeroPower(); }}

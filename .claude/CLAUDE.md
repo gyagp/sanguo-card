@@ -1,13 +1,14 @@
-# Autopo execute Session
+# Autopo test Session
 
 ## Work Unit
-Tests for deck faction bonus and hero power upgrade
+UI component — FactionBonusIndicator showing current faction, active synergy tier, deck bonus status, and passive ability descriptions in the game HUD
 
 ## Acceptance Criteria
-- Tests cover 20+ threshold detection
-- Tests cover each upgraded hero power effect
-- Tests cover mixed deck no-upgrade
-- All tests pass
+- Faction icon/name displayed
+- Active synergy tier highlighted
+- Deck bonus (20+) shown as active/inactive
+- Hover/click shows passive ability descriptions
+- npm run build succeeds
 
 ## Rules
 # Rules
