@@ -46,7 +46,7 @@ function makeBoardMinion(overrides: Partial<BoardMinion> = {}): BoardMinion {
     isImmune: false,
     windfuryAttacksLeft: 1,
     enrageActive: false,
-    enrageBonus: 0, factionAttackBonus: 0, factionHealthBonus: 0,
+    enrageBonus: 0, factionAttackBonus: 0, factionHealthBonus: 0, shuAdjacencyAtkBonus: 0, shuAdjacencyHpBonus: 0, brotherhoodAtkBonus: 0, brotherhoodHpBonus: 0,
     ...overrides,
   };
 }

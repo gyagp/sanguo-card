@@ -120,7 +120,7 @@ describe("Hero power effects", () => {
           freezeTurnsLeft: 0,
           isImmune: false, windfuryAttacksLeft: 1,
           enrageActive: false, enrageBonus: 0,
-          factionAttackBonus: 0, factionHealthBonus: 0,
+          factionAttackBonus: 0, factionHealthBonus: 0, shuAdjacencyAtkBonus: 0, shuAdjacencyHpBonus: 0, brotherhoodAtkBonus: 0, brotherhoodHpBonus: 0,
         });
       }
       const result = useHeroPower(state);
@@ -150,7 +150,7 @@ describe("Hero power effects", () => {
         freezeTurnsLeft: 0,
         isImmune: false, windfuryAttacksLeft: 1,
         enrageActive: false, enrageBonus: 0,
-        factionAttackBonus: 0, factionHealthBonus: 0,
+        factionAttackBonus: 0, factionHealthBonus: 0, shuAdjacencyAtkBonus: 0, shuAdjacencyHpBonus: 0, brotherhoodAtkBonus: 0, brotherhoodHpBonus: 0,
       });
       const hpBefore = state.players[1].board[0].currentHealth;
       useHeroPower(state);

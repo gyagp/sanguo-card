@@ -21,7 +21,7 @@ function makeMinion(overrides: Partial<BoardMinion> & { faction: Faction }): Boa
     hasDivineShield: false, isStealth: false, isFrozen: false,
     freezeTurnsLeft: 0,
     isImmune: false, windfuryAttacksLeft: 1, enrageActive: false, enrageBonus: 0,
-    factionAttackBonus: 0, factionHealthBonus: 0,
+    factionAttackBonus: 0, factionHealthBonus: 0, shuAdjacencyAtkBonus: 0, shuAdjacencyHpBonus: 0, brotherhoodAtkBonus: 0, brotherhoodHpBonus: 0,
     ...overrides,
   };
 }

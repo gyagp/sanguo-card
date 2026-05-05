@@ -205,6 +205,10 @@ export interface BoardMinion extends Card {
   enrageBonus: number;
   factionAttackBonus: number;
   factionHealthBonus: number;
+  shuAdjacencyAtkBonus: number;
+  shuAdjacencyHpBonus: number;
+  brotherhoodAtkBonus: number;
+  brotherhoodHpBonus: number;
   registeredListeners?: RegisteredListener[];
 }
 
@@ -388,6 +392,46 @@ export function recalculateFactionSynergies(player: PlayerState): void {
   }
 }
 
+const BROTHERHOOD_NAMES = new Set(["刘备", "关羽", "张飞"]);
+
+export function recalculateShuBonuses(player: PlayerState): void {
+  const board = player.board;
+
+  const hasBrotherhood =
+    board.some(m => m.name === "刘备") &&
+    board.some(m => m.name === "关羽") &&
+    board.some(m => m.name === "张飞");
+
+  for (let i = 0; i < board.length; i++) {
+    const minion = board[i];
+    if (minion.faction !== "shu") continue;
+
+    const oldAdjAtk = minion.shuAdjacencyAtkBonus;
+    const oldAdjHp = minion.shuAdjacencyHpBonus;
+    const oldBroAtk = minion.brotherhoodAtkBonus;
+    const oldBroHp = minion.brotherhoodHpBonus;
+
+    let adjAtk = 0;
+    let adjHp = 0;
+    if (i > 0 && board[i - 1].faction === "shu") { adjAtk += 1; adjHp += 1; }
+    if (i < board.length - 1 && board[i + 1].faction === "shu") { adjAtk += 1; adjHp += 1; }
+    minion.shuAdjacencyAtkBonus = adjAtk;
+    minion.shuAdjacencyHpBonus = adjHp;
+
+    let broAtk = 0;
+    let broHp = 0;
+    if (hasBrotherhood && BROTHERHOOD_NAMES.has(minion.name)) {
+      broAtk = 2;
+      broHp = 2;
+    }
+    minion.brotherhoodAtkBonus = broAtk;
+    minion.brotherhoodHpBonus = broHp;
+
+    minion.currentAttack += (adjAtk - oldAdjAtk) + (broAtk - oldBroAtk);
+    minion.currentHealth += (adjHp - oldAdjHp) + (broHp - oldBroHp);
+  }
+}
+
 export function playCard(
   state: GameState,
   handIndex: number,
@@ -429,9 +473,14 @@ export function playCard(
       enrageBonus: 0,
       factionAttackBonus: 0,
       factionHealthBonus: 0,
+      shuAdjacencyAtkBonus: 0,
+      shuAdjacencyHpBonus: 0,
+      brotherhoodAtkBonus: 0,
+      brotherhoodHpBonus: 0,
     };
     player.board.push(minion);
     recalculateFactionSynergies(player);
+    recalculateShuBonuses(player);
     gameEventBus.emit({ type: "minion_played", player: state.activePlayer, source: minion });
 
     if (card.onPlay) {
@@ -565,6 +614,7 @@ export function removeDeadMinions(state: GameState): void {
     for (const player of state.players) {
       player.board = player.board.filter((m) => !dyingSet.has(m));
       recalculateFactionSynergies(player);
+      recalculateShuBonuses(player);
     }
   }
 }
@@ -976,6 +1026,10 @@ export const FACTION_HERO_POWERS: Record<Faction, HeroPower> = {
         enrageBonus: 0,
         factionAttackBonus: 0,
         factionHealthBonus: 0,
+        shuAdjacencyAtkBonus: 0,
+        shuAdjacencyHpBonus: 0,
+        brotherhoodAtkBonus: 0,
+        brotherhoodHpBonus: 0,
       };
       player.board.push(token);
     },

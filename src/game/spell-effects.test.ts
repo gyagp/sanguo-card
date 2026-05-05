@@ -43,7 +43,7 @@ function makeMinion(overrides: Partial<BoardMinion> = {}): BoardMinion {
     isStealth: false, isFrozen: false, isImmune: false,
     freezeTurnsLeft: 0,
     windfuryAttacksLeft: 1, enrageActive: false, enrageBonus: 0,
-    factionAttackBonus: 0, factionHealthBonus: 0,
+    factionAttackBonus: 0, factionHealthBonus: 0, shuAdjacencyAtkBonus: 0, shuAdjacencyHpBonus: 0, brotherhoodAtkBonus: 0, brotherhoodHpBonus: 0,
     ...overrides,
   };
 }

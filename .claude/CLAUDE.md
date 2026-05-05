@@ -1,12 +1,12 @@
 # Autopo test Session
 
 ## Work Unit
-Implement Wei (魏) control mechanics — extra card draw on spell cast, spell mana cost reduction (-1 for 4+ Wei minions in deck), enhanced freeze duration tracking
+Implement Shu (蜀) brotherhood mechanics — adjacent same-faction minions get +1/+1, specific hero pairs (刘备+关羽+张飞) get extra bonuses when on board together
 
 ## Acceptance Criteria
-- Playing a spell with Wei faction bonus draws an extra card
-- Spell costs reduced by 1 when Wei deck bonus active
-- Freeze effect lasts 2 turns instead of 1 when Wei synergy active
+- Adjacent Shu minions grant each other +1/+1
+- Brotherhood trio (刘备, 关羽, 张飞) on board together grants +2/+2 to all three
+- Bonuses recalculated on minion play and death
 - npm run build succeeds
 
 ## Rules
