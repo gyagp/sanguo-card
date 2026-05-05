@@ -1,14 +1,12 @@
-# Autopo test Session
+# Autopo execute Session
 
 ## Work Unit
-Difficulty-based deck quality — Easy/Normal/Hard AI get different card pool quality (Easy: commons only, Normal: commons+rares, Hard: full pool with epics/legendaries)
+Difficulty deck quality tests — verify card pool filtering by difficulty
 
 ## Acceptance Criteria
-- AI deck generation function accepts difficulty parameter
-- Easy AI decks contain only common cards
-- Normal AI decks contain common and rare cards
-- Hard AI decks contain all rarities including epics and legendaries
-- npm run build succeeds
+- Test Easy deck has no rare/epic/legendary cards
+- Test Hard deck includes legendary cards
+- All tests pass with vitest run
 
 ## Rules
 # Rules
