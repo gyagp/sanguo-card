@@ -1,12 +1,12 @@
 # Autopo test Session
 
 ## Work Unit
-Implement Wu (吴) rush mechanics — Wu minions with charge get +1 attack on the turn played, weapon attacks grant +1 attack to a random friendly Wu minion, combo chain counter (consecutive Wu card plays in a turn grant escalating bonuses)
+Implement Qun (群) chaos mechanics — Qun minion battlecries have 50% chance to trigger twice, Qun spells deal random damage in a range (±1), enemy minions have chance to lose 1 attack at turn start when facing Qun board
 
 ## Acceptance Criteria
-- Wu charge minions get +1 attack on play turn
-- Weapon attack buffs a random Wu minion
-- Playing 3+ Wu cards in one turn triggers combo bonus
+- Qun battlecry double-trigger works 50% of the time
+- Qun spell damage varies by ±1 randomly
+- Enemy debuff chance triggers at turn start with 3+ Qun minions
 - npm run build succeeds
 
 ## Rules

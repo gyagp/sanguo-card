@@ -213,6 +213,7 @@ export interface BoardMinion extends Card {
   wuWeaponBonus: number;
   wuComboAtkBonus: number;
   wuComboHpBonus: number;
+  qunDebuff: number;
   registeredListeners?: RegisteredListener[];
 }
 
@@ -317,6 +318,21 @@ export function initializeGame(deck1: Deck, deck2: Deck): GameState {
   return state;
 }
 
+export function applyQunTurnStartDebuff(state: GameState, activePlayer: 0 | 1, rng: () => number = Math.random): void {
+  const player = state.players[activePlayer];
+  const opponentIndex = activePlayer === 0 ? 1 : 0;
+  const opponent = state.players[opponentIndex];
+  const qunCount = player.board.filter(m => m.faction === "qun").length;
+  if (qunCount >= 3) {
+    for (const minion of opponent.board) {
+      if (rng() < 0.5 && minion.currentAttack > 0) {
+        minion.currentAttack -= 1;
+        minion.qunDebuff += 1;
+      }
+    }
+  }
+}
+
 export function startTurn(state: GameState): DrawResult {
   state.turn++;
   state.turnPhase = "start";
@@ -353,6 +369,8 @@ export function startTurn(state: GameState): DrawResult {
   state.turnPhase = "play";
 
   gameEventBus.emit({ type: "turn_start", player: state.activePlayer });
+
+  applyQunTurnStartDebuff(state, state.activePlayer);
 
   return result;
 }
@@ -443,6 +461,7 @@ export function playCard(
   state: GameState,
   handIndex: number,
   targetIndex?: number,
+  rng: () => number = Math.random,
 ): PlayCardResult {
   const player = state.players[state.activePlayer];
 
@@ -483,7 +502,7 @@ export function playCard(
       shuAdjacencyAtkBonus: 0,
       shuAdjacencyHpBonus: 0,
       brotherhoodAtkBonus: 0,
-      brotherhoodHpBonus: 0, wuChargeBonus: 0, wuWeaponBonus: 0, wuComboAtkBonus: 0, wuComboHpBonus: 0,
+      brotherhoodHpBonus: 0, wuChargeBonus: 0, wuWeaponBonus: 0, wuComboAtkBonus: 0, wuComboHpBonus: 0, qunDebuff: 0,
     };
     player.board.push(minion);
     recalculateFactionSynergies(player);
@@ -520,6 +539,19 @@ export function playCard(
       state = card.battlecry(state, context);
       checkEnrage(state);
       removeDeadMinions(state);
+
+      if (card.faction === "qun" && player.deckFaction === "qun" && player.hasDeckFactionBonus) {
+        if (rng() < 0.5 && player.board.includes(minion) && minion.currentHealth > 0) {
+          const secondContext: EffectContext = {
+            event: { type: "minion_played", player: state.activePlayer, source: minion },
+            sourceCard: card,
+            player: state.activePlayer,
+          };
+          state = card.battlecry(state, secondContext);
+          checkEnrage(state);
+          removeDeadMinions(state);
+        }
+      }
     }
 
     return { success: true };
@@ -537,10 +569,14 @@ export function playCard(
     gameEventBus.emit({ type: "spell_played", player: state.activePlayer, source: card });
 
     if (card.effect) {
-      const spellDamage = player.board.reduce(
+      let spellDamage = player.board.reduce(
         (sum, m) => sum + (m.spellDamage ?? 0),
         0
       );
+      if (card.faction === "qun" && player.deckFaction === "qun" && player.hasDeckFactionBonus) {
+        const variance = Math.floor(rng() * 3) - 1;
+        spellDamage = Math.max(0, spellDamage + variance);
+      }
       const context: EffectContext = {
         event: { type: "spell_played", player: state.activePlayer, source: card },
         sourceCard: card,
@@ -1072,7 +1108,7 @@ export const FACTION_HERO_POWERS: Record<Faction, HeroPower> = {
         shuAdjacencyAtkBonus: 0,
         shuAdjacencyHpBonus: 0,
         brotherhoodAtkBonus: 0,
-        brotherhoodHpBonus: 0, wuChargeBonus: 0, wuWeaponBonus: 0, wuComboAtkBonus: 0, wuComboHpBonus: 0,
+        brotherhoodHpBonus: 0, wuChargeBonus: 0, wuWeaponBonus: 0, wuComboAtkBonus: 0, wuComboHpBonus: 0, qunDebuff: 0,
       };
       player.board.push(token);
     },
