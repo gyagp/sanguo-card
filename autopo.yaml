@@ -132,9 +132,102 @@ goals:
       - "Gemini API调用方式: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=$GEMINI_API_KEY，使用responseModalities: ['TEXT', 'IMAGE']"
     priority: 10
     depends_on: [chinese-localization]
+
+  - id: ability-engine
+    description: 卡牌效果引擎 — 实现关键词和法术效果系统，让卡牌能力真正生效
+    acceptance:
+      - "关键词系统实现：嘲讽(taunt阻挡攻击)、冲锋(charge立即攻击)、圣盾(divine shield吸收一次伤害)、亡语(deathrattle死亡触发)、战吼(battlecry入场触发)"
+      - "法术效果实现：造成伤害、恢复生命、抽牌、增益随从、AOE群伤、变形、召唤随从"
+      - "武器攻击：装备武器后英雄可以攻击随从或对方英雄，每次攻击消耗耐久"
+      - "事件/触发系统：支持亡语、战吼、回合结束效果的触发和结算"
+      - "法术伤害加成：场上有法术伤害随从时法术伤害增加"
+      - "更多关键词：潜行(stealth)、风怒(windfury可攻击两次)、激怒(enrage受伤后增强)、冻结(freeze跳过攻击)"
+      - 所有34张现有卡牌的描述效果均已实现并可正常生效
+      - npm run build无错误
+    priority: 11
+    depends_on: [card-art]
+
+  - id: faction-synergy
+    description: 阵营势力系统 — 魏蜀吴群各有独特机制和连携效果
+    acceptance:
+      - "魏(Wei)控制型：额外抽牌、法术费用减少、冻结效果加强"
+      - "蜀(Shu)团结型：友方随从在场时互相增益，兄弟连携加成"
+      - "吴(Wu)速攻型：冲锋随从多、武器连携、连击链"
+      - "群(Qun)混乱型：随机效果、高风险高回报、敌方减益"
+      - "阵营加成：卡组中20+同阵营卡牌激活被动英雄技能升级"
+      - "混合卡组无阵营加成但更灵活"
+      - UI显示当前阵营加成状态
+    priority: 12
+    depends_on: [ability-engine]
+
+  - id: collection-upgrade
+    description: 卡牌收集与升级系统 — 持久化进度和成长系统
+    acceptance:
+      - "玩家初始拥有基础普通卡牌，通过游戏获得新卡"
+      - "金币系统：胜利获得金币，用于购买卡包"
+      - "卡包系统：每包5张卡，保底1张稀有以上"
+      - "卡牌升级：消耗金币+重复卡牌升级属性（每级+1攻击或+1生命，最高3级）"
+      - "玩家等级：游戏获得经验值，升级解锁新功能"
+      - "收藏页面显示已拥有和未解锁卡牌及进度"
+      - 所有数据使用localStorage持久化保存
+      - 刷新页面后进度不丢失
+    priority: 13
+    depends_on: [faction-synergy]
+
+  - id: pve-adventure
+    description: PVE冒险模式 — 三国故事战役，5章30关
+    acceptance:
+      - "5个章节：黄巾之乱(教程)、群雄逐鹿(阵营)、三足鼎立(挑战)、赤壁之战(策略谜题)、天下归一(终极Boss)"
+      - "每章5个普通关卡+1个Boss战=30关"
+      - "每关有预设敌方卡组，难度递增"
+      - "Boss战有特殊规则（额外法力、独特英雄技能、场地效果）"
+      - "通关奖励：金币、卡包、特定卡牌"
+      - "星级评分（1-3星）基于剩余血量和回合数"
+      - 冒险模式进度保存在localStorage
+      - 有冒险地图/关卡选择界面
+    priority: 14
+    depends_on: [collection-upgrade]
+
+  - id: tactical-board
+    description: 战棋策略元素 — 分路系统和阵型加成
+    acceptance:
+      - "战场分为3条路线（左/中/右），每路2个位置=每方6个格子"
+      - "随从只能攻击同路或相邻路的随从"
+      - "地形效果：部分PVE关卡有路线修改器（火焰伤害、治疗光环、隐身区域）"
+      - "阵型加成：相邻同阵营随从获得+1/+1"
+      - "路线法术：AOE只影响一条路线"
+      - UI清晰显示路线划分和地形效果
+    priority: 15
+    depends_on: [pve-adventure]
+
+  - id: expanded-cards
+    description: 扩展卡池 — 从34张扩展到100+张卡牌
+    acceptance:
+      - "每个阵营至少20张卡牌（魏蜀吴群）+20张中立=100+张"
+      - "新卡牌类型：陷阱(trap)卡，在对手回合触发"
+      - "传说英雄拥有阵营专属英雄技能"
+      - "衍生随从（由其他卡牌召唤，不可收集）"
+      - "使用Gemini API（从环境变量GEMINI_API_KEY读取密钥）为新卡生成卡面插画"
+      - "绝不在代码中硬编码API密钥"
+      - npm run build无错误
+    priority: 16
+    depends_on: [tactical-board]
+
+  - id: enhanced-ai
+    description: 增强AI — 理解新系统的智能对手
+    acceptance:
+      - "AI理解关键词交互（优先移除嘲讽、避免浪费攻击在圣盾上）"
+      - "AI利用阵营连携构建和出牌"
+      - "AI根据场面判断打法（进攻vs控制）"
+      - "Boss AI有脚本化阶段和特殊行为"
+      - "难度影响AI卡组质量而非仅出牌技巧"
+      - 困难模式下AI有明显挑战性
+    priority: 17
+    depends_on: [expanded-cards]
+
 settings:
-  max_iterations: 150
-  max_time_hours: 48
+  max_iterations: 300
+  max_time_hours: 96
   tech_stack: Next.js, TypeScript, Tailwind CSS, HTML5 Canvas, Web Audio API
   auto_push: true
   ui_port: 4800
