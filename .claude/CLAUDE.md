@@ -1,13 +1,12 @@
 # Autopo test Session
 
 ## Work Unit
-Enhance card art prompts with faction-specific color direction — ensure prompts instruct Gemini to use 魏=blue, 蜀=green, 吴=red, 群=amber color palettes, and differentiate minion/spell/weapon card types visually
+Run the generation script to produce all 34 card art PNGs using the updated gemini-2.5-flash-image model — save to public/card-art/[cardName].png
 
 ## Acceptance Criteria
-- buildPrompt() includes faction color instructions for wei/shu/wu/qun
-- Minion prompts request character portraits in Three Kingdoms style
-- Spell prompts request scene/effect imagery
-- Weapon prompts request weapon artwork
+- 34 PNG files exist in public/card-art/
+- Each file is a valid PNG image (non-zero size)
+- Files are named by card Chinese name matching cards.ts entries
 
 ## Rules
 # Rules
