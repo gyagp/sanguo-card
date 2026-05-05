@@ -7,6 +7,7 @@ import { PlayerProfile, XP_THRESHOLDS, getXPProgress, LEVEL_UNLOCKS } from "../g
 
 const menuItems = [
   { label: "开始对战", href: "/game", icon: "⚔" },
+  { label: "冒险模式", href: "/adventure", icon: "🗺" },
   { label: "组建卡组", href: "/deck-builder", icon: "📜" },
   { label: "卡牌收藏", href: "/collection", icon: "🃏" },
   { label: "商店", href: "/shop", icon: "🏪" },

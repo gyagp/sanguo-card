@@ -1,13 +1,14 @@
 # Autopo test Session
 
 ## Work Unit
-Adventure progress persistence — save/load chapter unlock, stage stars, and completion state in localStorage
+Adventure map UI — chapter selection and stage grid page at /adventure with locked/unlocked/starred visual states
 
 ## Acceptance Criteria
-- AdventureProgress type with per-stage completion and star ratings
-- saveAdventureProgress/loadAdventureProgress functions in player-store.ts
-- Stages unlock sequentially within chapter; chapters unlock after boss clear
-- Progress survives page refresh
+- src/app/adventure/page.tsx renders chapter tabs and stage grid
+- Locked stages show lock icon, cleared stages show 1-3 stars
+- Boss stages visually distinct from normal stages
+- Clicking unlocked stage navigates to pre-battle screen
+- Main menu has Adventure link
 - npm run build succeeds
 
 ## Rules
