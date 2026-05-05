@@ -1,14 +1,14 @@
 # Autopo test Session
 
 ## Work Unit
-Collection page — create /collection route showing all 34 cards in a grid: owned cards in color with count/level, unowned cards grayed out with lock icon; show overall progress (X/34 cards), filter by faction/rarity; tap owned card to see upgrade option
+Card upgrade UI in collection page — add upgrade panel when selecting an owned card: show current level, stat preview for next level, cost (gold + duplicates needed), upgrade button with confirmation
 
 ## Acceptance Criteria
-- Route /collection accessible from main menu
-- Owned cards displayed with count and upgrade level
-- Unowned cards shown grayed/locked
-- Progress bar shows X/34 collected
-- Filter by faction and rarity works
+- Selecting owned card shows upgrade panel
+- Displays current and next-level stats
+- Shows gold and duplicate cost
+- Upgrade button disabled if insufficient resources
+- Successful upgrade updates display immediately
 - npm run build succeeds
 
 ## Rules

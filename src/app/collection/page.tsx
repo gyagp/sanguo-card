@@ -221,34 +221,61 @@ export default function CollectionPage() {
                   <span>等级</span>
                   <span>Lv.{selectedOwned.upgradeLevel} / 3</span>
                 </div>
-                {selectedBaseCard.type === "minion" && (
-                  <div className="flex justify-between">
-                    <span>当前属性</span>
-                    <span>
-                      ⚔ {getUpgradedStats(selectedBaseCard, selectedOwned.upgradeLevel).attack}{" "}
-                      / ❤ {getUpgradedStats(selectedBaseCard, selectedOwned.upgradeLevel).health}
-                    </span>
-                  </div>
-                )}
+                {selectedBaseCard.type === "minion" && (() => {
+                  const current = getUpgradedStats(selectedBaseCard, selectedOwned.upgradeLevel);
+                  const next = selectedOwned.upgradeLevel < 3
+                    ? getUpgradedStats(selectedBaseCard, selectedOwned.upgradeLevel + 1)
+                    : null;
+                  return (
+                    <>
+                      <div className="flex justify-between">
+                        <span>当前属性</span>
+                        <span>⚔ {current.attack} / ❤ {current.health}</span>
+                      </div>
+                      {next && (
+                        <div className="flex justify-between text-green-400">
+                          <span>升级后属性</span>
+                          <span>
+                            ⚔ {next.attack}{next.attack > current.attack ? ` (+${next.attack - current.attack})` : ""}{" "}
+                            / ❤ {next.health}{next.health > current.health ? ` (+${next.health - current.health})` : ""}
+                          </span>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
 
-              {selectedOwned.upgradeLevel < 3 ? (
-                <>
-                  <div className="text-xs text-yellow-200/60 mb-3 space-y-1">
-                    <div>升级费用：{UPGRADE_COSTS[selectedOwned.upgradeLevel + 1]} 金币</div>
-                    <div>
-                      需要重复卡：{DUPLICATE_COST_PER_LEVEL[selectedOwned.upgradeLevel + 1]} 张
-                      （当前 {Math.max(0, selectedOwned.count - 1)} 张可用）
+              {selectedOwned.upgradeLevel < 3 ? (() => {
+                const nextLvl = selectedOwned.upgradeLevel + 1;
+                const goldCost = UPGRADE_COSTS[nextLvl];
+                const dupCost = DUPLICATE_COST_PER_LEVEL[nextLvl];
+                const availableDuplicates = Math.max(0, selectedOwned.count - 1);
+                const canAfford = player.gold >= goldCost && availableDuplicates >= dupCost;
+                return (
+                  <>
+                    <div className="text-xs text-yellow-200/60 mb-3 space-y-1">
+                      <div className={player.gold < goldCost ? "text-red-400" : ""}>
+                        升级费用：{goldCost} 金币（当前 {player.gold}）
+                      </div>
+                      <div className={availableDuplicates < dupCost ? "text-red-400" : ""}>
+                        需要重复卡：{dupCost} 张（当前 {availableDuplicates} 张可用）
+                      </div>
                     </div>
-                  </div>
-                  <button
-                    onClick={() => handleUpgrade(selectedCard)}
-                    className="w-full py-2 rounded-lg bg-yellow-500 text-black font-bold hover:bg-yellow-400 transition-colors"
-                  >
-                    升级
-                  </button>
-                </>
-              ) : (
+                    <button
+                      onClick={() => handleUpgrade(selectedCard)}
+                      disabled={!canAfford}
+                      className={`w-full py-2 rounded-lg font-bold transition-colors ${
+                        canAfford
+                          ? "bg-yellow-500 text-black hover:bg-yellow-400"
+                          : "bg-gray-600 text-gray-400 cursor-not-allowed"
+                      }`}
+                    >
+                      升级
+                    </button>
+                  </>
+                );
+              })() : (
                 <div className="text-center text-green-400 font-bold">
                   已达最高等级
                 </div>
