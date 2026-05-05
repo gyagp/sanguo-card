@@ -1,13 +1,14 @@
-# Autopo test Session
+# Autopo execute Session
 
 ## Work Unit
-Update AI to factor in new faction mechanics — Wei AI prioritizes spells, Shu AI places minions adjacently, Wu AI chains plays, Qun AI accepts variance
+Integration test — full game simulation with each faction deck verifying all mechanics interact correctly, no crashes, build succeeds
 
 ## Acceptance Criteria
-- AI card evaluation weights adjusted per faction
-- AI placement considers adjacency for Shu
-- AI play ordering considers Wu combo chains
+- 4 simulated games (one per faction) complete without errors
+- Faction passives trigger during gameplay
+- Hero power upgrades apply correctly
 - npm run build succeeds
+- All tests pass
 
 ## Rules
 # Rules
