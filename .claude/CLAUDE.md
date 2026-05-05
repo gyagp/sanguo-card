@@ -1,12 +1,13 @@
 # Autopo test Session
 
 ## Work Unit
-Update generate-card-art.ts to use gemini-2.5-flash-image model — change API endpoint URL and ensure responseModalities includes ['TEXT', 'IMAGE'] per acceptance criteria
+Enhance card art prompts with faction-specific color direction — ensure prompts instruct Gemini to use 魏=blue, 蜀=green, 吴=red, 群=amber color palettes, and differentiate minion/spell/weapon card types visually
 
 ## Acceptance Criteria
-- scripts/generate-card-art.ts references gemini-2.5-flash-image model
-- API URL matches POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent
-- responseModalities set to ['TEXT', 'IMAGE']
+- buildPrompt() includes faction color instructions for wei/shu/wu/qun
+- Minion prompts request character portraits in Three Kingdoms style
+- Spell prompts request scene/effect imagery
+- Weapon prompts request weapon artwork
 
 ## Rules
 # Rules
