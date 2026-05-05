@@ -1117,6 +1117,7 @@ function GameInner({ playerDeck, difficulty }: { playerDeck: Deck; difficulty: A
         <button
           onClick={() => { audioRef.current.playHeroPower(); useHeroPower(); }}
           disabled={isOpponentTurn || winner !== null || player.heroPowerUsed || player.hero.mana < player.hero.heroPower.cost}
+          title={`${player.hero.heroPower.name}: ${player.hero.heroPower.description}`}
           className={`w-8 h-8 sm:w-10 sm:h-10 md:w-14 md:h-14 rounded-full border-2 font-bold text-[10px] sm:text-xs md:text-sm flex items-center justify-center transition-all duration-200 ${
             isOpponentTurn || winner !== null || player.heroPowerUsed || player.hero.mana < player.hero.heroPower.cost
               ? "bg-gray-700 border-gray-600 text-gray-500 cursor-not-allowed"

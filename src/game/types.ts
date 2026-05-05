@@ -75,10 +75,13 @@ export interface Card {
   onPlay?: OnPlayHook;
 }
 
+export type HeroPowerEffect = (state: GameState, playerIndex: 0 | 1) => void;
+
 export interface HeroPower {
   name: string;
   cost: number;
   description: string;
+  effect?: HeroPowerEffect;
 }
 
 export interface Hero {
@@ -253,6 +256,9 @@ export function initializeGame(deck1: Deck, deck2: Deck): GameState {
     activePlayer: 0,
     spellsPlayed: [[], []],
   };
+
+  state.players[0].hero.heroPower = FACTION_HERO_POWERS[getDeckFaction(deck1)];
+  state.players[1].hero.heroPower = FACTION_HERO_POWERS[getDeckFaction(deck2)];
 
   // Opening hand: player 1 draws 3, player 2 draws 4 (coin advantage)
   for (let i = 0; i < 3; i++) drawCard(state.players[0]);
@@ -823,6 +829,105 @@ export class EventBus {
 
 export const gameEventBus = new EventBus();
 
+export function getDeckFaction(deck: Deck): Faction {
+  const counts = new Map<Faction, number>();
+  for (const card of deck) {
+    if (card.faction !== "neutral") {
+      counts.set(card.faction, (counts.get(card.faction) ?? 0) + 1);
+    }
+  }
+  let best: Faction = "neutral";
+  let bestCount = 0;
+  for (const [faction, count] of counts) {
+    if (count > bestCount) {
+      best = faction;
+      bestCount = count;
+    }
+  }
+  return best;
+}
+
+export const FACTION_HERO_POWERS: Record<Faction, HeroPower> = {
+  shu: {
+    name: "仁德",
+    cost: 2,
+    description: "恢复英雄2点生命值",
+    effect: (state, playerIndex) => {
+      state.players[playerIndex].hero.health = Math.min(
+        state.players[playerIndex].hero.health + 2,
+        STARTING_HP
+      );
+    },
+  },
+  wei: {
+    name: "霸略",
+    cost: 2,
+    description: "对敌方英雄造成1点伤害",
+    effect: (state, playerIndex) => {
+      const opponentIndex = (playerIndex === 0 ? 1 : 0) as 0 | 1;
+      state.players[opponentIndex].hero.health -= 1;
+    },
+  },
+  wu: {
+    name: "制衡",
+    cost: 2,
+    description: "召唤一个1/1的士兵",
+    effect: (state, playerIndex) => {
+      const player = state.players[playerIndex];
+      if (player.board.length >= MAX_BOARD_SIZE) return;
+      const token: BoardMinion = {
+        name: "士兵",
+        cost: 0,
+        type: "minion",
+        rarity: "common",
+        faction: "neutral",
+        attack: 1,
+        health: 1,
+        description: "",
+        currentAttack: 1,
+        currentHealth: 1,
+        summoningSickness: true,
+        hasAttacked: false,
+        hasDivineShield: false,
+        isStealth: false,
+        isFrozen: false,
+        isImmune: false,
+        windfuryAttacksLeft: 1,
+        enrageActive: false,
+        enrageBonus: 0,
+        factionAttackBonus: 0,
+        factionHealthBonus: 0,
+      };
+      player.board.push(token);
+    },
+  },
+  qun: {
+    name: "乱击",
+    cost: 2,
+    description: "装备一把1/2的短刀",
+    effect: (state, playerIndex) => {
+      state.players[playerIndex].weapon = { name: "短刀", attack: 1, durability: 2 };
+      state.players[playerIndex].heroHasAttacked = false;
+    },
+  },
+  neutral: {
+    name: "策略",
+    cost: 2,
+    description: "对随机一个敌方随从造成1点伤害",
+    effect: (state, playerIndex) => {
+      const opponentIndex = (playerIndex === 0 ? 1 : 0) as 0 | 1;
+      const targets = state.players[opponentIndex].board.filter(m => !m.isImmune);
+      if (targets.length === 0) {
+        state.players[opponentIndex].hero.health -= 1;
+        return;
+      }
+      const target = targets[Math.floor(Math.random() * targets.length)];
+      target.currentHealth -= 1;
+      removeDeadMinions(state);
+    },
+  },
+};
+
 export interface HeroPowerResult {
   success: boolean;
   error?: string;
@@ -842,6 +947,15 @@ export function useHeroPower(state: GameState): HeroPowerResult {
 
   player.hero.mana -= cost;
   player.heroPowerUsed = true;
+
+  let effect = player.hero.heroPower.effect;
+  if (!effect) {
+    const match = Object.values(FACTION_HERO_POWERS).find(p => p.name === player.hero.heroPower.name);
+    if (match) effect = match.effect;
+  }
+  if (effect) {
+    effect(state, state.activePlayer);
+  }
 
   return { success: true };
 }

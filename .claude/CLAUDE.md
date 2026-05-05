@@ -1,12 +1,11 @@
 # Autopo test Session
 
 ## Work Unit
-Implement spell targeting UI — targeted spells (烽火) prompt player to select a target instead of picking randomly
+Implement hero powers — each hero power has a functional effect (e.g., deal 1 damage, summon 1/1, heal 2, equip 1/2 weapon)
 
 ## Acceptance Criteria
-- Spells with targetType prompt target selection
-- Non-targeted spells resolve immediately
-- AI auto-selects targets
+- useHeroPower executes a real effect based on hero/class
+- Hero power effects are defined and functional
 - npm run build succeeds
 
 ## Rules
