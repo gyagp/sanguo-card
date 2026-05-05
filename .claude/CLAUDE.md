@@ -1,12 +1,12 @@
 # Autopo execute Session
 
 ## Work Unit
-Tests for Wei control mechanics — spell draw, cost reduction, freeze enhancement
+Tests for Shu brotherhood mechanics — adjacency bonus, trio detection, recalculation on death
 
 ## Acceptance Criteria
-- Tests cover spell-triggered draw
-- Tests cover mana cost reduction
-- Tests cover enhanced freeze
+- Tests cover adjacent Shu buff
+- Tests cover brotherhood trio bonus
+- Tests cover buff removal on death
 - All tests pass
 
 ## Rules
