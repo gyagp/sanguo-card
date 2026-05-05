@@ -4,6 +4,31 @@ export type CardType = "minion" | "spell" | "weapon";
 
 export type Faction = "wei" | "shu" | "wu" | "qun" | "neutral";
 
+export type GameEventType =
+  | "minion_played"
+  | "minion_died"
+  | "turn_start"
+  | "turn_end"
+  | "spell_played"
+  | "attack"
+  | "hero_damaged";
+
+export interface GameEvent {
+  type: GameEventType;
+  player: 0 | 1;
+  source?: BoardMinion | Card;
+  target?: BoardMinion | { kind: "hero"; player: 0 | 1 };
+  value?: number;
+}
+
+export interface EffectContext {
+  event: GameEvent;
+  sourceCard: Card;
+  player: 0 | 1;
+}
+
+export type Effect = (state: GameState, context: EffectContext) => GameState;
+
 export interface Card {
   name: string;
   cost: number;
@@ -13,6 +38,17 @@ export interface Card {
   rarity: Rarity;
   type: CardType;
   faction: Faction;
+  taunt?: boolean;
+  charge?: boolean;
+  divineShield?: boolean;
+  deathrattle?: Effect;
+  battlecry?: Effect;
+  stealth?: boolean;
+  windfury?: boolean;
+  enrage?: Effect;
+  spellDamage?: number;
+  freeze?: boolean;
+  immune?: boolean;
 }
 
 export interface HeroPower {
@@ -95,6 +131,12 @@ export interface BoardMinion extends Card {
   currentHealth: number;
   summoningSickness: boolean;
   hasAttacked: boolean;
+  hasDivineShield: boolean;
+  isStealth: boolean;
+  isFrozen: boolean;
+  isImmune: boolean;
+  windfuryAttacksLeft: number;
+  enrageActive: boolean;
 }
 
 export interface Weapon {
@@ -221,8 +263,14 @@ export function playCard(
       ...card,
       currentAttack: card.attack,
       currentHealth: card.health,
-      summoningSickness: true,
+      summoningSickness: card.charge ? false : true,
       hasAttacked: false,
+      hasDivineShield: card.divineShield ?? false,
+      isStealth: card.stealth ?? false,
+      isFrozen: false,
+      isImmune: card.immune ?? false,
+      windfuryAttacksLeft: card.windfury ? 2 : 1,
+      enrageActive: false,
     };
     player.board.push(minion);
     return { success: true };

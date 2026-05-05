@@ -38,8 +38,8 @@ function getLegendaryCard() {
 
 function clickCardInBrowser(name: string) {
   const elements = screen.getAllByText(name);
-  const browserCard = elements.find(el => el.closest('button'));
-  fireEvent.click(browserCard!);
+  const el = elements[0].closest('[class*="cursor-pointer"], [class*="cursor-not-allowed"]') || elements[0];
+  fireEvent.click(el);
 }
 
 describe('Deck Builder page acceptance criteria', () => {
@@ -264,6 +264,47 @@ describe('Deck Builder page acceptance criteria', () => {
       mockStorage[STORAGE_KEY] = 'not-json{{{';
       render(<DeckBuilderPage />);
       expect(screen.getByText('暂无卡组，创建你的第一副卡组吧！')).toBeInTheDocument();
+    });
+  });
+
+  describe('AC: Card component with PNG art and faction colors', () => {
+    it('renders CardComponent with img tags pointing to /card-art/[name].png', () => {
+      render(<DeckBuilderPage />);
+      fireEvent.click(screen.getByText('+ 新建卡组'));
+      const card = getFirstCard();
+      const imgs = document.querySelectorAll('img');
+      const cardImg = Array.from(imgs).find(img => img.getAttribute('src')?.includes(encodeURIComponent(card.name)));
+      expect(cardImg).toBeTruthy();
+      expect(cardImg!.getAttribute('src')).toBe(`/card-art/${encodeURIComponent(card.name)}.png`);
+    });
+
+    it('each card in the browser has a PNG art image', () => {
+      render(<DeckBuilderPage />);
+      fireEvent.click(screen.getByText('+ 新建卡组'));
+      const imgs = document.querySelectorAll('img');
+      const cardArtImgs = Array.from(imgs).filter(img => img.getAttribute('src')?.startsWith('/card-art/'));
+      expect(cardArtImgs.length).toBeGreaterThanOrEqual(allCards.length);
+    });
+
+    it('cards display faction-specific background colors', () => {
+      render(<DeckBuilderPage />);
+      fireEvent.click(screen.getByText('+ 新建卡组'));
+      const shuCard = allCards.find(c => c.faction === 'shu')!;
+      const weiCard = allCards.find(c => c.faction === 'wei')!;
+      const wuCard = allCards.find(c => c.faction === 'wu')!;
+
+      const findCardEl = (name: string) => {
+        const el = screen.getAllByText(name)[0];
+        return el.closest('[class*="rounded-xl"]');
+      };
+
+      const shuEl = findCardEl(shuCard.name);
+      const weiEl = findCardEl(weiCard.name);
+      const wuEl = findCardEl(wuCard.name);
+
+      expect(shuEl?.className).toMatch(/bg-green/);
+      expect(weiEl?.className).toMatch(/bg-blue/);
+      expect(wuEl?.className).toMatch(/bg-red/);
     });
   });
 });

@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { cards as allCards } from '../../game/cards';
 import { Card, Rarity, CardType, Faction, MAX_DECK_SIZE, MAX_COPIES_PER_CARD, MAX_COPIES_LEGENDARY } from '../../game/types';
+import CardComponent from '../../components/Card';
 
 const STORAGE_KEY = 'sanguo-card-decks';
 
@@ -25,33 +26,6 @@ function loadDecks(): SavedDeck[] {
 function saveDecks(decks: SavedDeck[]) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(decks));
 }
-
-const rarityColors: Record<Rarity, string> = {
-  common: 'border-gray-400',
-  rare: 'border-blue-400',
-  epic: 'border-purple-400',
-  legendary: 'border-orange-400',
-};
-
-const factionColors: Record<Faction, string> = {
-  shu: 'bg-green-900/80',
-  wei: 'bg-blue-900/80',
-  wu: 'bg-red-800/80',
-  qun: 'bg-yellow-900/80',
-  neutral: 'bg-gray-800/80',
-};
-
-const typeIcons: Record<CardType, string> = {
-  minion: '⚔️',
-  spell: '✨',
-  weapon: '🗡️',
-};
-
-const typeLabels: Record<CardType, string> = {
-  minion: '随从',
-  spell: '法术',
-  weapon: '武器',
-};
 
 type FilterFaction = Faction | 'all';
 type FilterType = CardType | 'all';
@@ -252,7 +226,7 @@ export default function DeckBuilderPage() {
               </div>
 
               <div className="flex-1 overflow-y-auto">
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 justify-items-center">
                   {filteredCards.map(card => {
                     const count = countInDeck(card);
                     const maxCopies = card.rarity === 'legendary' ? MAX_COPIES_LEGENDARY : MAX_COPIES_PER_CARD;
@@ -260,29 +234,18 @@ export default function DeckBuilderPage() {
                     const deckFull = currentDeck.length >= MAX_DECK_SIZE;
 
                     return (
-                      <button
-                        key={card.name}
-                        onClick={() => addCard(card)}
-                        disabled={atMax || deckFull}
-                        className={`relative rounded-lg border-2 ${rarityColors[card.rarity]} ${factionColors[card.faction]} p-3 text-left transition-all ${
-                          atMax || deckFull ? 'opacity-40 cursor-not-allowed' : 'hover:scale-[1.02] hover:brightness-110 cursor-pointer'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold text-blue-300">{card.cost}</span>
-                          <span className="text-xs text-yellow-100/60">{typeIcons[card.type]} {typeLabels[card.type]}</span>
-                        </div>
-                        <div className="mt-1 text-sm font-semibold text-yellow-100">{card.name}</div>
-                        {card.type === 'minion' && (
-                          <div className="mt-1 text-xs text-yellow-100/80">{card.attack}⚔ / {card.health}❤</div>
-                        )}
-                        <div className="mt-1 text-xs text-yellow-100/60 line-clamp-2">{card.description}</div>
+                      <div key={card.name} className="relative">
+                        <CardComponent
+                          card={card}
+                          onClick={() => { if (!atMax && !deckFull) addCard(card); }}
+                          className={atMax || deckFull ? 'opacity-40 cursor-not-allowed !hover:scale-100' : ''}
+                        />
                         {count > 0 && (
-                          <span className="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full bg-yellow-400 text-xs font-bold text-red-950">
+                          <span className="absolute right-1 top-1 z-20 flex h-6 w-6 items-center justify-center rounded-full bg-yellow-400 text-xs font-bold text-red-950 shadow">
                             {count}
                           </span>
                         )}
-                      </button>
+                      </div>
                     );
                   })}
                 </div>

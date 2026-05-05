@@ -1,12 +1,14 @@
-# Autopo execute Session
+# Autopo test Session
 
 ## Work Unit
-Update generate-card-art.test.ts to verify gemini-2.5-flash-image model reference and updated prompt structure
+Add keyword and effect fields to Card/BoardMinion types and create the event/trigger system types
 
 ## Acceptance Criteria
-- Test asserts script contains gemini-2.5-flash-image model reference
-- Test verifies faction color keywords in prompts
-- All tests pass with vitest run
+- Card type has optional keyword fields: taunt, charge, divineShield, deathrattle, battlecry, stealth, windfury, enrage, spellDamage, freeze, immune
+- BoardMinion has runtime state: hasDivineShield, isStealth, isFrozen, isImmune, windfuryAttacksLeft, enrageActive, keywords parsed from card
+- GameEvent type defined (minion_played, minion_died, turn_start, turn_end, spell_played, attack, hero_damaged)
+- Effect function type defined: (state, context) => GameState
+- npm run build succeeds
 
 ## Rules
 # Rules

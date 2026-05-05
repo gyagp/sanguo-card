@@ -10,6 +10,10 @@ import {
   GamePhase,
   Rarity,
   CardType,
+  GameEventType,
+  GameEvent,
+  EffectContext,
+  Effect,
   createDeck,
   shuffleDeck,
   drawCard,
@@ -402,13 +406,9 @@ describe("playCard", () => {
   it("rejects playing when board is full (7 minions)", () => {
     const minion = makeCard({ cost: 1, type: "minion" });
     const state = setupGame(1, [minion]);
-    state.players[0].board = Array.from({ length: MAX_BOARD_SIZE }, () => ({
-      ...makeCard({ type: "minion" }),
-      currentAttack: 1,
-      currentHealth: 1,
-      summoningSickness: false,
-      hasAttacked: false,
-    }));
+    state.players[0].board = Array.from({ length: MAX_BOARD_SIZE }, () =>
+      makeBoardMinion({ currentAttack: 1, currentHealth: 1 })
+    );
     const result = playCard(state, 0);
     expect(result.success).toBe(false);
     expect(result.error).toBe("Board is full");
@@ -452,6 +452,12 @@ function makeBoardMinion(overrides: Partial<BoardMinion> = {}): BoardMinion {
     currentHealth: 3,
     summoningSickness: false,
     hasAttacked: false,
+    hasDivineShield: false,
+    isStealth: false,
+    isFrozen: false,
+    isImmune: false,
+    windfuryAttacksLeft: 1,
+    enrageActive: false,
     ...overrides,
   };
 }
@@ -610,5 +616,162 @@ describe("useHeroPower", () => {
     endTurn(state);
     startTurn(state);
     expect(state.players[0].heroPowerUsed).toBe(false);
+  });
+});
+
+describe("Card keyword fields", () => {
+  it("all keyword fields are optional and default to undefined", () => {
+    const card = makeCard();
+    expect(card.taunt).toBeUndefined();
+    expect(card.charge).toBeUndefined();
+    expect(card.divineShield).toBeUndefined();
+    expect(card.deathrattle).toBeUndefined();
+    expect(card.battlecry).toBeUndefined();
+    expect(card.stealth).toBeUndefined();
+    expect(card.windfury).toBeUndefined();
+    expect(card.enrage).toBeUndefined();
+    expect(card.spellDamage).toBeUndefined();
+    expect(card.freeze).toBeUndefined();
+    expect(card.immune).toBeUndefined();
+  });
+
+  it("accepts boolean keyword fields", () => {
+    const card = makeCard({
+      taunt: true,
+      charge: true,
+      divineShield: true,
+      stealth: true,
+      windfury: true,
+      freeze: true,
+      immune: true,
+    });
+    expect(card.taunt).toBe(true);
+    expect(card.charge).toBe(true);
+    expect(card.divineShield).toBe(true);
+    expect(card.stealth).toBe(true);
+    expect(card.windfury).toBe(true);
+    expect(card.freeze).toBe(true);
+    expect(card.immune).toBe(true);
+  });
+
+  it("accepts spellDamage as a number", () => {
+    const card = makeCard({ spellDamage: 2 });
+    expect(card.spellDamage).toBe(2);
+  });
+
+  it("accepts Effect functions for deathrattle, battlecry, enrage", () => {
+    const effect: Effect = (state, _context) => state;
+    const card = makeCard({ deathrattle: effect, battlecry: effect, enrage: effect });
+    expect(card.deathrattle).toBeTypeOf("function");
+    expect(card.battlecry).toBeTypeOf("function");
+    expect(card.enrage).toBeTypeOf("function");
+  });
+});
+
+describe("BoardMinion runtime state", () => {
+  it("has all runtime keyword fields", () => {
+    const minion = makeBoardMinion();
+    expect(minion.hasDivineShield).toBe(false);
+    expect(minion.isStealth).toBe(false);
+    expect(minion.isFrozen).toBe(false);
+    expect(minion.isImmune).toBe(false);
+    expect(minion.windfuryAttacksLeft).toBe(1);
+    expect(minion.enrageActive).toBe(false);
+  });
+
+  it("playCard initializes runtime state from card keywords", () => {
+    const card = makeCard({
+      cost: 1,
+      type: "minion",
+      divineShield: true,
+      stealth: true,
+      windfury: true,
+      immune: true,
+      charge: true,
+    });
+    const state = initializeGame(makeDeck(), makeDeck());
+    state.players[0].hero.mana = 10;
+    state.players[0].hand = [card];
+    playCard(state, 0);
+    const minion = state.players[0].board[0];
+    expect(minion.hasDivineShield).toBe(true);
+    expect(minion.isStealth).toBe(true);
+    expect(minion.isImmune).toBe(true);
+    expect(minion.windfuryAttacksLeft).toBe(2);
+    expect(minion.summoningSickness).toBe(false); // charge
+    expect(minion.isFrozen).toBe(false);
+    expect(minion.enrageActive).toBe(false);
+  });
+
+  it("playCard defaults runtime state for cards without keywords", () => {
+    const card = makeCard({ cost: 1, type: "minion" });
+    const state = initializeGame(makeDeck(), makeDeck());
+    state.players[0].hero.mana = 10;
+    state.players[0].hand = [card];
+    playCard(state, 0);
+    const minion = state.players[0].board[0];
+    expect(minion.hasDivineShield).toBe(false);
+    expect(minion.isStealth).toBe(false);
+    expect(minion.isImmune).toBe(false);
+    expect(minion.windfuryAttacksLeft).toBe(1);
+    expect(minion.summoningSickness).toBe(true);
+  });
+});
+
+describe("GameEvent types", () => {
+  it("GameEventType covers all required event types", () => {
+    const events: GameEventType[] = [
+      "minion_played",
+      "minion_died",
+      "turn_start",
+      "turn_end",
+      "spell_played",
+      "attack",
+      "hero_damaged",
+    ];
+    events.forEach((e) => {
+      const event: GameEvent = { type: e, player: 0 };
+      expect(event.type).toBe(e);
+    });
+  });
+
+  it("GameEvent has optional source, target, value fields", () => {
+    const event: GameEvent = {
+      type: "attack",
+      player: 0,
+      source: makeBoardMinion(),
+      target: { kind: "hero", player: 1 },
+      value: 5,
+    };
+    expect(event.source).toBeDefined();
+    expect(event.target).toBeDefined();
+    expect(event.value).toBe(5);
+  });
+});
+
+describe("Effect function type", () => {
+  it("Effect takes (GameState, EffectContext) and returns GameState", () => {
+    const effect: Effect = (state, _context) => {
+      return { ...state, turn: state.turn + 1 };
+    };
+    const state = initializeGame(makeDeck(), makeDeck());
+    const context: EffectContext = {
+      event: { type: "battlecry" as GameEventType, player: 0 },
+      sourceCard: makeCard(),
+      player: 0,
+    };
+    const result = effect(state, context);
+    expect(result.turn).toBe(state.turn + 1);
+  });
+
+  it("EffectContext has event, sourceCard, and player", () => {
+    const context: EffectContext = {
+      event: { type: "minion_played", player: 0 },
+      sourceCard: makeCard({ name: "Test" }),
+      player: 0,
+    };
+    expect(context.event.type).toBe("minion_played");
+    expect(context.sourceCard.name).toBe("Test");
+    expect(context.player).toBe(0);
   });
 });
