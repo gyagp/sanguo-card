@@ -1,12 +1,12 @@
 # Autopo test Session
 
 ## Work Unit
-Implement Shu (蜀) brotherhood mechanics — adjacent same-faction minions get +1/+1, specific hero pairs (刘备+关羽+张飞) get extra bonuses when on board together
+Implement Wu (吴) rush mechanics — Wu minions with charge get +1 attack on the turn played, weapon attacks grant +1 attack to a random friendly Wu minion, combo chain counter (consecutive Wu card plays in a turn grant escalating bonuses)
 
 ## Acceptance Criteria
-- Adjacent Shu minions grant each other +1/+1
-- Brotherhood trio (刘备, 关羽, 张飞) on board together grants +2/+2 to all three
-- Bonuses recalculated on minion play and death
+- Wu charge minions get +1 attack on play turn
+- Weapon attack buffs a random Wu minion
+- Playing 3+ Wu cards in one turn triggers combo bonus
 - npm run build succeeds
 
 ## Rules

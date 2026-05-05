@@ -26,7 +26,7 @@ function makeState(): GameState {
     phase: "playing",
     turnPhase: "play",
     activePlayer: 0,
-    spellsPlayed: [[], []],
+    spellsPlayed: [[], []], wuComboCount: [0, 0],
   };
 }
 

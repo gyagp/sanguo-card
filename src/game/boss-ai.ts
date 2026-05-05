@@ -68,7 +68,7 @@ function createToken(name: string, attack: number, health: number, faction: Card
     shuAdjacencyAtkBonus: 0,
     shuAdjacencyHpBonus: 0,
     brotherhoodAtkBonus: 0,
-    brotherhoodHpBonus: 0,
+    brotherhoodHpBonus: 0, wuChargeBonus: 0, wuWeaponBonus: 0, wuComboAtkBonus: 0, wuComboHpBonus: 0,
   };
 }
 

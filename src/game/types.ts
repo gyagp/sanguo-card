@@ -209,6 +209,10 @@ export interface BoardMinion extends Card {
   shuAdjacencyHpBonus: number;
   brotherhoodAtkBonus: number;
   brotherhoodHpBonus: number;
+  wuChargeBonus: number;
+  wuWeaponBonus: number;
+  wuComboAtkBonus: number;
+  wuComboHpBonus: number;
   registeredListeners?: RegisteredListener[];
 }
 
@@ -260,6 +264,7 @@ export interface GameState {
   turnPhase: TurnPhase;
   activePlayer: 0 | 1;
   spellsPlayed: [Card[], Card[]];
+  wuComboCount: [number, number];
 }
 
 export const MAX_MANA = 10;
@@ -294,7 +299,7 @@ export function initializeGame(deck1: Deck, deck2: Deck): GameState {
     phase: "playing",
     turnPhase: "start",
     activePlayer: 0,
-    spellsPlayed: [[], []],
+    spellsPlayed: [[], []], wuComboCount: [0, 0],
   };
 
   state.players[0].hero.heroPower = FACTION_HERO_POWERS[getDeckFaction(deck1)];
@@ -340,6 +345,8 @@ export function startTurn(state: GameState): DrawResult {
   player.heroPowerUsed = false;
   player.heroHasAttacked = false;
   player.heroWindfuryAttacksLeft = player.weapon ? (player.weapon.windfury ? 2 : 1) : 0;
+
+  state.wuComboCount[state.activePlayer] = 0;
 
   const result = drawCard(player);
 
@@ -476,11 +483,28 @@ export function playCard(
       shuAdjacencyAtkBonus: 0,
       shuAdjacencyHpBonus: 0,
       brotherhoodAtkBonus: 0,
-      brotherhoodHpBonus: 0,
+      brotherhoodHpBonus: 0, wuChargeBonus: 0, wuWeaponBonus: 0, wuComboAtkBonus: 0, wuComboHpBonus: 0,
     };
     player.board.push(minion);
     recalculateFactionSynergies(player);
     recalculateShuBonuses(player);
+
+    if (card.faction === "wu" && card.charge && player.deckFaction === "wu" && player.hasDeckFactionBonus) {
+      minion.currentAttack += 1;
+      minion.wuChargeBonus = 1;
+    }
+
+    if (card.faction === "wu") {
+      state.wuComboCount[state.activePlayer]++;
+      if (state.wuComboCount[state.activePlayer] >= 3) {
+        const comboBonus = state.wuComboCount[state.activePlayer] - 2;
+        minion.currentAttack += comboBonus;
+        minion.currentHealth += comboBonus;
+        minion.wuComboAtkBonus = comboBonus;
+        minion.wuComboHpBonus = comboBonus;
+      }
+    }
+
     gameEventBus.emit({ type: "minion_played", player: state.activePlayer, source: minion });
 
     if (card.onPlay) {
@@ -505,6 +529,11 @@ export function playCard(
     player.hero.mana -= effectiveCost;
     player.hand.splice(handIndex, 1);
     state.spellsPlayed[state.activePlayer].push({ ...card });
+
+    if (card.faction === "wu") {
+      state.wuComboCount[state.activePlayer]++;
+    }
+
     gameEventBus.emit({ type: "spell_played", player: state.activePlayer, source: card });
 
     if (card.effect) {
@@ -541,6 +570,9 @@ export function playCard(
       windfury: card.windfury,
     };
     player.heroWindfuryAttacksLeft = card.windfury ? 2 : 1;
+    if (card.faction === "wu") {
+      state.wuComboCount[state.activePlayer]++;
+    }
     return { success: true };
   }
 
@@ -793,6 +825,15 @@ export interface HeroAttackResult {
   error?: string;
 }
 
+export function applyWuWeaponBuff(player: PlayerState, rng: () => number = Math.random): void {
+  if (player.deckFaction !== "wu" || !player.hasDeckFactionBonus) return;
+  const wuMinions = player.board.filter(m => m.faction === "wu");
+  if (wuMinions.length === 0) return;
+  const target = wuMinions[Math.floor(rng() * wuMinions.length)];
+  target.currentAttack += 1;
+  target.wuWeaponBonus += 1;
+}
+
 export function heroAttack(
   state: GameState,
   targetPlayerIndex: 0 | 1,
@@ -866,6 +907,8 @@ export function heroAttack(
 
     checkEnrage(state);
     removeDeadMinions(state);
+
+    applyWuWeaponBuff(attackerPlayer);
 
     const winner = checkWinCondition(state);
     if (winner !== null) {
@@ -1029,7 +1072,7 @@ export const FACTION_HERO_POWERS: Record<Faction, HeroPower> = {
         shuAdjacencyAtkBonus: 0,
         shuAdjacencyHpBonus: 0,
         brotherhoodAtkBonus: 0,
-        brotherhoodHpBonus: 0,
+        brotherhoodHpBonus: 0, wuChargeBonus: 0, wuWeaponBonus: 0, wuComboAtkBonus: 0, wuComboHpBonus: 0,
       };
       player.board.push(token);
     },

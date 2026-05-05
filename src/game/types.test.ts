@@ -148,7 +148,7 @@ describe("GameState interface", () => {
       phase: "playing",
       turnPhase: "play",
       activePlayer: 0,
-      spellsPlayed: [[], []],
+      spellsPlayed: [[], []], wuComboCount: [0, 0],
     };
     expect(state.players).toHaveLength(2);
     expect(state.board).toHaveLength(2);
@@ -166,7 +166,7 @@ describe("GameState interface", () => {
         phase,
         turnPhase: "play",
         activePlayer: 0,
-        spellsPlayed: [[], []],
+        spellsPlayed: [[], []], wuComboCount: [0, 0],
       };
       expect(state.phase).toBe(phase);
     });
@@ -466,7 +466,7 @@ function makeBoardMinion(overrides: Partial<BoardMinion> = {}): BoardMinion {
     isImmune: false,
     windfuryAttacksLeft: 1,
     enrageActive: false,
-    enrageBonus: 0, factionAttackBonus: 0, factionHealthBonus: 0, shuAdjacencyAtkBonus: 0, shuAdjacencyHpBonus: 0, brotherhoodAtkBonus: 0, brotherhoodHpBonus: 0,
+    enrageBonus: 0, factionAttackBonus: 0, factionHealthBonus: 0, shuAdjacencyAtkBonus: 0, shuAdjacencyHpBonus: 0, brotherhoodAtkBonus: 0, brotherhoodHpBonus: 0, wuChargeBonus: 0, wuWeaponBonus: 0, wuComboAtkBonus: 0, wuComboHpBonus: 0,
     ...overrides,
   };
 }

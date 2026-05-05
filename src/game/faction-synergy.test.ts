@@ -21,7 +21,7 @@ function makeMinion(overrides: Partial<BoardMinion> & { faction: Faction }): Boa
     hasDivineShield: false, isStealth: false, isFrozen: false,
     freezeTurnsLeft: 0,
     isImmune: false, windfuryAttacksLeft: 1, enrageActive: false, enrageBonus: 0,
-    factionAttackBonus: 0, factionHealthBonus: 0, shuAdjacencyAtkBonus: 0, shuAdjacencyHpBonus: 0, brotherhoodAtkBonus: 0, brotherhoodHpBonus: 0,
+    factionAttackBonus: 0, factionHealthBonus: 0, shuAdjacencyAtkBonus: 0, shuAdjacencyHpBonus: 0, brotherhoodAtkBonus: 0, brotherhoodHpBonus: 0, wuChargeBonus: 0, wuWeaponBonus: 0, wuComboAtkBonus: 0, wuComboHpBonus: 0,
     ...overrides,
   };
 }
@@ -56,7 +56,7 @@ function makeGameState(p0Board: BoardMinion[], p1Board: BoardMinion[]): GameStat
     phase: 'playing',
     turnPhase: 'play',
     activePlayer: 0,
-    spellsPlayed: [[], []],
+    spellsPlayed: [[], []], wuComboCount: [0, 0],
   };
 }
 
@@ -453,7 +453,7 @@ describe('Wei control mechanics', () => {
         players: [player, opponent],
         board: [player.board, opponent.board],
         turn: 1, phase: 'playing', turnPhase: 'play', activePlayer: 0,
-        spellsPlayed: [[], []],
+        spellsPlayed: [[], []], wuComboCount: [0, 0],
       };
 
       const handSizeBefore = player.hand.length;
@@ -476,7 +476,7 @@ describe('Wei control mechanics', () => {
         players: [player, opponent],
         board: [player.board, opponent.board],
         turn: 1, phase: 'playing', turnPhase: 'play', activePlayer: 0,
-        spellsPlayed: [[], []],
+        spellsPlayed: [[], []], wuComboCount: [0, 0],
       };
 
       const deckSizeBefore = player.deck.length;
