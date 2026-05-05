@@ -1,13 +1,12 @@
 # Autopo test Session
 
 ## Work Unit
-UI component — FactionBonusIndicator showing current faction, active synergy tier, deck bonus status, and passive ability descriptions in the game HUD
+Update AI to factor in new faction mechanics — Wei AI prioritizes spells, Shu AI places minions adjacently, Wu AI chains plays, Qun AI accepts variance
 
 ## Acceptance Criteria
-- Faction icon/name displayed
-- Active synergy tier highlighted
-- Deck bonus (20+) shown as active/inactive
-- Hover/click shows passive ability descriptions
+- AI card evaluation weights adjusted per faction
+- AI placement considers adjacency for Shu
+- AI play ordering considers Wu combo chains
 - npm run build succeeds
 
 ## Rules

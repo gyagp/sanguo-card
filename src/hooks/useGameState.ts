@@ -56,7 +56,7 @@ function executeAIDecision(state: GameState, decision: AIDecision): GameState {
   const next = cloneState(state);
   switch (decision.type) {
     case 'playCard':
-      enginePlayCard(next, decision.cardIndex, decision.spellTarget);
+      enginePlayCard(next, decision.cardIndex, decision.spellTarget, undefined, decision.boardPosition);
       break;
     case 'attack':
       if (decision.targetIndex === 'hero') {

@@ -25,6 +25,7 @@ export interface PlayCardDecision {
   type: 'playCard';
   cardIndex: number;
   spellTarget?: number;
+  boardPosition?: number;
 }
 
 export interface AttackDecision {
@@ -156,6 +157,12 @@ export function getBestManaUsage(hand: Card[], currentMana: number, board?: Boar
             }
             synergyScore += count * bestBonus;
           }
+        }
+      }
+
+      if (player) {
+        for (const idx of combo) {
+          synergyScore += evaluateCardForFaction(hand[idx], player);
         }
       }
 
@@ -340,7 +347,7 @@ export function getOnCurvePlayDecisions(state: GameState): PlayCardDecision[] {
   if (playable.length === 0) return [];
 
   const sorted = [...playable].sort((a, b) => player.hand[b].cost - player.hand[a].cost);
-  const decisions: PlayCardDecision[] = [];
+  let decisions: PlayCardDecision[] = [];
   let mana = player.hero.mana;
   for (const idx of sorted) {
     const cost = getEffectiveCardCost(player.hand[idx], player);
@@ -349,13 +356,101 @@ export function getOnCurvePlayDecisions(state: GameState): PlayCardDecision[] {
       mana -= cost;
     }
   }
+  decisions = applyFactionPlayOrder(decisions, player, state);
+  decisions = applyFactionBoardPositions(decisions, player);
   return decisions;
 }
 
 export function getOptimalPlayDecisions(state: GameState): PlayCardDecision[] {
   const player = state.players[state.activePlayer];
   const bestCombo = getBestManaUsage(player.hand, player.hero.mana, player.board, player);
-  return bestCombo.map(idx => ({ type: 'playCard' as const, cardIndex: idx, spellTarget: pickSpellTarget(player.hand[idx], state) }));
+  let decisions: PlayCardDecision[] = bestCombo.map(idx => ({ type: 'playCard' as const, cardIndex: idx, spellTarget: pickSpellTarget(player.hand[idx], state) }));
+  decisions = applyFactionPlayOrder(decisions, player, state);
+  decisions = applyFactionBoardPositions(decisions, player);
+  return decisions;
+}
+
+const WEI_SPELL_BONUS = 3;
+const QUN_VARIANCE_TOLERANCE = 2;
+
+export function evaluateCardForFaction(card: Card, player: PlayerState): number {
+  let score = card.attack + card.health + (card.taunt ? 2 : 0) + (card.charge ? 1 : 0);
+
+  if (player.deckFaction === "wei") {
+    if (card.type === "spell") score += WEI_SPELL_BONUS;
+    if (card.spellDamage) score += card.spellDamage * 2;
+  }
+
+  if (player.deckFaction === "shu") {
+    if (card.faction === "shu" && card.type === "minion") score += 2;
+  }
+
+  if (player.deckFaction === "wu") {
+    if (card.cost <= 3) score += 1;
+  }
+
+  if (player.deckFaction === "qun") {
+    if (card.battlecry) score += QUN_VARIANCE_TOLERANCE;
+  }
+
+  return score;
+}
+
+function applyFactionPlayOrder(decisions: PlayCardDecision[], player: PlayerState, state: GameState): PlayCardDecision[] {
+  if (decisions.length <= 1) return decisions;
+
+  if (player.deckFaction === "wu") {
+    const sorted = [...decisions].sort((a, b) => {
+      const cardA = player.hand[a.cardIndex];
+      const cardB = player.hand[b.cardIndex];
+      const costA = getEffectiveCardCost(cardA, player);
+      const costB = getEffectiveCardCost(cardB, player);
+      if (costA !== costB) return costA - costB;
+      if (cardA.type === "spell" && cardB.type !== "spell") return -1;
+      if (cardA.type !== "spell" && cardB.type === "spell") return 1;
+      return 0;
+    });
+    return sorted;
+  }
+
+  if (player.deckFaction === "wei") {
+    const spells = decisions.filter(d => player.hand[d.cardIndex].type === "spell");
+    const nonSpells = decisions.filter(d => player.hand[d.cardIndex].type !== "spell");
+    return [...nonSpells, ...spells];
+  }
+
+  return decisions;
+}
+
+function findBestShuPosition(board: BoardMinion[]): number | undefined {
+  if (board.length === 0) return undefined;
+
+  let bestPos = board.length;
+  let bestAdjacentShu = 0;
+
+  for (let pos = 0; pos <= board.length; pos++) {
+    let adjacentShu = 0;
+    if (pos > 0 && board[pos - 1].faction === "shu") adjacentShu++;
+    if (pos < board.length && board[pos].faction === "shu") adjacentShu++;
+    if (adjacentShu > bestAdjacentShu) {
+      bestAdjacentShu = adjacentShu;
+      bestPos = pos;
+    }
+  }
+
+  return bestAdjacentShu > 0 ? bestPos : undefined;
+}
+
+function applyFactionBoardPositions(decisions: PlayCardDecision[], player: PlayerState): PlayCardDecision[] {
+  if (player.deckFaction !== "shu") return decisions;
+
+  return decisions.map(d => {
+    const card = player.hand[d.cardIndex];
+    if (card.type !== "minion" || card.faction !== "shu") return d;
+    const pos = findBestShuPosition(player.board);
+    if (pos === undefined) return d;
+    return { ...d, boardPosition: pos };
+  });
 }
 
 class EasyAI implements AIStrategy {
@@ -406,7 +501,6 @@ class HardAI implements AIStrategy {
     const player = state.players[state.activePlayer];
     if (player.heroPowerUsed || player.hero.mana < player.hero.heroPower.cost) return false;
     const manaAfter = player.hero.mana - player.hero.heroPower.cost;
-    const playable = getPlayableCards(player.hand, manaAfter, player);
     const bestWithout = getBestManaUsage(player.hand, player.hero.mana, player.board, player);
     const bestWith = getBestManaUsage(player.hand, manaAfter, player.board, player);
     const manaUsedWithout = bestWithout.reduce((s, i) => s + player.hand[i].cost, 0);

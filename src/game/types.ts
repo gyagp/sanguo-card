@@ -464,6 +464,7 @@ export function playCard(
   handIndex: number,
   targetIndex?: number,
   rng: () => number = Math.random,
+  boardPosition?: number,
 ): PlayCardResult {
   const player = state.players[state.activePlayer];
 
@@ -506,7 +507,11 @@ export function playCard(
       brotherhoodAtkBonus: 0,
       brotherhoodHpBonus: 0, wuChargeBonus: 0, wuWeaponBonus: 0, wuComboAtkBonus: 0, wuComboHpBonus: 0, qunDebuff: 0,
     };
-    player.board.push(minion);
+    if (boardPosition !== undefined && boardPosition >= 0 && boardPosition < player.board.length) {
+      player.board.splice(boardPosition, 0, minion);
+    } else {
+      player.board.push(minion);
+    }
     recalculateFactionSynergies(player);
 
     if (card.faction === "wu" && card.charge && player.deckFaction === "wu" && player.hasDeckFactionBonus) {

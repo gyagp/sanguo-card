@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { evaluateBoard, getPlayableCards, getBestManaUsage, AIDecision, findLethal, evaluateTrade, getAIAttackDecisions, createAI, AIDifficulty, AIStrategy } from './ai';
+import { evaluateBoard, getPlayableCards, getBestManaUsage, AIDecision, findLethal, evaluateTrade, getAIAttackDecisions, createAI, AIDifficulty, AIStrategy, evaluateCardForFaction, getOnCurvePlayDecisions, getOptimalPlayDecisions } from './ai';
 import { GameState, PlayerState, Card, BoardMinion, Deck, Faction } from './types';
 
 function makeCard(overrides: Partial<Card> = {}): Card {
@@ -571,6 +571,239 @@ describe('Hard AI — optimal play and lethal detection', () => {
       {},
     );
     expect(ai.shouldUseHeroPower(state)).toBe(false);
+  });
+});
+
+describe('evaluateCardForFaction — Wei AI prioritizes spells', () => {
+  it('gives bonus score to spell cards for Wei faction', () => {
+    const spell = makeCard({ type: 'spell', attack: 0, health: 0, cost: 3 });
+    const minion = makeCard({ type: 'minion', attack: 2, health: 2, cost: 3 });
+    const weiPlayer = makePlayer({ deckFaction: 'wei', hasDeckFactionBonus: true });
+    const neutralPlayer = makePlayer({ deckFaction: 'neutral' });
+
+    const spellScoreWei = evaluateCardForFaction(spell, weiPlayer);
+    const spellScoreNeutral = evaluateCardForFaction(spell, neutralPlayer);
+    expect(spellScoreWei).toBeGreaterThan(spellScoreNeutral);
+  });
+
+  it('gives bonus for spellDamage cards for Wei faction', () => {
+    const card = makeCard({ type: 'minion', attack: 1, health: 1, spellDamage: 2 });
+    const weiPlayer = makePlayer({ deckFaction: 'wei' });
+    const neutralPlayer = makePlayer({ deckFaction: 'neutral' });
+    expect(evaluateCardForFaction(card, weiPlayer)).toBeGreaterThan(evaluateCardForFaction(card, neutralPlayer));
+  });
+});
+
+describe('evaluateCardForFaction — Shu AI values Shu minions', () => {
+  it('gives bonus to Shu faction minions for Shu player', () => {
+    const shuMinion = makeCard({ type: 'minion', faction: 'shu', attack: 2, health: 2 });
+    const neutralMinion = makeCard({ type: 'minion', faction: 'neutral', attack: 2, health: 2 });
+    const shuPlayer = makePlayer({ deckFaction: 'shu' });
+    expect(evaluateCardForFaction(shuMinion, shuPlayer)).toBeGreaterThan(evaluateCardForFaction(neutralMinion, shuPlayer));
+  });
+
+  it('does not give Shu bonus to spells even with Shu faction', () => {
+    const shuSpell = makeCard({ type: 'spell', faction: 'shu', attack: 0, health: 0 });
+    const shuPlayer = makePlayer({ deckFaction: 'shu' });
+    const neutralPlayer = makePlayer({ deckFaction: 'neutral' });
+    expect(evaluateCardForFaction(shuSpell, shuPlayer)).toBe(evaluateCardForFaction(shuSpell, neutralPlayer));
+  });
+});
+
+describe('evaluateCardForFaction — Wu AI values cheap cards', () => {
+  it('gives bonus to low-cost cards (cost <= 3) for Wu player', () => {
+    const cheapCard = makeCard({ cost: 2, attack: 1, health: 1 });
+    const expensiveCard = makeCard({ cost: 5, attack: 3, health: 3 });
+    const wuPlayer = makePlayer({ deckFaction: 'wu' });
+    const neutralPlayer = makePlayer({ deckFaction: 'neutral' });
+
+    const cheapWuScore = evaluateCardForFaction(cheapCard, wuPlayer);
+    const cheapNeutralScore = evaluateCardForFaction(cheapCard, neutralPlayer);
+    expect(cheapWuScore).toBeGreaterThan(cheapNeutralScore);
+
+    const expWuScore = evaluateCardForFaction(expensiveCard, wuPlayer);
+    const expNeutralScore = evaluateCardForFaction(expensiveCard, neutralPlayer);
+    expect(expWuScore).toBe(expNeutralScore);
+  });
+});
+
+describe('evaluateCardForFaction — Qun AI values battlecry', () => {
+  it('gives bonus to cards with battlecry for Qun player', () => {
+    const bcCard = makeCard({ attack: 2, health: 2, battlecry: (s) => s });
+    const noBcCard = makeCard({ attack: 2, health: 2 });
+    const qunPlayer = makePlayer({ deckFaction: 'qun' });
+    expect(evaluateCardForFaction(bcCard, qunPlayer)).toBeGreaterThan(evaluateCardForFaction(noBcCard, qunPlayer));
+  });
+});
+
+describe('Shu AI placement — adjacency for Shu minions', () => {
+  it('places Shu minion adjacent to existing Shu minion on board', () => {
+    const shuMinion = makeCard({ type: 'minion', faction: 'shu', cost: 2, attack: 2, health: 2 });
+    const state = makeGameState(
+      {
+        hand: [shuMinion],
+        board: [
+          makeMinion({ faction: 'neutral' }),
+          makeMinion({ faction: 'shu' }),
+          makeMinion({ faction: 'neutral' }),
+        ],
+        hero: { health: 30, mana: 5, heroPower: { name: '', cost: 2, description: '' } },
+        deckFaction: 'shu',
+        hasDeckFactionBonus: true,
+      },
+      {},
+    );
+    const decisions = getOnCurvePlayDecisions(state);
+    expect(decisions.length).toBe(1);
+    expect(decisions[0].boardPosition).toBeDefined();
+    // Should be placed at position 1 or 2 (adjacent to the Shu minion at index 1)
+    expect([1, 2]).toContain(decisions[0].boardPosition);
+  });
+
+  it('does not set boardPosition for non-Shu minion even with Shu deck', () => {
+    const neutralMinion = makeCard({ type: 'minion', faction: 'neutral', cost: 2, attack: 2, health: 2 });
+    const state = makeGameState(
+      {
+        hand: [neutralMinion],
+        board: [makeMinion({ faction: 'shu' })],
+        hero: { health: 30, mana: 5, heroPower: { name: '', cost: 2, description: '' } },
+        deckFaction: 'shu',
+        hasDeckFactionBonus: true,
+      },
+      {},
+    );
+    const decisions = getOnCurvePlayDecisions(state);
+    expect(decisions.length).toBe(1);
+    expect(decisions[0].boardPosition).toBeUndefined();
+  });
+
+  it('does not set boardPosition when board has no Shu minions', () => {
+    const shuMinion = makeCard({ type: 'minion', faction: 'shu', cost: 2, attack: 2, health: 2 });
+    const state = makeGameState(
+      {
+        hand: [shuMinion],
+        board: [makeMinion({ faction: 'neutral' }), makeMinion({ faction: 'wei' })],
+        hero: { health: 30, mana: 5, heroPower: { name: '', cost: 2, description: '' } },
+        deckFaction: 'shu',
+        hasDeckFactionBonus: true,
+      },
+      {},
+    );
+    const decisions = getOnCurvePlayDecisions(state);
+    expect(decisions.length).toBe(1);
+    expect(decisions[0].boardPosition).toBeUndefined();
+  });
+});
+
+describe('Wu AI play ordering — chains plays by cost', () => {
+  it('orders plays from cheapest to most expensive for Wu deck', () => {
+    const state = makeGameState(
+      {
+        hand: [
+          makeCard({ cost: 3, attack: 3, health: 3, faction: 'wu' }),
+          makeCard({ cost: 1, attack: 1, health: 1, faction: 'wu' }),
+          makeCard({ cost: 2, attack: 2, health: 2, faction: 'wu' }),
+        ],
+        hero: { health: 30, mana: 6, heroPower: { name: '', cost: 2, description: '' } },
+        deckFaction: 'wu',
+        hasDeckFactionBonus: true,
+      },
+      {},
+    );
+    const decisions = getOnCurvePlayDecisions(state);
+    expect(decisions.length).toBe(3);
+    const costs = decisions.map(d => state.players[0].hand[d.cardIndex].cost);
+    for (let i = 1; i < costs.length; i++) {
+      expect(costs[i]).toBeGreaterThanOrEqual(costs[i - 1]);
+    }
+  });
+
+  it('non-Wu deck does not sort by ascending cost', () => {
+    const state = makeGameState(
+      {
+        hand: [
+          makeCard({ cost: 1, attack: 1, health: 1 }),
+          makeCard({ cost: 3, attack: 3, health: 3 }),
+        ],
+        hero: { health: 30, mana: 4, heroPower: { name: '', cost: 2, description: '' } },
+        deckFaction: 'neutral',
+      },
+      {},
+    );
+    const decisions = getOnCurvePlayDecisions(state);
+    // Normal on-curve sorts descending (highest cost first)
+    expect(decisions[0].cardIndex).toBe(1);
+  });
+});
+
+describe('Wei AI play ordering — spells played last', () => {
+  it('plays minions before spells for Wei deck', () => {
+    const state = makeGameState(
+      {
+        hand: [
+          makeCard({ cost: 2, type: 'spell', attack: 0, health: 0, faction: 'wei' }),
+          makeCard({ cost: 2, type: 'minion', attack: 2, health: 2, faction: 'wei' }),
+        ],
+        hero: { health: 30, mana: 4, heroPower: { name: '', cost: 2, description: '' } },
+        deckFaction: 'wei',
+        hasDeckFactionBonus: true,
+      },
+      {},
+    );
+    const decisions = getOnCurvePlayDecisions(state);
+    expect(decisions.length).toBe(2);
+    expect(state.players[0].hand[decisions[0].cardIndex].type).toBe('minion');
+    expect(state.players[0].hand[decisions[1].cardIndex].type).toBe('spell');
+  });
+});
+
+describe('Faction-aware getBestManaUsage — synergy scoring', () => {
+  it('prefers faction-synergistic cards when total mana is equal', () => {
+    const shuMinion = makeCard({ cost: 2, attack: 2, health: 2, faction: 'shu' });
+    const neutralMinion = makeCard({ cost: 2, attack: 2, health: 2, faction: 'neutral' });
+    const hand = [shuMinion, neutralMinion];
+    const board = [makeMinion({ faction: 'shu' })];
+    const shuPlayer = makePlayer({ deckFaction: 'shu', hasDeckFactionBonus: true });
+    const result = getBestManaUsage(hand, 2, board, shuPlayer);
+    // Should pick the shu minion (index 0) for synergy
+    expect(result).toEqual([0]);
+  });
+});
+
+describe('Optimal play decisions with faction mechanics', () => {
+  it('hard AI applies Shu board positions', () => {
+    const state = makeGameState(
+      {
+        hand: [makeCard({ cost: 2, attack: 2, health: 2, faction: 'shu', type: 'minion' })],
+        board: [makeMinion({ faction: 'shu' })],
+        hero: { health: 30, mana: 5, heroPower: { name: '', cost: 2, description: '' } },
+        deckFaction: 'shu',
+        hasDeckFactionBonus: true,
+      },
+      {},
+    );
+    const decisions = getOptimalPlayDecisions(state);
+    expect(decisions.length).toBe(1);
+    expect(decisions[0].boardPosition).toBeDefined();
+  });
+
+  it('hard AI applies Wu play ordering', () => {
+    const state = makeGameState(
+      {
+        hand: [
+          makeCard({ cost: 3, attack: 3, health: 3, faction: 'wu' }),
+          makeCard({ cost: 1, attack: 1, health: 1, faction: 'wu' }),
+        ],
+        hero: { health: 30, mana: 4, heroPower: { name: '', cost: 2, description: '' } },
+        deckFaction: 'wu',
+        hasDeckFactionBonus: true,
+      },
+      {},
+    );
+    const decisions = getOptimalPlayDecisions(state);
+    expect(decisions.length).toBe(2);
+    const costs = decisions.map(d => state.players[0].hand[d.cardIndex].cost);
+    expect(costs[0]).toBeLessThanOrEqual(costs[1]);
   });
 });
 
