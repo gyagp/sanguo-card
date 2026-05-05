@@ -1,13 +1,13 @@
 # Autopo test Session
 
 ## Work Unit
-Pre-battle screen — show stage info (enemy hero, deck preview, rewards, special rules) with Start Battle button
+PVE battle integration — wire adventure stages into the game engine with enemy preset decks and boss special rules (extra mana, field effects, unique hero powers)
 
 ## Acceptance Criteria
-- src/app/adventure/stage/[chapterId]/[stageId]/page.tsx shows stage details
-- Displays enemy info, reward preview, boss rules if applicable
-- Start Battle button initiates game with correct enemy deck and rules
-- Back button returns to adventure map
+- Game page accepts adventure stage params and loads preset enemy deck
+- Boss stages apply extra mana, field effects, and unique hero powers
+- AI difficulty scales with chapter progression (easy→normal→hard→boss)
+- Existing PvP game mode still works unchanged
 - npm run build succeeds
 
 ## Rules

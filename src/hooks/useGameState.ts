@@ -19,6 +19,12 @@ import {
 import { AIDifficulty, createAI, AIDecision, AIStrategy } from "../game/ai";
 import { BossAI } from "../game/boss-ai";
 
+export interface BossHeroPowerOverride {
+  name: string;
+  cost: number;
+  description: string;
+}
+
 function cloneState(state: GameState): GameState {
   return JSON.parse(JSON.stringify(state));
 }
@@ -76,9 +82,17 @@ function executeAIDecision(state: GameState, decision: AIDecision): GameState {
   return next;
 }
 
-export function useGameState(deck1: Deck, deck2: Deck, aiDifficulty?: AIDifficulty, bossAI?: BossAI) {
+export function useGameState(deck1: Deck, deck2: Deck, aiDifficulty?: AIDifficulty, bossAI?: BossAI, extraMana?: number, bossHeroPower?: BossHeroPowerOverride) {
   const [gameState, setGameState] = useState<GameState>(() => {
     const state = initializeGame(deck1, deck2);
+    if (bossHeroPower) {
+      state.players[1].hero.heroPower = {
+        ...state.players[1].hero.heroPower,
+        name: bossHeroPower.name,
+        cost: bossHeroPower.cost,
+        description: bossHeroPower.description,
+      };
+    }
     startTurn(state);
     return state;
   });
@@ -134,6 +148,10 @@ export function useGameState(deck1: Deck, deck2: Deck, aiDifficulty?: AIDifficul
       bossAI.applyTurnStartEffect(next);
     }
 
+    if (extraMana && extraMana > 0) {
+      next.players[1].hero.mana = Math.min(10, next.players[1].hero.mana + extraMana);
+    }
+
     setGameState(next);
     setIsOpponentTurn(true);
 
@@ -184,7 +202,7 @@ export function useGameState(deck1: Deck, deck2: Deck, aiDifficulty?: AIDifficul
       }, 2000);
       aiTimersRef.current.push(timer);
     }
-  }, [gameState, aiDifficulty, bossAI, clearAITimers]);
+  }, [gameState, aiDifficulty, bossAI, extraMana, clearAITimers]);
 
   const heroPower = useCallback((): HeroPowerResult => {
     const next = cloneState(gameState);

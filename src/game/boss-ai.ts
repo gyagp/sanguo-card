@@ -4,7 +4,10 @@ import {
   Card,
   MAX_BOARD_SIZE,
   removeDeadMinions,
+  drawCard,
+  MAX_HAND_SIZE,
 } from './types';
+import { BossRule } from './adventure-data';
 import {
   AIStrategy,
   AIDifficulty,
@@ -112,6 +115,214 @@ export const BOSS_DONGZHUO: BossDefinition = {
   ],
 };
 
+export const BOSS_ZHANGJIAO: BossDefinition = {
+  name: '张角',
+  phases: [
+    {
+      name: '太平道',
+      hpThreshold: 1.0,
+      strategyOverride: { playStyle: 'curve', attackPriority: 'smart' },
+      turnStartEffect: (state: GameState, bossPlayer: 0 | 1): GameState => {
+        const board = state.players[bossPlayer].board;
+        if (board.length < MAX_BOARD_SIZE) {
+          board.push(createToken('乡勇', 1, 1, 'neutral'));
+        }
+        return state;
+      },
+    },
+    {
+      name: '黄天当立',
+      hpThreshold: 0.4,
+      strategyOverride: { playStyle: 'optimal', attackPriority: 'face' },
+      turnStartEffect: (state: GameState, bossPlayer: 0 | 1): GameState => {
+        const board = state.players[bossPlayer].board;
+        if (board.length < MAX_BOARD_SIZE) {
+          board.push(createToken('乡勇', 1, 1, 'neutral'));
+        }
+        state.players[bossPlayer].hero.health = Math.min(30, state.players[bossPlayer].hero.health + 3);
+        drawCard(state.players[bossPlayer]);
+        return state;
+      },
+    },
+  ],
+};
+
+export const BOSS_LVBU: BossDefinition = {
+  name: '吕布',
+  phases: [
+    {
+      name: '无双',
+      hpThreshold: 1.0,
+      strategyOverride: { playStyle: 'aggressive', attackPriority: 'face' },
+      turnStartEffect: (state: GameState, bossPlayer: 0 | 1): GameState => {
+        for (const minion of state.players[bossPlayer].board) {
+          if (minion.name === '吕布') {
+            minion.currentAttack += 1;
+          }
+        }
+        return state;
+      },
+    },
+    {
+      name: '困兽',
+      hpThreshold: 0.3,
+      strategyOverride: { playStyle: 'optimal', attackPriority: 'face' },
+      turnStartEffect: (state: GameState, bossPlayer: 0 | 1): GameState => {
+        for (const minion of state.players[bossPlayer].board) {
+          if (minion.name === '吕布') {
+            minion.currentAttack += 2;
+          }
+        }
+        return state;
+      },
+    },
+  ],
+};
+
+export const BOSS_YUANSHAO: BossDefinition = {
+  name: '袁绍',
+  phases: [
+    {
+      name: '四世三公',
+      hpThreshold: 1.0,
+      strategyOverride: { playStyle: 'curve', attackPriority: 'smart' },
+      turnStartEffect: (state: GameState, bossPlayer: 0 | 1): GameState => {
+        for (const minion of state.players[bossPlayer].board) {
+          minion.currentHealth += 1;
+        }
+        return state;
+      },
+    },
+    {
+      name: '溃败',
+      hpThreshold: 0.35,
+      strategyOverride: { playStyle: 'optimal', attackPriority: 'face' },
+      turnStartEffect: (state: GameState, bossPlayer: 0 | 1): GameState => {
+        for (const minion of state.players[bossPlayer].board) {
+          minion.currentHealth += 1;
+        }
+        const board = state.players[bossPlayer].board;
+        if (board.length < MAX_BOARD_SIZE) {
+          board.push(createToken('袁军精锐', 3, 3, 'neutral'));
+        }
+        return state;
+      },
+    },
+  ],
+};
+
+export const BOSS_CAOCAO: BossDefinition = {
+  name: '曹操',
+  phases: [
+    {
+      name: '挟天子',
+      hpThreshold: 1.0,
+      strategyOverride: { playStyle: 'optimal', attackPriority: 'smart' },
+      turnStartEffect: (state: GameState, bossPlayer: 0 | 1): GameState => {
+        const player = state.players[bossPlayer];
+        if (player.hand.length < MAX_HAND_SIZE) {
+          const spells = player.deck.filter((c: Card) => c.type === 'spell');
+          if (spells.length > 0) {
+            const spell = { ...spells[Math.floor(Math.random() * spells.length)] };
+            player.hand.push(spell);
+          }
+        }
+        return state;
+      },
+    },
+    {
+      name: '绝地反击',
+      hpThreshold: 0.3,
+      strategyOverride: { playStyle: 'optimal', attackPriority: 'face' },
+      turnStartEffect: (state: GameState, bossPlayer: 0 | 1): GameState => {
+        const player = state.players[bossPlayer];
+        if (player.hand.length < MAX_HAND_SIZE) {
+          const spells = player.deck.filter((c: Card) => c.type === 'spell');
+          if (spells.length > 0) {
+            const spell = { ...spells[Math.floor(Math.random() * spells.length)] };
+            player.hand.push(spell);
+          }
+        }
+        const opponentIndex = bossPlayer === 0 ? 1 : 0;
+        const oppBoard = state.players[opponentIndex].board;
+        if (oppBoard.length > 0) {
+          let lowestIdx = 0;
+          for (let i = 1; i < oppBoard.length; i++) {
+            if (oppBoard[i].currentAttack < oppBoard[lowestIdx].currentAttack) lowestIdx = i;
+          }
+          const stolen = oppBoard.splice(lowestIdx, 1)[0];
+          const bossBoard = state.players[bossPlayer].board;
+          if (bossBoard.length < MAX_BOARD_SIZE) {
+            stolen.summoningSickness = true;
+            stolen.hasAttacked = false;
+            bossBoard.push(stolen);
+          }
+        }
+        return state;
+      },
+    },
+  ],
+};
+
+const HERB_CARD: Card = {
+  name: '草药', cost: 1, attack: 0, health: 0, type: 'spell', rarity: 'common', faction: 'neutral', description: '恢复3点生命值',
+};
+
+function replaceOneSpellWithHerb(hand: Card[]): void {
+  for (let i = 0; i < hand.length; i++) {
+    if (hand[i].type === 'spell' && hand[i].name !== '草药') {
+      hand[i] = { ...HERB_CARD };
+      break;
+    }
+  }
+}
+
+export const BOSS_SIMAYI: BossDefinition = {
+  name: '司马懿',
+  phases: [
+    {
+      name: '鹰视狼顾',
+      hpThreshold: 1.0,
+      strategyOverride: { playStyle: 'optimal', attackPriority: 'smart' },
+    },
+    {
+      name: '诡计',
+      hpThreshold: 0.5,
+      strategyOverride: { playStyle: 'optimal', attackPriority: 'smart' },
+      turnStartEffect: (state: GameState, bossPlayer: 0 | 1): GameState => {
+        const opponentIndex = bossPlayer === 0 ? 1 : 0;
+        replaceOneSpellWithHerb(state.players[opponentIndex].hand);
+        return state;
+      },
+    },
+    {
+      name: '天命',
+      hpThreshold: 0.25,
+      strategyOverride: { playStyle: 'optimal', attackPriority: 'face' },
+      turnStartEffect: (state: GameState, bossPlayer: 0 | 1): GameState => {
+        const opponentIndex = bossPlayer === 0 ? 1 : 0;
+        replaceOneSpellWithHerb(state.players[opponentIndex].hand);
+        for (const minion of state.players[bossPlayer].board) {
+          minion.currentAttack += 1;
+        }
+        return state;
+      },
+    },
+  ],
+};
+
+export function createBossAIFromRule(bossName: string, bossPlayer: 0 | 1 = 1, maxHp: number = 30, extraMana?: number): { bossAI: BossAI; extraMana: number } {
+  const bossDef = BOSSES[bossName];
+  if (!bossDef) {
+    const fallback: BossDefinition = {
+      name: bossName,
+      phases: [{ name: 'default', hpThreshold: 1.0, strategyOverride: { playStyle: 'optimal', attackPriority: 'smart' } }],
+    };
+    return { bossAI: new BossAI(fallback, bossPlayer, maxHp), extraMana: extraMana ?? 0 };
+  }
+  return { bossAI: new BossAI(bossDef, bossPlayer, maxHp), extraMana: extraMana ?? 0 };
+}
+
 function getFaceAttackDecisions(state: GameState): AttackDecision[] {
   const aiIndex = state.activePlayer;
   const aiBoard = state.players[aiIndex].board;
@@ -187,4 +398,9 @@ export class BossAI implements AIStrategy {
 
 export const BOSSES: Record<string, BossDefinition> = {
   '董卓': BOSS_DONGZHUO,
+  '张角': BOSS_ZHANGJIAO,
+  '吕布': BOSS_LVBU,
+  '袁绍': BOSS_YUANSHAO,
+  '曹操': BOSS_CAOCAO,
+  '司马懿': BOSS_SIMAYI,
 };

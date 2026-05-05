@@ -8,6 +8,7 @@ import { cards } from "../../../../../game/cards";
 import { Card, createDeck, Deck } from "../../../../../game/types";
 import { useGameState } from "../../../../../hooks/useGameState";
 import { AIDifficulty } from "../../../../../game/ai";
+import { createBossAIFromRule } from "../../../../../game/boss-ai";
 import { loadAdventureProgress, isStageUnlocked, completeStage } from "../../../../../game/player-store";
 
 function findStage(chapterId: string, stageId: string): { chapter: AdventureChapter; stage: AdventureStage } | null {
@@ -278,10 +279,24 @@ function AdventureBattle({ stage, playerDeck }: { stage: AdventureStage; playerD
     return createDeck(deck);
   }, [enemyCards]);
 
+  const bossConfig = useMemo(() => {
+    if (!stage.isBoss || !stage.bossRules) return null;
+    return createBossAIFromRule(stage.name, 1, 30, stage.bossRules.extraMana);
+  }, [stage.isBoss, stage.bossRules, stage.name]);
+
+  const bossHeroPower = useMemo(() => {
+    if (!stage.bossRules?.uniqueHeroPower) return undefined;
+    const uhp = stage.bossRules.uniqueHeroPower;
+    return { name: uhp.name, cost: uhp.cost, description: uhp.description };
+  }, [stage.bossRules?.uniqueHeroPower]);
+
   const { gameState, winner, isOpponentTurn, playCard, attack, attackHero, endTurn, useHeroPower } = useGameState(
     playerDeck,
     paddedEnemy,
     aiDifficulty,
+    bossConfig?.bossAI,
+    bossConfig?.extraMana,
+    bossHeroPower,
   );
 
   useEffect(() => {
