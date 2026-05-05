@@ -1,11 +1,11 @@
-# Autopo test Session
+# Autopo execute Session
 
 ## Work Unit
-Implement hero powers — each hero power has a functional effect (e.g., deal 1 damage, summon 1/1, heal 2, equip 1/2 weapon)
+Tests for keyword mechanics — taunt blocking, charge immediate attack, divine shield absorption, freeze skip, windfury double attack, stealth untargetable, enrage activation
 
 ## Acceptance Criteria
-- useHeroPower executes a real effect based on hero/class
-- Hero power effects are defined and functional
+- Tests cover all keyword interactions
+- All tests pass via vitest run
 - npm run build succeeds
 
 ## Rules
