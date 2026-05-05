@@ -303,8 +303,8 @@ export function initializeGame(deck1: Deck, deck2: Deck): GameState {
     spellsPlayed: [[], []], wuComboCount: [0, 0],
   };
 
-  state.players[0].hero.heroPower = FACTION_HERO_POWERS[getDeckFaction(deck1)];
-  state.players[1].hero.heroPower = FACTION_HERO_POWERS[getDeckFaction(deck2)];
+  state.players[0].hero.heroPower = getHeroPowerForPlayer(deck1);
+  state.players[1].hero.heroPower = getHeroPowerForPlayer(deck2);
 
   state.players[0].deckFaction = getDeckFaction(deck1);
   state.players[1].deckFaction = getDeckFaction(deck2);
@@ -1140,6 +1140,85 @@ export const FACTION_HERO_POWERS: Record<Faction, HeroPower> = {
   },
 };
 
+export const UPGRADED_FACTION_HERO_POWERS: Partial<Record<Faction, HeroPower>> = {
+  wei: {
+    name: "霸略·升级",
+    cost: 2,
+    description: "对敌方英雄造成2点伤害",
+    effect: (state, playerIndex) => {
+      const opponentIndex = (playerIndex === 0 ? 1 : 0) as 0 | 1;
+      state.players[opponentIndex].hero.health -= 2;
+    },
+  },
+  shu: {
+    name: "仁德·升级",
+    cost: 2,
+    description: "恢复英雄3点生命值",
+    effect: (state, playerIndex) => {
+      state.players[playerIndex].hero.health = Math.min(
+        state.players[playerIndex].hero.health + 3,
+        STARTING_HP
+      );
+    },
+  },
+  wu: {
+    name: "制衡·升级",
+    cost: 2,
+    description: "召唤一个2/1的士兵",
+    effect: (state, playerIndex) => {
+      const player = state.players[playerIndex];
+      if (player.board.length >= MAX_BOARD_SIZE) return;
+      const token: BoardMinion = {
+        name: "精锐士兵",
+        cost: 0,
+        type: "minion",
+        rarity: "common",
+        faction: "neutral",
+        attack: 2,
+        health: 1,
+        description: "",
+        currentAttack: 2,
+        currentHealth: 1,
+        summoningSickness: true,
+        hasAttacked: false,
+        hasDivineShield: false,
+        isStealth: false,
+        isFrozen: false,
+        freezeTurnsLeft: 0,
+        isImmune: false,
+        windfuryAttacksLeft: 1,
+        enrageActive: false,
+        enrageBonus: 0,
+        factionAttackBonus: 0,
+        factionHealthBonus: 0,
+        shuAdjacencyAtkBonus: 0,
+        shuAdjacencyHpBonus: 0,
+        brotherhoodAtkBonus: 0,
+        brotherhoodHpBonus: 0, wuChargeBonus: 0, wuWeaponBonus: 0, wuComboAtkBonus: 0, wuComboHpBonus: 0, qunDebuff: 0,
+      };
+      player.board.push(token);
+    },
+  },
+  qun: {
+    name: "乱击·升级",
+    cost: 2,
+    description: "装备一把2/2的短刀",
+    effect: (state, playerIndex) => {
+      state.players[playerIndex].weapon = { name: "精钢短刀", attack: 2, durability: 2 };
+      state.players[playerIndex].heroHasAttacked = false;
+    },
+  },
+};
+
+function getHeroPowerForPlayer(deck: Deck): HeroPower {
+  const faction = getDeckFaction(deck);
+  const count = getDeckFactionCount(deck, faction);
+  if (faction !== "neutral" && count >= DECK_FACTION_THRESHOLD && UPGRADED_FACTION_HERO_POWERS[faction]) {
+    return UPGRADED_FACTION_HERO_POWERS[faction]!;
+  }
+  return FACTION_HERO_POWERS[faction];
+}
+
 export interface HeroPowerResult {
   success: boolean;
   error?: string;
@@ -1162,7 +1241,8 @@ export function useHeroPower(state: GameState): HeroPowerResult {
 
   let effect = player.hero.heroPower.effect;
   if (!effect) {
-    const match = Object.values(FACTION_HERO_POWERS).find(p => p.name === player.hero.heroPower.name);
+    const match = Object.values(FACTION_HERO_POWERS).find(p => p.name === player.hero.heroPower.name)
+      ?? Object.values(UPGRADED_FACTION_HERO_POWERS).find(p => p!.name === player.hero.heroPower.name);
     if (match) effect = match.effect;
   }
   if (effect) {

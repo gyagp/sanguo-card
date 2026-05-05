@@ -1,12 +1,13 @@
 # Autopo test Session
 
 ## Work Unit
-Implement Qun (群) chaos mechanics — Qun minion battlecries have 50% chance to trigger twice, Qun spells deal random damage in a range (±1), enemy minions have chance to lose 1 attack at turn start when facing Qun board
+Implement deck faction bonus — detect 20+ same-faction cards in deck at game start, upgrade hero power (Wei: deal 2 instead of 1, Shu: heal 3 instead of 2, Wu: summon 2/1 instead of 1/1, Qun: equip 2/2 instead of 1/2)
 
 ## Acceptance Criteria
-- Qun battlecry double-trigger works 50% of the time
-- Qun spell damage varies by ±1 randomly
-- Enemy debuff chance triggers at turn start with 3+ Qun minions
+- getDeckFaction detects 20+ threshold
+- Hero power upgraded when threshold met
+- Upgraded hero power effects work correctly
+- Mixed decks (<20) get no upgrade
 - npm run build succeeds
 
 ## Rules
