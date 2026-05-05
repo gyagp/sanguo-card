@@ -1,12 +1,13 @@
 # Autopo test Session
 
 ## Work Unit
-Run the generation script to produce all 34 card art PNGs using the updated gemini-2.5-flash-image model — save to public/card-art/[cardName].png
+Verify Card component correctly loads PNG art — ensure img tag src points to /card-art/[name].png, art area is 40%+ of card face, and legendary cards retain glow animations
 
 ## Acceptance Criteria
-- 34 PNG files exist in public/card-art/
-- Each file is a valid PNG image (non-zero size)
-- Files are named by card Chinese name matching cards.ts entries
+- Card.tsx loads PNG from /card-art/[cardName].png
+- Art container CSS height/width occupies >= 40% of card face
+- Legendary rarity cards have glow/sparkle CSS animation around art area
+- SVG fallback still works when PNG is missing
 
 ## Rules
 # Rules

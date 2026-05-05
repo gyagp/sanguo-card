@@ -241,6 +241,19 @@ describe("Card component", () => {
         expect((p as HTMLElement).style.background).toContain("radial-gradient");
       });
     });
+
+    it("applies legendaryArtGlow animation on the art area for legendary cards", () => {
+      const { container } = render(<Card card={makeCard({ rarity: "legendary" })} />);
+      const artArea = container.querySelector("[style*='legendaryArtGlow']") as HTMLElement;
+      expect(artArea).not.toBeNull();
+      expect(artArea.style.boxShadow).toContain("rgba(255,215,0");
+    });
+
+    it("does NOT apply art glow on non-legendary cards", () => {
+      const { container } = render(<Card card={makeCard({ rarity: "epic" })} />);
+      const artGlow = container.querySelector("[style*='legendaryArtGlow']");
+      expect(artGlow).toBeNull();
+    });
   });
 
   describe("PNG card art loading", () => {

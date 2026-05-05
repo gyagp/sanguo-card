@@ -129,10 +129,13 @@ export default function Card({ card, onClick, className = "", draggable: isDragg
       </div>
 
       {/* Card art area */}
-      <div className={`
-        mx-2.5 mt-7 h-28 rounded-lg flex items-center justify-center overflow-hidden
-        ${factionArtBg[card.faction]}
-      `}>
+      <div
+        className={`
+          relative mx-2.5 mt-7 h-28 rounded-lg flex items-center justify-center overflow-hidden
+          ${factionArtBg[card.faction]}
+        `}
+        style={card.rarity === "legendary" ? { boxShadow: "0 0 12px 4px rgba(255,215,0,0.5), inset 0 0 8px 2px rgba(255,215,0,0.2)", animation: "legendaryArtGlow 2s ease-in-out infinite" } : undefined}
+      >
         {!pngFailed ? (
           <img
             src={pngSrc}
