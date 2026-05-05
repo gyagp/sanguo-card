@@ -218,6 +218,7 @@ export interface GameState {
   phase: GamePhase;
   turnPhase: TurnPhase;
   activePlayer: 0 | 1;
+  spellsPlayed: [Card[], Card[]];
 }
 
 export const MAX_MANA = 10;
@@ -250,6 +251,7 @@ export function initializeGame(deck1: Deck, deck2: Deck): GameState {
     phase: "playing",
     turnPhase: "start",
     activePlayer: 0,
+    spellsPlayed: [[], []],
   };
 
   // Opening hand: player 1 draws 3, player 2 draws 4 (coin advantage)
@@ -394,6 +396,7 @@ export function playCard(
   if (card.type === "spell") {
     player.hero.mana -= card.cost;
     player.hand.splice(handIndex, 1);
+    state.spellsPlayed[state.activePlayer].push({ ...card });
     gameEventBus.emit({ type: "spell_played", player: state.activePlayer, source: card });
 
     if (card.effect) {

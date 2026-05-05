@@ -1,12 +1,11 @@
 # Autopo test Session
 
 ## Work Unit
-Wire card event listeners — let cards register EventBus listeners on play and unregister on death, implement 诸葛亮 end-of-turn effect
+Implement 司马懿 battlecry — add spell history tracking and 'return last spell to hand' effect
 
 ## Acceptance Criteria
-- 诸葛亮 adds a random spell to hand at end of turn
-- Listener is removed when minion dies
-- EventBus listeners from cards work correctly
+- GameState tracks spells played this game per player
+- 司马懿 battlecry returns last played spell to hand
 - npm run build succeeds
 
 ## Rules

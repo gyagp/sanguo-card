@@ -26,6 +26,7 @@ function makeState(): GameState {
     phase: "playing",
     turnPhase: "play",
     activePlayer: 0,
+    spellsPlayed: [[], []],
   };
 }
 

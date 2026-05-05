@@ -403,7 +403,16 @@ export const cards: Card[] = [
   {
     name: "司马懿", cost: 9, attack: 5, health: 7, description: "战吼：将对手上回合使用的所有法术复制到你的手牌",
     rarity: "legendary", type: "minion", faction: "wei",
-    // battlecry: requires spell history tracking, not yet implemented
+    battlecry: (state: GameState, context) => {
+      const mySpells = state.spellsPlayed[context.player];
+      if (mySpells.length > 0) {
+        const lastSpell = mySpells[mySpells.length - 1];
+        if (state.players[context.player].hand.length < MAX_HAND_SIZE) {
+          state.players[context.player].hand.push({ ...lastSpell });
+        }
+      }
+      return state;
+    },
   },
   {
     name: "火烧赤壁", cost: 10, attack: 0, health: 0, description: "对所有敌方随从造成8点伤害。对敌方英雄造成4点伤害",
