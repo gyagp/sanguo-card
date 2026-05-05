@@ -1,14 +1,14 @@
-# Autopo test Session
+# Autopo execute Session
 
 ## Work Unit
-Player progression store — create src/game/player-store.ts with localStorage-backed CRUD: loadPlayer, savePlayer, initializeNewPlayer (starter cards + 0 gold), addGold, addXP (with auto-level-up), addCards, getOwnedCards
+Tests for progression data model and player store — verify initialization, persistence, gold/xp mutations, level-up thresholds, and localStorage round-trip
 
 ## Acceptance Criteria
-- loadPlayer returns saved data or initializes new player
-- savePlayer persists to localStorage key sanguo-card-player
-- addGold/addXP/addCards mutate and persist correctly
-- Level-up triggers when XP threshold reached
-- npm run build succeeds
+- New player gets 10 common starter cards
+- Gold add/subtract works correctly
+- XP accumulation triggers level-up at correct thresholds
+- localStorage save/load round-trips without data loss
+- All tests pass
 
 ## Rules
 # Rules
