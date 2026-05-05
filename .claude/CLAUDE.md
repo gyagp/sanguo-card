@@ -1,12 +1,12 @@
 # Autopo execute Session
 
 ## Work Unit
-Tests for Wu rush mechanics — charge bonus, weapon buff, combo chain
+Tests for Qun chaos mechanics — double battlecry, random spell damage, enemy debuff
 
 ## Acceptance Criteria
-- Tests cover charge attack bonus
-- Tests cover weapon-to-minion buff
-- Tests cover combo chain escalation
+- Tests cover battlecry double trigger with seeded RNG
+- Tests cover spell damage variance
+- Tests cover turn-start enemy debuff
 - All tests pass
 
 ## Rules
