@@ -96,7 +96,7 @@ describe("Card play animation: card flies from hand to board", () => {
       expect(handleMatch).toBeTruthy();
       const body = handleMatch![0];
       const cardCapture = body.indexOf("player.hand[handIndex]");
-      const playCardCall = body.indexOf("playCard(handIndex)");
+      const playCardCall = body.indexOf("playCard(handIndex,");
       expect(cardCapture).toBeGreaterThan(-1);
       expect(playCardCall).toBeGreaterThan(-1);
       expect(cardCapture).toBeLessThan(playCardCall);

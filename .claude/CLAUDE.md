@@ -1,11 +1,12 @@
 # Autopo test Session
 
 ## Work Unit
-Implement 司马懿 battlecry — add spell history tracking and 'return last spell to hand' effect
+Implement spell targeting UI — targeted spells (烽火) prompt player to select a target instead of picking randomly
 
 ## Acceptance Criteria
-- GameState tracks spells played this game per player
-- 司马懿 battlecry returns last played spell to hand
+- Spells with targetType prompt target selection
+- Non-targeted spells resolve immediately
+- AI auto-selects targets
 - npm run build succeeds
 
 ## Rules
