@@ -9,6 +9,7 @@ import {
   Deck,
   GamePhase,
   Rarity,
+  Faction,
   CardType,
   GameEventType,
   GameEvent,
@@ -74,6 +75,8 @@ function makePlayerState(): PlayerState {
     heroPowerUsed: false,
     heroHasAttacked: false,
     heroWindfuryAttacksLeft: 0,
+    deckFaction: "neutral" as Faction,
+    hasDeckFactionBonus: false,
   };
 }
 
@@ -145,6 +148,7 @@ describe("GameState interface", () => {
       phase: "playing",
       turnPhase: "play",
       activePlayer: 0,
+      spellsPlayed: [[], []],
     };
     expect(state.players).toHaveLength(2);
     expect(state.board).toHaveLength(2);
@@ -162,6 +166,7 @@ describe("GameState interface", () => {
         phase,
         turnPhase: "play",
         activePlayer: 0,
+        spellsPlayed: [[], []],
       };
       expect(state.phase).toBe(phase);
     });
@@ -457,6 +462,7 @@ function makeBoardMinion(overrides: Partial<BoardMinion> = {}): BoardMinion {
     hasDivineShield: false,
     isStealth: false,
     isFrozen: false,
+    freezeTurnsLeft: 0,
     isImmune: false,
     windfuryAttacksLeft: 1,
     enrageActive: false,

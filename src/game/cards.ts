@@ -1,4 +1,4 @@
-import { Card, GameState, BoardMinion, MAX_BOARD_SIZE, MAX_HAND_SIZE, EffectContext, drawCard, STARTING_HP, gameEventBus, EventListener, GameEvent } from "./types";
+import { Card, GameState, BoardMinion, MAX_BOARD_SIZE, MAX_HAND_SIZE, EffectContext, drawCard, STARTING_HP, gameEventBus, EventListener, GameEvent, applyFreeze } from "./types";
 
 export const cards: Card[] = [
   // === 普通 (10) ===
@@ -93,7 +93,7 @@ export const cards: Card[] = [
           type: "minion", faction: "neutral",
           currentAttack: 1, currentHealth: 1,
           summoningSickness: true, hasAttacked: false, hasDivineShield: false,
-          isStealth: false, isFrozen: false, isImmune: false,
+          isStealth: false, isFrozen: false, freezeTurnsLeft: 0, isImmune: false,
           windfuryAttacksLeft: 1, enrageActive: false, enrageBonus: 0,
           factionAttackBonus: 0, factionHealthBonus: 0,
         };
@@ -280,8 +280,9 @@ export const cards: Card[] = [
     effect: (state: GameState, context: EffectContext) => {
       const damage = 2 + (context.spellDamage ?? 0);
       const enemy = state.players[context.player === 0 ? 1 : 0];
+      const casterPlayer = state.players[context.player];
       for (const minion of enemy.board) {
-        minion.isFrozen = true;
+        applyFreeze(minion, casterPlayer);
         minion.currentHealth -= damage;
       }
       return state;
@@ -321,7 +322,7 @@ export const cards: Card[] = [
         currentAttack: atk, currentHealth: hp,
         summoningSickness: extra.charge ? false : true,
         hasAttacked: false, hasDivineShield: false, isStealth: false,
-        isFrozen: false, isImmune: false, windfuryAttacksLeft: 1, enrageActive: false, enrageBonus: 0,
+        isFrozen: false, freezeTurnsLeft: 0, isImmune: false, windfuryAttacksLeft: 1, enrageActive: false, enrageBonus: 0,
         factionAttackBonus: 0, factionHealthBonus: 0,
         ...extra,
       });

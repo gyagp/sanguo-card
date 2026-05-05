@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { evaluateBoard, getPlayableCards, getBestManaUsage, AIDecision, findLethal, evaluateTrade, getAIAttackDecisions, createAI, AIDifficulty, AIStrategy } from './ai';
-import { GameState, PlayerState, Card, BoardMinion, Deck } from './types';
+import { GameState, PlayerState, Card, BoardMinion, Deck, Faction } from './types';
 
 function makeCard(overrides: Partial<Card> = {}): Card {
   return {
@@ -26,6 +26,7 @@ function makeMinion(overrides: Partial<BoardMinion> = {}): BoardMinion {
     hasDivineShield: false,
     isStealth: false,
     isFrozen: false,
+    freezeTurnsLeft: 0,
     isImmune: false,
     windfuryAttacksLeft: 1,
     enrageActive: false,
@@ -45,6 +46,8 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     heroPowerUsed: false,
     heroHasAttacked: false,
     heroWindfuryAttacksLeft: 0,
+    deckFaction: "neutral" as Faction,
+    hasDeckFactionBonus: false,
     ...overrides,
   };
 }
@@ -57,6 +60,7 @@ function makeGameState(p1: Partial<PlayerState> = {}, p2: Partial<PlayerState> =
     phase: 'playing',
     turnPhase: 'play',
     activePlayer: 0,
+    spellsPlayed: [[], []],
   };
 }
 

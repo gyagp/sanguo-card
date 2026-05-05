@@ -47,6 +47,7 @@ function makeMinion(card: typeof cards[number], overrides?: Partial<BoardMinion>
     hasDivineShield: card.divineShield ?? false,
     isStealth: card.stealth ?? false,
     isFrozen: false,
+    freezeTurnsLeft: 0,
     isImmune: card.immune ?? false,
     windfuryAttacksLeft: card.windfury ? 2 : 1,
     enrageActive: false,

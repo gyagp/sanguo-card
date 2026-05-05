@@ -40,6 +40,7 @@ function makeBoardMinion(overrides: Partial<BoardMinion> = {}): BoardMinion {
     hasDivineShield: false,
     isStealth: false,
     isFrozen: false,
+    freezeTurnsLeft: 0,
     isImmune: false,
     windfuryAttacksLeft: 1,
     enrageActive: false,

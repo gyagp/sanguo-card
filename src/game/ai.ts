@@ -1,4 +1,5 @@
-import { GameState, PlayerState, Card, BoardMinion, Faction, FACTION_SYNERGIES } from './types';
+import { GameState, PlayerState, Card, BoardMinion, Faction, FACTION_SYNERGIES, getEffectiveCardCost } from './types';
+
 
 function pickSpellTarget(card: Card, state: GameState): number | undefined {
   if (!card.targetType) return undefined;
@@ -98,18 +99,19 @@ export function evaluateBoard(state: GameState, playerIndex: 0 | 1): number {
   return score;
 }
 
-export function getPlayableCards(hand: Card[], currentMana: number): number[] {
+export function getPlayableCards(hand: Card[], currentMana: number, player?: PlayerState): number[] {
   const indices: number[] = [];
   for (let i = 0; i < hand.length; i++) {
-    if (hand[i].cost <= currentMana) {
+    const cost = player ? getEffectiveCardCost(hand[i], player) : hand[i].cost;
+    if (cost <= currentMana) {
       indices.push(i);
     }
   }
   return indices;
 }
 
-export function getBestManaUsage(hand: Card[], currentMana: number, board?: BoardMinion[]): number[] {
-  const playable = getPlayableCards(hand, currentMana);
+export function getBestManaUsage(hand: Card[], currentMana: number, board?: BoardMinion[], player?: PlayerState): number[] {
+  const playable = getPlayableCards(hand, currentMana, player);
   if (playable.length === 0) return [];
 
   let bestCombo: number[] = [];
@@ -123,7 +125,7 @@ export function getBestManaUsage(hand: Card[], currentMana: number, board?: Boar
 
     for (let bit = 0; bit < playable.length; bit++) {
       if (mask & (1 << bit)) {
-        totalCost += hand[playable[bit]].cost;
+        totalCost += player ? getEffectiveCardCost(hand[playable[bit]], player) : hand[playable[bit]].cost;
         combo.push(playable[bit]);
       }
     }
@@ -297,15 +299,16 @@ export interface AIStrategy {
 
 function getRandomPlayDecisions(state: GameState): PlayCardDecision[] {
   const player = state.players[state.activePlayer];
-  const playable = getPlayableCards(player.hand, player.hero.mana);
+  const playable = getPlayableCards(player.hand, player.hero.mana, player);
   if (playable.length === 0) return [];
   const shuffled = [...playable].sort(() => Math.random() - 0.5);
   const decisions: PlayCardDecision[] = [];
   let mana = player.hero.mana;
   for (const idx of shuffled) {
-    if (player.hand[idx].cost <= mana) {
+    const cost = getEffectiveCardCost(player.hand[idx], player);
+    if (cost <= mana) {
       decisions.push({ type: 'playCard', cardIndex: idx, spellTarget: pickSpellTarget(player.hand[idx], state) });
-      mana -= player.hand[idx].cost;
+      mana -= cost;
     }
   }
   return decisions;
@@ -333,16 +336,17 @@ function getRandomAttackDecisions(state: GameState): AttackDecision[] {
 
 export function getOnCurvePlayDecisions(state: GameState): PlayCardDecision[] {
   const player = state.players[state.activePlayer];
-  const playable = getPlayableCards(player.hand, player.hero.mana);
+  const playable = getPlayableCards(player.hand, player.hero.mana, player);
   if (playable.length === 0) return [];
 
   const sorted = [...playable].sort((a, b) => player.hand[b].cost - player.hand[a].cost);
   const decisions: PlayCardDecision[] = [];
   let mana = player.hero.mana;
   for (const idx of sorted) {
-    if (player.hand[idx].cost <= mana) {
+    const cost = getEffectiveCardCost(player.hand[idx], player);
+    if (cost <= mana) {
       decisions.push({ type: 'playCard', cardIndex: idx, spellTarget: pickSpellTarget(player.hand[idx], state) });
-      mana -= player.hand[idx].cost;
+      mana -= cost;
     }
   }
   return decisions;
@@ -350,7 +354,7 @@ export function getOnCurvePlayDecisions(state: GameState): PlayCardDecision[] {
 
 export function getOptimalPlayDecisions(state: GameState): PlayCardDecision[] {
   const player = state.players[state.activePlayer];
-  const bestCombo = getBestManaUsage(player.hand, player.hero.mana, player.board);
+  const bestCombo = getBestManaUsage(player.hand, player.hero.mana, player.board, player);
   return bestCombo.map(idx => ({ type: 'playCard' as const, cardIndex: idx, spellTarget: pickSpellTarget(player.hand[idx], state) }));
 }
 
@@ -402,9 +406,9 @@ class HardAI implements AIStrategy {
     const player = state.players[state.activePlayer];
     if (player.heroPowerUsed || player.hero.mana < player.hero.heroPower.cost) return false;
     const manaAfter = player.hero.mana - player.hero.heroPower.cost;
-    const playable = getPlayableCards(player.hand, manaAfter);
-    const bestWithout = getBestManaUsage(player.hand, player.hero.mana, player.board);
-    const bestWith = getBestManaUsage(player.hand, manaAfter, player.board);
+    const playable = getPlayableCards(player.hand, manaAfter, player);
+    const bestWithout = getBestManaUsage(player.hand, player.hero.mana, player.board, player);
+    const bestWith = getBestManaUsage(player.hand, manaAfter, player.board, player);
     const manaUsedWithout = bestWithout.reduce((s, i) => s + player.hand[i].cost, 0);
     const manaUsedWith = bestWith.reduce((s, i) => s + player.hand[i].cost, 0) + player.hero.heroPower.cost;
     return manaUsedWith >= manaUsedWithout;

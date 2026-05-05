@@ -2,12 +2,13 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import {
   GameState, PlayerState, BoardMinion, Card, Faction,
   FACTION_SYNERGIES, recalculateFactionSynergies, playCard,
-  createDeck, createPlayerState, MAX_BOARD_SIZE,
+  createDeck, createPlayerState, MAX_BOARD_SIZE, MAX_HAND_SIZE,
   DECK_FACTION_THRESHOLD, FactionPassive, FactionSynergyBonus, EffectContext,
+  getEffectiveCardCost, applyFreeze, drawCard,
 } from './types';
 import {
   countFactionMinions, evaluateFactionSynergy, evaluateBoard,
-  getBestManaUsage, createAI,
+  getBestManaUsage, createAI, getPlayableCards,
 } from './ai';
 
 function makeMinion(overrides: Partial<BoardMinion> & { faction: Faction }): BoardMinion {
@@ -18,6 +19,7 @@ function makeMinion(overrides: Partial<BoardMinion> & { faction: Faction }): Boa
     currentHealth: overrides.health ?? 1,
     summoningSickness: false, hasAttacked: false,
     hasDivineShield: false, isStealth: false, isFrozen: false,
+    freezeTurnsLeft: 0,
     isImmune: false, windfuryAttacksLeft: 1, enrageActive: false, enrageBonus: 0,
     factionAttackBonus: 0, factionHealthBonus: 0,
     ...overrides,
@@ -54,6 +56,7 @@ function makeGameState(p0Board: BoardMinion[], p1Board: BoardMinion[]): GameStat
     phase: 'playing',
     turnPhase: 'play',
     activePlayer: 0,
+    spellsPlayed: [[], []],
   };
 }
 
@@ -353,5 +356,156 @@ describe('AI evaluateFactionSynergy uses highest tier only (not accumulated)', (
     // Tier 3 for shu: attackBonus=3, healthBonus=1 → 6 * 4 = 24
     // If accumulated (bug): (1+2+4) = 7 → 6*7=42
     expect(evaluateFactionSynergy(board)).toBe(24);
+  });
+});
+
+describe('Wei control mechanics', () => {
+  function makeWeiPlayer(): PlayerState {
+    const deck = createDeck(Array.from({ length: 30 }, (_, i) =>
+      makeCard({ faction: 'wei', name: `wei${i}`, cost: 1 })
+    ));
+    const player = createPlayerState(deck);
+    player.deckFaction = 'wei';
+    player.hasDeckFactionBonus = true;
+    player.hero.mana = 10;
+    player.maxMana = 10;
+    return player;
+  }
+
+  function makeNonWeiPlayer(): PlayerState {
+    const deck = createDeck(Array.from({ length: 30 }, (_, i) =>
+      makeCard({ faction: 'neutral', name: `neutral${i}`, cost: 1 })
+    ));
+    const player = createPlayerState(deck);
+    player.deckFaction = 'neutral';
+    player.hasDeckFactionBonus = false;
+    player.hero.mana = 10;
+    player.maxMana = 10;
+    return player;
+  }
+
+  describe('getEffectiveCardCost', () => {
+    it('reduces spell cost by 1 for Wei deck bonus player', () => {
+      const player = makeWeiPlayer();
+      const spell = makeCard({ faction: 'wei', cost: 3, type: 'spell' });
+      expect(getEffectiveCardCost(spell, player)).toBe(2);
+    });
+
+    it('does not reduce cost below 0', () => {
+      const player = makeWeiPlayer();
+      const spell = makeCard({ faction: 'wei', cost: 0, type: 'spell' });
+      expect(getEffectiveCardCost(spell, player)).toBe(0);
+    });
+
+    it('does not reduce minion cost for Wei player', () => {
+      const player = makeWeiPlayer();
+      const minion = makeCard({ faction: 'wei', cost: 3, type: 'minion' });
+      expect(getEffectiveCardCost(minion, player)).toBe(3);
+    });
+
+    it('does not reduce spell cost for non-Wei player', () => {
+      const player = makeNonWeiPlayer();
+      const spell = makeCard({ faction: 'neutral', cost: 3, type: 'spell' });
+      expect(getEffectiveCardCost(spell, player)).toBe(3);
+    });
+
+    it('does not reduce spell cost for Wei player without deck bonus', () => {
+      const player = makeWeiPlayer();
+      player.hasDeckFactionBonus = false;
+      const spell = makeCard({ faction: 'wei', cost: 3, type: 'spell' });
+      expect(getEffectiveCardCost(spell, player)).toBe(3);
+    });
+  });
+
+  describe('applyFreeze', () => {
+    it('sets freeze to 2 turns with Wei deck bonus', () => {
+      const player = makeWeiPlayer();
+      const minion = makeMinion({ faction: 'neutral' });
+      applyFreeze(minion, player);
+      expect(minion.isFrozen).toBe(true);
+      expect(minion.freezeTurnsLeft).toBe(2);
+    });
+
+    it('sets freeze to 1 turn without Wei bonus', () => {
+      const player = makeNonWeiPlayer();
+      const minion = makeMinion({ faction: 'neutral' });
+      applyFreeze(minion, player);
+      expect(minion.isFrozen).toBe(true);
+      expect(minion.freezeTurnsLeft).toBe(1);
+    });
+  });
+
+  describe('Wei spell extra card draw', () => {
+    it('draws extra card when Wei player plays a spell', () => {
+      const player = makeWeiPlayer();
+      for (let i = 0; i < 5; i++) {
+        player.hand.push(makeCard({ faction: 'wei', name: `h${i}`, cost: 1, type: 'minion' }));
+      }
+      const spell = makeCard({ faction: 'wei', name: 'testspell', cost: 1, type: 'spell' });
+      player.hand.push(spell);
+
+      const opponent = makeNonWeiPlayer();
+      for (let i = 0; i < 5; i++) {
+        opponent.deck.push(makeCard({ faction: 'neutral', name: `od${i}`, cost: 1 }) as never);
+      }
+
+      const state: GameState = {
+        players: [player, opponent],
+        board: [player.board, opponent.board],
+        turn: 1, phase: 'playing', turnPhase: 'play', activePlayer: 0,
+        spellsPlayed: [[], []],
+      };
+
+      const handSizeBefore = player.hand.length;
+      const deckSizeBefore = player.deck.length;
+      const spellIndex = player.hand.indexOf(spell);
+      playCard(state, spellIndex);
+      // Spell removed (-1), extra card drawn (+1) => net 0 change
+      expect(player.hand.length).toBe(handSizeBefore - 1 + 1);
+      expect(player.deck.length).toBe(deckSizeBefore - 1);
+    });
+
+    it('does not draw extra card for non-Wei player playing a spell', () => {
+      const player = makeNonWeiPlayer();
+      const spell = makeCard({ faction: 'neutral', name: 'testspell', cost: 1, type: 'spell' });
+      player.hand.push(spell);
+
+      const opponent = makeNonWeiPlayer();
+
+      const state: GameState = {
+        players: [player, opponent],
+        board: [player.board, opponent.board],
+        turn: 1, phase: 'playing', turnPhase: 'play', activePlayer: 0,
+        spellsPlayed: [[], []],
+      };
+
+      const deckSizeBefore = player.deck.length;
+      playCard(state, 0);
+      expect(player.deck.length).toBe(deckSizeBefore);
+    });
+  });
+
+  describe('AI getPlayableCards with Wei cost reduction', () => {
+    it('considers reduced spell cost for Wei player', () => {
+      const player = makeWeiPlayer();
+      player.hero.mana = 2;
+      const hand: Card[] = [
+        makeCard({ faction: 'wei', cost: 3, type: 'spell', name: 'expensiveSpell' }),
+        makeCard({ faction: 'wei', cost: 1, type: 'minion', name: 'cheapMinion' }),
+      ];
+      player.hand = hand;
+      // Spell cost 3 -> 2 with Wei bonus, so playable with 2 mana
+      const playable = getPlayableCards(hand, 2, player);
+      expect(playable).toContain(0);
+      expect(playable).toContain(1);
+    });
+
+    it('does not reduce spell cost without player context', () => {
+      const hand: Card[] = [
+        makeCard({ faction: 'wei', cost: 3, type: 'spell', name: 'expensiveSpell' }),
+      ];
+      const playable = getPlayableCards(hand, 2);
+      expect(playable).toEqual([]);
+    });
   });
 });

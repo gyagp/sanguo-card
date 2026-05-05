@@ -58,6 +58,7 @@ function createToken(name: string, attack: number, health: number, faction: Card
     hasDivineShield: false,
     isStealth: false,
     isFrozen: false,
+    freezeTurnsLeft: 0,
     isImmune: false,
     windfuryAttacksLeft: 1,
     enrageActive: false,

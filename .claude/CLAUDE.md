@@ -1,12 +1,12 @@
 # Autopo test Session
 
 ## Work Unit
-Extend faction synergy data model — add tiered synergy bonuses (2/4/6 minions), faction-specific passive abilities, and deck faction bonus threshold (20+ cards) to types.ts
+Implement Wei (魏) control mechanics — extra card draw on spell cast, spell mana cost reduction (-1 for 4+ Wei minions in deck), enhanced freeze duration tracking
 
 ## Acceptance Criteria
-- FactionSynergyBonus supports multiple tiers
-- New FactionPassive type exists for faction-specific triggered effects
-- DECK_FACTION_THRESHOLD constant = 20 defined
+- Playing a spell with Wei faction bonus draws an extra card
+- Spell costs reduced by 1 when Wei deck bonus active
+- Freeze effect lasts 2 turns instead of 1 when Wei synergy active
 - npm run build succeeds
 
 ## Rules

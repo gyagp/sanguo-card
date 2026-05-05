@@ -198,6 +198,7 @@ export interface BoardMinion extends Card {
   hasDivineShield: boolean;
   isStealth: boolean;
   isFrozen: boolean;
+  freezeTurnsLeft: number;
   isImmune: boolean;
   windfuryAttacksLeft: number;
   enrageActive: boolean;
@@ -241,6 +242,8 @@ export interface PlayerState {
   heroPowerUsed: boolean;
   heroHasAttacked: boolean;
   heroWindfuryAttacksLeft: number;
+  deckFaction: Faction;
+  hasDeckFactionBonus: boolean;
 }
 
 export type TurnPhase = "start" | "play" | "combat" | "end";
@@ -274,6 +277,8 @@ export function createPlayerState(deck: Deck): PlayerState {
     heroPowerUsed: false,
     heroHasAttacked: false,
     heroWindfuryAttacksLeft: 0,
+    deckFaction: "neutral",
+    hasDeckFactionBonus: false,
   };
 }
 
@@ -290,6 +295,11 @@ export function initializeGame(deck1: Deck, deck2: Deck): GameState {
 
   state.players[0].hero.heroPower = FACTION_HERO_POWERS[getDeckFaction(deck1)];
   state.players[1].hero.heroPower = FACTION_HERO_POWERS[getDeckFaction(deck2)];
+
+  state.players[0].deckFaction = getDeckFaction(deck1);
+  state.players[1].deckFaction = getDeckFaction(deck2);
+  state.players[0].hasDeckFactionBonus = getDeckFactionCount(deck1, state.players[0].deckFaction) >= DECK_FACTION_THRESHOLD;
+  state.players[1].hasDeckFactionBonus = getDeckFactionCount(deck2, state.players[1].deckFaction) >= DECK_FACTION_THRESHOLD;
 
   // Opening hand: player 1 draws 3, player 2 draws 4 (coin advantage)
   for (let i = 0; i < 3; i++) drawCard(state.players[0]);
@@ -312,7 +322,13 @@ export function startTurn(state: GameState): DrawResult {
   for (const minion of player.board) {
     minion.summoningSickness = false;
     minion.hasAttacked = false;
-    minion.isFrozen = false;
+    if (minion.isFrozen) {
+      minion.freezeTurnsLeft--;
+      if (minion.freezeTurnsLeft <= 0) {
+        minion.isFrozen = false;
+        minion.freezeTurnsLeft = 0;
+      }
+    }
     minion.windfuryAttacksLeft = minion.windfury ? 2 : 1;
   }
 
@@ -385,7 +401,9 @@ export function playCard(
 
   const card = player.hand[handIndex];
 
-  if (card.cost > player.hero.mana) {
+  const effectiveCost = getEffectiveCardCost(card, player);
+
+  if (effectiveCost > player.hero.mana) {
     return { success: false, error: "Not enough mana" };
   }
 
@@ -404,6 +422,7 @@ export function playCard(
       hasDivineShield: card.divineShield ?? false,
       isStealth: card.stealth ?? false,
       isFrozen: false,
+      freezeTurnsLeft: 0,
       isImmune: card.immune ?? false,
       windfuryAttacksLeft: card.windfury ? 2 : 1,
       enrageActive: false,
@@ -434,7 +453,7 @@ export function playCard(
   }
 
   if (card.type === "spell") {
-    player.hero.mana -= card.cost;
+    player.hero.mana -= effectiveCost;
     player.hand.splice(handIndex, 1);
     state.spellsPlayed[state.activePlayer].push({ ...card });
     gameEventBus.emit({ type: "spell_played", player: state.activePlayer, source: card });
@@ -454,6 +473,10 @@ export function playCard(
       state = card.effect(state, context);
       checkEnrage(state);
       removeDeadMinions(state);
+    }
+
+    if (player.deckFaction === "wei" && player.hasDeckFactionBonus) {
+      drawCard(player);
     }
 
     return { success: true };
@@ -553,6 +576,19 @@ export function checkWinCondition(state: GameState): 0 | 1 | "draw" | null {
   if (p1Dead) return 1;
   if (p2Dead) return 0;
   return null;
+}
+
+export function getEffectiveCardCost(card: Card, player: PlayerState): number {
+  if (card.type === "spell" && player.deckFaction === "wei" && player.hasDeckFactionBonus) {
+    return Math.max(0, card.cost - 1);
+  }
+  return card.cost;
+}
+
+export function applyFreeze(minion: BoardMinion, casterPlayer: PlayerState): void {
+  minion.isFrozen = true;
+  const weiEnhanced = casterPlayer.deckFaction === "wei" && casterPlayer.hasDeckFactionBonus;
+  minion.freezeTurnsLeft = weiEnhanced ? 2 : 1;
 }
 
 export function attackMinion(
@@ -881,6 +917,14 @@ export function getDeckFaction(deck: Deck): Faction {
   return best;
 }
 
+export function getDeckFactionCount(deck: Deck, faction: Faction): number {
+  let count = 0;
+  for (const card of deck) {
+    if (card.faction === faction) count++;
+  }
+  return count;
+}
+
 export const FACTION_HERO_POWERS: Record<Faction, HeroPower> = {
   shu: {
     name: "仁德",
@@ -925,6 +969,7 @@ export const FACTION_HERO_POWERS: Record<Faction, HeroPower> = {
         hasDivineShield: false,
         isStealth: false,
         isFrozen: false,
+        freezeTurnsLeft: 0,
         isImmune: false,
         windfuryAttacksLeft: 1,
         enrageActive: false,

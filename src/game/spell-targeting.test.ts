@@ -39,6 +39,7 @@ function makeMinion(overrides: Partial<BoardMinion> = {}): BoardMinion {
     currentAttack: 1, currentHealth: 1,
     summoningSickness: true, hasAttacked: false, hasDivineShield: false,
     isStealth: false, isFrozen: false, isImmune: false,
+    freezeTurnsLeft: 0,
     windfuryAttacksLeft: 1, enrageActive: false, enrageBonus: 0,
     factionAttackBonus: 0, factionHealthBonus: 0,
     ...overrides,
