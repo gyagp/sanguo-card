@@ -1,14 +1,14 @@
-# Autopo test Session
+# Autopo execute Session
 
 ## Work Unit
-Deck builder collection integration — restrict deck builder to only use owned cards; apply upgraded stats when building decks; show card count limits based on owned duplicates
+Persistence verification — end-to-end test: create player, earn gold, buy packs, upgrade cards, refresh (simulate localStorage reload), verify all state preserved
 
 ## Acceptance Criteria
-- Deck builder only shows owned cards
-- Upgraded card stats reflected in deck preview
-- Cannot add more copies than owned
-- Existing decks with unowned cards show warning
-- npm run build succeeds
+- Full flow: init → earn gold → buy pack → upgrade card → reload → state intact
+- Player level and XP survive reload
+- Gold balance correct after transactions
+- Card collection with upgrade levels persisted
+- All tests pass
 
 ## Rules
 # Rules
