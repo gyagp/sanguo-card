@@ -32,6 +32,7 @@ export interface GameEvent {
   source?: BoardMinion | Card | { kind: "hero"; player: 0 | 1 };
   target?: BoardMinion | { kind: "hero"; player: 0 | 1 };
   value?: number;
+  state?: GameState;
 }
 
 export type SpellTargetType = "enemy_minion";
@@ -45,6 +46,8 @@ export interface EffectContext {
 }
 
 export type Effect = (state: GameState, context: EffectContext) => GameState;
+
+export type OnPlayHook = (state: GameState, minion: BoardMinion, player: 0 | 1) => void;
 
 export interface Card {
   name: string;
@@ -69,6 +72,7 @@ export interface Card {
   spellImmune?: boolean;
   effect?: Effect;
   targetType?: SpellTargetType;
+  onPlay?: OnPlayHook;
 }
 
 export interface HeroPower {
@@ -147,6 +151,11 @@ export function drawCard(player: PlayerState): DrawResult {
   return { drawn: card, burned: null };
 }
 
+export interface RegisteredListener {
+  type: GameEventType;
+  listener: EventListener;
+}
+
 export interface BoardMinion extends Card {
   currentAttack: number;
   currentHealth: number;
@@ -161,6 +170,7 @@ export interface BoardMinion extends Card {
   enrageBonus: number;
   factionAttackBonus: number;
   factionHealthBonus: number;
+  registeredListeners?: RegisteredListener[];
 }
 
 export type WeaponOnAttack = (state: GameState, targetPlayerIndex: 0 | 1, targetMinionIndex?: number) => void;
@@ -283,7 +293,7 @@ export function startTurn(state: GameState): DrawResult {
 
 export function endTurn(state: GameState): void {
   state.turnPhase = "end";
-  gameEventBus.emit({ type: "turn_end", player: state.activePlayer });
+  gameEventBus.emit({ type: "turn_end", player: state.activePlayer, state });
   state.activePlayer = state.activePlayer === 0 ? 1 : 0;
 }
 
@@ -362,6 +372,10 @@ export function playCard(
     player.board.push(minion);
     recalculateFactionSynergies(player);
     gameEventBus.emit({ type: "minion_played", player: state.activePlayer, source: minion });
+
+    if (card.onPlay) {
+      card.onPlay(state, minion, state.activePlayer);
+    }
 
     if (card.battlecry) {
       const context: EffectContext = {
@@ -462,6 +476,12 @@ export function removeDeadMinions(state: GameState): void {
     }
 
     for (const { minion, owner } of dying) {
+      if (minion.registeredListeners) {
+        for (const reg of minion.registeredListeners) {
+          gameEventBus.off(reg.type, reg.listener);
+        }
+        minion.registeredListeners = [];
+      }
       if (minion.deathrattle) {
         const context: EffectContext = {
           event: { type: "minion_died", player: owner, source: minion },

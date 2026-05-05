@@ -1,12 +1,12 @@
 # Autopo test Session
 
 ## Work Unit
-Implement 吕布 spell immunity — add elusive/spellImmune property and enforce spell targeting restriction
+Wire card event listeners — let cards register EventBus listeners on play and unregister on death, implement 诸葛亮 end-of-turn effect
 
 ## Acceptance Criteria
-- Card type has spellImmune field
-- Spells cannot target spellImmune minions
-- 吕布 card has spellImmune: true
+- 诸葛亮 adds a random spell to hand at end of turn
+- Listener is removed when minion dies
+- EventBus listeners from cards work correctly
 - npm run build succeeds
 
 ## Rules

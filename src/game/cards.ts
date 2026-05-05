@@ -1,4 +1,4 @@
-import { Card, GameState, BoardMinion, MAX_BOARD_SIZE, EffectContext, drawCard, STARTING_HP } from "./types";
+import { Card, GameState, BoardMinion, MAX_BOARD_SIZE, MAX_HAND_SIZE, EffectContext, drawCard, STARTING_HP, gameEventBus, EventListener, GameEvent } from "./types";
 
 export const cards: Card[] = [
   // === 普通 (10) ===
@@ -372,6 +372,22 @@ export const cards: Card[] = [
     name: "诸葛亮", cost: 8, attack: 3, health: 8, description: "法术伤害+3。每回合结束时，将一张随机法术牌加入你的手牌",
     rarity: "legendary", type: "minion", faction: "shu",
     spellDamage: 3,
+    onPlay: (_state: GameState, minion: BoardMinion, player: 0 | 1) => {
+      const listener: EventListener = (event: GameEvent) => {
+        if (event.player !== player || !event.state) return;
+        const owner = event.state.players[player];
+        if (!owner.board.some(m => m.name === "诸葛亮")) {
+          gameEventBus.off("turn_end", listener);
+          return;
+        }
+        if (owner.hand.length >= MAX_HAND_SIZE) return;
+        const spell = spellCardPool[Math.floor(Math.random() * spellCardPool.length)];
+        owner.hand.push({ ...spell });
+      };
+      gameEventBus.on("turn_end", listener);
+      minion.registeredListeners = minion.registeredListeners ?? [];
+      minion.registeredListeners.push({ type: "turn_end", listener });
+    },
   },
   {
     name: "关羽", cost: 7, attack: 6, health: 6, description: "嘲讽。圣盾。亡语：装备一把5/3的青龙偃月刀",
@@ -404,3 +420,5 @@ export const cards: Card[] = [
     },
   },
 ];
+
+const spellCardPool = cards.filter(c => c.type === "spell");
