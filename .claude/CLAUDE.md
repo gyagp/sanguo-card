@@ -1,18 +1,12 @@
-# Autopo test Session
+# Autopo execute Session
 
 ## Work Unit
-Implement all spell card effects — wire up the 8 spell cards (烽火, 征兵令, 草药, 伏兵, 草船借箭, 连环计, 空城计, 火烧赤壁) with actual Effect functions in cards.ts
+Tests for spell effects — verify each spell card effect produces correct GameState mutations
 
 ## Acceptance Criteria
-- 烽火 deals 2 damage to a target (+ spell damage bonus)
-- 征兵令 summons two 1/1 tokens
-- 草药 heals hero for 5
-- 伏兵 deals 2 AoE damage to all enemy minions
-- 草船借箭 draws 2 cards
-- 连环计 freezes all enemy minions
-- 空城计 gives hero immune until next turn
-- 火烧赤壁 deals 8 to all enemy minions and 4 to enemy hero
-- npm run build succeeds
+- Tests for all 8 spell cards covering golden path
+- Test spell damage bonus increases damage spells
+- All tests pass with vitest run
 
 ## Rules
 # Rules
