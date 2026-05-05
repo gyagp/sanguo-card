@@ -29,7 +29,7 @@ describe("generate-card-art.ts script", () => {
 
   test("script uses correct Gemini API URL with image generation model", () => {
     expect(scriptContent).toContain(
-      "generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-preview-image-generation:generateContent"
+      "generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent"
     );
   });
 

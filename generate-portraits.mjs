@@ -1,9 +1,9 @@
 // Generate Three Kingdoms character portraits using Gemini Imagen API
 // Usage: node generate-portraits.mjs
 
-const GEMINI_API_KEY = "AIzaSyBRkj-U9F6N-4KLu0NDxrj6b3EmYT5wBwY";
-const GEMINI_MODEL = "gemini-2.5-flash";
-const OUTPUT_DIR = "D:/workspace/project/gyagp/sanguo-card/public/portraits";
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "AIzaSyDvcfsyYp36o-U9XcTURF3wfWkedroXa1M";
+const GEMINI_MODEL = "gemini-2.5-flash-image";
+const OUTPUT_DIR = "D:/workspace/project/gyagp/sanguo-card/public/card-art";
 
 import { writeFile, mkdir } from "node:fs/promises";
 import { existsSync } from "node:fs";

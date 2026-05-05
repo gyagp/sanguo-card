@@ -121,7 +121,7 @@ goals:
   - id: card-art
     description: 精美卡通风格人物卡牌插画 — 使用Gemini API生成每张卡牌的独特插画图片
     acceptance:
-      - 使用Gemini API (gemini-2.0-flash-preview-image-generation模型) 为每张卡牌生成独特的卡通风格插画PNG图片
+      - "使用Gemini API (gemini-2.5-flash-image模型) 为每张卡牌生成独特的卡通风格插画PNG图片"
       - 随从卡显示角色形象（三国武将造型，卡通风格）
       - 法术卡显示法术效果场景
       - 武器卡显示武器造型
@@ -129,7 +129,7 @@ goals:
       - 卡牌组件从 /card-art/[id].png 加载插画图片
       - 卡牌插画区域占卡牌面积的40%以上
       - 不同势力（魏蜀吴群）有不同的配色风格
-      - "Gemini API调用方式: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-preview-image-generation:generateContent?key=$GEMINI_API_KEY，使用responseModalities: ['TEXT', 'IMAGE']"
+      - "Gemini API调用方式: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=$GEMINI_API_KEY，使用responseModalities: ['TEXT', 'IMAGE']"
     priority: 10
     depends_on: [chinese-localization]
 settings:

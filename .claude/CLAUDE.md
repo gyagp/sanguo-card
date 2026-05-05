@@ -1,12 +1,12 @@
-# Autopo execute Session
+# Autopo test Session
 
 ## Work Unit
-Update card-art tests to verify PNG loading path and maintain existing SVG fallback tests
+Update generate-card-art.ts to use gemini-2.5-flash-image model — change API endpoint URL and ensure responseModalities includes ['TEXT', 'IMAGE'] per acceptance criteria
 
 ## Acceptance Criteria
-- Tests verify getCardArt still works for SVG fallback
-- Existing passing tests remain passing
-- npm test exits with 0 failures
+- scripts/generate-card-art.ts references gemini-2.5-flash-image model
+- API URL matches POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent
+- responseModalities set to ['TEXT', 'IMAGE']
 
 ## Rules
 # Rules
