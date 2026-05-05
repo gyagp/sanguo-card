@@ -1,13 +1,12 @@
-# Autopo test Session
+# Autopo execute Session
 
 ## Work Unit
-Verify Card component correctly loads PNG art — ensure img tag src points to /card-art/[name].png, art area is 40%+ of card face, and legendary cards retain glow animations
+Update generate-card-art.test.ts to verify gemini-2.5-flash-image model reference and updated prompt structure
 
 ## Acceptance Criteria
-- Card.tsx loads PNG from /card-art/[cardName].png
-- Art container CSS height/width occupies >= 40% of card face
-- Legendary rarity cards have glow/sparkle CSS animation around art area
-- SVG fallback still works when PNG is missing
+- Test asserts script contains gemini-2.5-flash-image model reference
+- Test verifies faction color keywords in prompts
+- All tests pass with vitest run
 
 ## Rules
 # Rules
