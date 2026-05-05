@@ -1,14 +1,13 @@
-# Autopo test Session
+# Autopo execute Session
 
 ## Work Unit
-Card upgrade system — implement upgradeCard: consume gold + duplicate cards to increase card level (max 3), each level grants +1 attack or +1 health; add getUpgradedStats helper to compute final stats from base card + level
+Tests for card upgrade system — verify upgrade costs, stat bonuses per level, max level cap, insufficient resources
 
 ## Acceptance Criteria
-- upgradeCard validates sufficient gold and duplicate count
-- Card level increments (max 3)
-- getUpgradedStats returns base stats + level bonuses
-- Level 1: +1 attack, Level 2: +1 health, Level 3: +1 attack
-- npm run build succeeds
+- Each upgrade level applies correct stat bonus
+- Cannot upgrade past level 3
+- Insufficient gold or duplicates rejects upgrade
+- All tests pass
 
 ## Rules
 # Rules
