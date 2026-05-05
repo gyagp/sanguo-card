@@ -670,6 +670,7 @@ function GameInner({ playerDeck, difficulty }: { playerDeck: Deck; difficulty: A
   const { gameState, winner, playCard, endTurn, attack, attackHero, useHeroPower, isOpponentTurn, resetGame } = useGameState(deck1, deck2, difficulty);
 
   const [selectedAttacker, setSelectedAttacker] = useState<number | null>(null);
+  const [pendingSpell, setPendingSpell] = useState<{ handIndex: number; cardEl?: HTMLElement | null } | null>(null);
 
   const audioRef = useRef(AudioManager.getInstance());
 
@@ -792,12 +793,21 @@ function GameInner({ playerDeck, difficulty }: { playerDeck: Deck; difficulty: A
   const player = gameState.players[0];
   const opponent = gameState.players[1];
 
-  const handlePlayCard = useCallback((handIndex: number, cardEl?: HTMLElement | null) => {
+  const handlePlayCard = useCallback((handIndex: number, cardEl?: HTMLElement | null, spellTargetIndex?: number) => {
     const card = player.hand[handIndex];
     if (!card) return;
+
+    if (card.targetType === "enemy_minion" && spellTargetIndex === undefined) {
+      const enemy = gameState.players[1];
+      if (enemy.board.length === 0) return;
+      setPendingSpell({ handIndex, cardEl });
+      setSelectedAttacker(null);
+      return;
+    }
+
     const el = cardEl ?? handCardRefs.current.get(handIndex);
     const startRect = el?.getBoundingClientRect();
-    const result = playCard(handIndex);
+    const result = playCard(handIndex, spellTargetIndex);
     if (result.success && startRect) {
       audioRef.current.playCardPlay();
       const key = flyKeyRef.current++;
@@ -819,7 +829,7 @@ function GameInner({ playerDeck, difficulty }: { playerDeck: Deck; difficulty: A
         }, 200 * animMultiplier);
       }
     }
-  }, [player.hand, playCard, safeTimeout]);
+  }, [player.hand, playCard, safeTimeout, gameState]);
 
   const triggerLegendaryEffects = useCallback((
     particleSetter: typeof setPlayerLegendaryParticles,
@@ -870,9 +880,16 @@ function GameInner({ playerDeck, difficulty }: { playerDeck: Deck; difficulty: A
     const minion = player.board[index];
     if ((minion.hasAttacked && minion.windfuryAttacksLeft <= 0) || minion.summoningSickness) return;
     setSelectedAttacker(selectedAttacker === index ? null : index);
+    setPendingSpell(null);
   };
 
   const handleEnemyMinionClick = (index: number) => {
+    if (pendingSpell !== null) {
+      const { handIndex, cardEl } = pendingSpell;
+      setPendingSpell(null);
+      handlePlayCard(handIndex, cardEl, index);
+      return;
+    }
     if (selectedAttacker === null) return;
     const attackerIdx = selectedAttacker;
 
@@ -936,7 +953,7 @@ function GameInner({ playerDeck, difficulty }: { playerDeck: Deck; difficulty: A
   };
 
   const handleBoardClick = (e: React.MouseEvent) => {
-    if (e.target === e.currentTarget) setSelectedAttacker(null);
+    if (e.target === e.currentTarget) { setSelectedAttacker(null); setPendingSpell(null); }
   };
 
   const autoEndTurnTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1021,7 +1038,7 @@ function GameInner({ playerDeck, difficulty }: { playerDeck: Deck; difficulty: A
       </div>
 
       {/* Opponent board */}
-      <BoardZone minions={opponent.board} label="对方战场" isEnemy hasAttackerSelected={selectedAttacker !== null} onMinionClick={handleEnemyMinionClick} animations={enemyAnims} damageNumbers={enemyDmg} dyingMinions={enemyDying} impactParticles={enemyImpacts} legendaryParticles={enemyLegendaryParticles} legendaryShimmer={enemyLegendaryShimmer} animMultiplier={animMultiplier} showDamageNumbers={showDamageNumbers} />
+      <BoardZone minions={opponent.board} label="对方战场" isEnemy hasAttackerSelected={selectedAttacker !== null || pendingSpell !== null} onMinionClick={handleEnemyMinionClick} animations={enemyAnims} damageNumbers={enemyDmg} dyingMinions={enemyDying} impactParticles={enemyImpacts} legendaryParticles={enemyLegendaryParticles} legendaryShimmer={enemyLegendaryShimmer} animMultiplier={animMultiplier} showDamageNumbers={showDamageNumbers} />
 
       {/* Turn banner overlay */}
       {turnBanner && (
@@ -1039,6 +1056,15 @@ function GameInner({ playerDeck, difficulty }: { playerDeck: Deck; difficulty: A
         </div>
       )}
 
+      {/* Spell targeting prompt */}
+      {pendingSpell !== null && (
+        <div className="flex items-center justify-center py-1 shrink-0">
+          <span className="px-4 py-1 bg-orange-600 text-white text-xs sm:text-sm font-bold rounded-full animate-pulse">
+            选择一个敌方随从作为目标
+          </span>
+        </div>
+      )}
+
       {/* Turn indicator + End Turn */}
       <div className="flex items-center justify-center py-0.5 sm:py-1 md:py-1 gap-1.5 sm:gap-2 px-2 sm:px-3 shrink-0">
         <div className="h-px flex-1 bg-amber-700/50" />
@@ -1046,7 +1072,7 @@ function GameInner({ playerDeck, difficulty }: { playerDeck: Deck; difficulty: A
           {isOpponentTurn ? "对手回合" : "你的回合"}
         </span>
         <button
-          onClick={() => { endTurn(); setSelectedAttacker(null); }}
+          onClick={() => { endTurn(); setSelectedAttacker(null); setPendingSpell(null); }}
           disabled={isOpponentTurn || winner !== null}
           className={`px-3 sm:px-4 md:px-6 py-1 sm:py-1.5 md:py-2 font-bold text-xs sm:text-sm md:text-base rounded-lg shadow-lg transition-all duration-200 whitespace-nowrap ${
             isOpponentTurn || winner !== null
@@ -1078,7 +1104,7 @@ function GameInner({ playerDeck, difficulty }: { playerDeck: Deck; difficulty: A
               onClick={(e) => handlePlayCard(i, (e.currentTarget as HTMLElement))}
               draggable
               handIndex={i}
-              insufficientMana={card.cost > player.hero.mana || player.board.length >= MAX_BOARD_SIZE}
+              insufficientMana={card.cost > player.hero.mana || (card.type !== 'spell' && player.board.length >= MAX_BOARD_SIZE) || (card.targetType === 'enemy_minion' && opponent.board.length === 0)}
             />
           </div>
         ))}

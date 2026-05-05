@@ -1,5 +1,20 @@
 import { GameState, PlayerState, Card, BoardMinion, Faction, FACTION_SYNERGIES } from './types';
 
+function pickSpellTarget(card: Card, state: GameState): number | undefined {
+  if (!card.targetType) return undefined;
+  const opponentIndex = state.activePlayer === 0 ? 1 : 0;
+  const enemyBoard = state.players[opponentIndex].board;
+  if (enemyBoard.length === 0) return undefined;
+  let bestIdx = 0;
+  let bestScore = -Infinity;
+  for (let i = 0; i < enemyBoard.length; i++) {
+    const m = enemyBoard[i];
+    const score = m.currentAttack * 2 + (m.taunt ? 10 : 0);
+    if (score > bestScore) { bestScore = score; bestIdx = i; }
+  }
+  return bestIdx;
+}
+
 export type AIDifficulty = 'easy' | 'normal' | 'hard' | 'boss';
 
 export type AIDecisionType = 'playCard' | 'attack' | 'useHeroPower' | 'endTurn';
@@ -7,6 +22,7 @@ export type AIDecisionType = 'playCard' | 'attack' | 'useHeroPower' | 'endTurn';
 export interface PlayCardDecision {
   type: 'playCard';
   cardIndex: number;
+  spellTarget?: number;
 }
 
 export interface AttackDecision {
@@ -277,7 +293,7 @@ function getRandomPlayDecisions(state: GameState): PlayCardDecision[] {
   let mana = player.hero.mana;
   for (const idx of shuffled) {
     if (player.hand[idx].cost <= mana) {
-      decisions.push({ type: 'playCard', cardIndex: idx });
+      decisions.push({ type: 'playCard', cardIndex: idx, spellTarget: pickSpellTarget(player.hand[idx], state) });
       mana -= player.hand[idx].cost;
     }
   }
@@ -314,7 +330,7 @@ export function getOnCurvePlayDecisions(state: GameState): PlayCardDecision[] {
   let mana = player.hero.mana;
   for (const idx of sorted) {
     if (player.hand[idx].cost <= mana) {
-      decisions.push({ type: 'playCard', cardIndex: idx });
+      decisions.push({ type: 'playCard', cardIndex: idx, spellTarget: pickSpellTarget(player.hand[idx], state) });
       mana -= player.hand[idx].cost;
     }
   }
@@ -324,7 +340,7 @@ export function getOnCurvePlayDecisions(state: GameState): PlayCardDecision[] {
 export function getOptimalPlayDecisions(state: GameState): PlayCardDecision[] {
   const player = state.players[state.activePlayer];
   const bestCombo = getBestManaUsage(player.hand, player.hero.mana, player.board);
-  return bestCombo.map(idx => ({ type: 'playCard' as const, cardIndex: idx }));
+  return bestCombo.map(idx => ({ type: 'playCard' as const, cardIndex: idx, spellTarget: pickSpellTarget(player.hand[idx], state) }));
 }
 
 class EasyAI implements AIStrategy {

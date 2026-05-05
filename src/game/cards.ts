@@ -67,12 +67,15 @@ export const cards: Card[] = [
     rarity: "common", type: "weapon", faction: "neutral",
   },
   {
-    name: "烽火", cost: 1, attack: 0, health: 0, description: "对一个随从造成2点伤害",
+    name: "烽火", cost: 1, attack: 0, health: 0, description: "对一个敌方随从造成2点伤害",
     rarity: "common", type: "spell", faction: "neutral",
+    targetType: "enemy_minion",
     effect: (state: GameState, context: EffectContext) => {
       const damage = 2 + (context.spellDamage ?? 0);
       const enemy = state.players[context.player === 0 ? 1 : 0];
-      if (enemy.board.length > 0) {
+      if (context.targetIndex !== undefined && enemy.board[context.targetIndex]) {
+        enemy.board[context.targetIndex].currentHealth -= damage;
+      } else if (enemy.board.length > 0) {
         const target = enemy.board[Math.floor(Math.random() * enemy.board.length)];
         target.currentHealth -= damage;
       }

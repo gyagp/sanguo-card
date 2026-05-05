@@ -34,11 +34,14 @@ export interface GameEvent {
   value?: number;
 }
 
+export type SpellTargetType = "enemy_minion";
+
 export interface EffectContext {
   event: GameEvent;
   sourceCard: Card | BoardMinion;
   player: 0 | 1;
   spellDamage?: number;
+  targetIndex?: number;
 }
 
 export type Effect = (state: GameState, context: EffectContext) => GameState;
@@ -64,6 +67,7 @@ export interface Card {
   freeze?: boolean;
   immune?: boolean;
   effect?: Effect;
+  targetType?: SpellTargetType;
 }
 
 export interface HeroPower {
@@ -157,6 +161,23 @@ export interface BoardMinion extends Card {
   factionAttackBonus: number;
   factionHealthBonus: number;
 }
+
+export type WeaponOnAttack = (state: GameState, targetPlayerIndex: 0 | 1, targetMinionIndex?: number) => void;
+
+export const WEAPON_ON_ATTACK_HOOKS: Record<string, WeaponOnAttack> = {
+  "丈八蛇矛": (s, tpi, tmi) => {
+    if (tmi === undefined) return;
+    const board = s.players[tpi].board;
+    if (tmi > 0) {
+      const left = board[tmi - 1];
+      if (left && !left.isImmune) left.currentHealth -= 1;
+    }
+    if (tmi < board.length - 1) {
+      const right = board[tmi + 1];
+      if (right && !right.isImmune) right.currentHealth -= 1;
+    }
+  },
+};
 
 export interface Weapon {
   name: string;
@@ -301,6 +322,7 @@ export function recalculateFactionSynergies(player: PlayerState): void {
 export function playCard(
   state: GameState,
   handIndex: number,
+  targetIndex?: number,
 ): PlayCardResult {
   const player = state.players[state.activePlayer];
 
@@ -369,6 +391,7 @@ export function playCard(
         sourceCard: card,
         player: state.activePlayer,
         spellDamage,
+        targetIndex,
       };
       state = card.effect(state, context);
       checkEnrage(state);
@@ -668,6 +691,8 @@ export function heroAttack(
       attackerPlayer.hero.health -= targetMinion.currentAttack;
     }
 
+    const weaponName = attackerPlayer.weapon.name;
+
     attackerPlayer.heroWindfuryAttacksLeft--;
     if (attackerPlayer.heroWindfuryAttacksLeft <= 0) {
       attackerPlayer.heroHasAttacked = true;
@@ -675,6 +700,11 @@ export function heroAttack(
     attackerPlayer.weapon.durability--;
     if (attackerPlayer.weapon.durability <= 0) {
       attackerPlayer.weapon = null;
+    }
+
+    const onAttackHook = WEAPON_ON_ATTACK_HOOKS[weaponName];
+    if (onAttackHook) {
+      onAttackHook(state, targetPlayerIndex, targetMinionIndex);
     }
 
     gameEventBus.emit({

@@ -1,12 +1,12 @@
-# Autopo execute Session
+# Autopo test Session
 
 ## Work Unit
-Tests for spell effects — verify each spell card effect produces correct GameState mutations
+Implement 丈八蛇矛 splash damage — add weapon on-attack hook and splash logic for adjacent minions
 
 ## Acceptance Criteria
-- Tests for all 8 spell cards covering golden path
-- Test spell damage bonus increases damage spells
-- All tests pass with vitest run
+- 丈八蛇矛 deals 1 damage to minions adjacent to the attack target
+- heroAttack checks weapon.onAttack hook
+- npm run build succeeds
 
 ## Rules
 # Rules

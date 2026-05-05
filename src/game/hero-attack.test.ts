@@ -11,6 +11,7 @@ import {
   heroAttack,
   checkWinCondition,
   gameEventBus,
+  WEAPON_ON_ATTACK_HOOKS,
 } from "./types";
 
 function makeCard(overrides: Partial<Card> = {}): Card {
@@ -273,14 +274,121 @@ describe("heroAttack", () => {
       const state = setupWithWeapon(3, 1);
       state.players[0].hero.health = 5;
       state.players[1].board = [makeBoardMinion({ currentAttack: 10, currentHealth: 1 })];
-      // Hero attacks minion: minion dies (3 >= 1), hero takes 10 damage (5 - 10 = -5)
-      // But this only kills player 0, not a draw. For draw we need both dead.
-      // Actually draw requires both heroes dead simultaneously - heroAttack vs minion
-      // can only kill the attacking hero, not the defending hero.
-      // So this test just confirms attacking hero can die.
       heroAttack(state, 1, 0);
       expect(state.players[0].hero.health).toBe(-5);
       expect(checkWinCondition(state)).toBe(1);
+    });
+  });
+
+  describe("丈八蛇矛 splash damage", () => {
+    function setupWithSnakeSpear(): GameState {
+      const state = initializeGame(makeDeck(), makeDeck());
+      state.players[0].weapon = { name: "丈八蛇矛", attack: 4, durability: 2 };
+      state.players[0].heroWindfuryAttacksLeft = 1;
+      return state;
+    }
+
+    it("deals 1 damage to adjacent minions when attacking middle target", () => {
+      const state = setupWithSnakeSpear();
+      state.players[1].board = [
+        makeBoardMinion({ name: "Left", currentHealth: 5 }),
+        makeBoardMinion({ name: "Mid", currentHealth: 5 }),
+        makeBoardMinion({ name: "Right", currentHealth: 5 }),
+      ];
+      heroAttack(state, 1, 1);
+      expect(state.players[1].board[0].currentHealth).toBe(4); // left: 5 - 1
+      expect(state.players[1].board[1].currentHealth).toBe(1); // mid: 5 - 4
+      expect(state.players[1].board[2].currentHealth).toBe(4); // right: 5 - 1
+    });
+
+    it("only splashes right when attacking leftmost minion", () => {
+      const state = setupWithSnakeSpear();
+      state.players[1].board = [
+        makeBoardMinion({ name: "Left", currentHealth: 5 }),
+        makeBoardMinion({ name: "Right", currentHealth: 5 }),
+      ];
+      heroAttack(state, 1, 0);
+      expect(state.players[1].board[0].currentHealth).toBe(1); // target: 5 - 4
+      expect(state.players[1].board[1].currentHealth).toBe(4); // right: 5 - 1
+    });
+
+    it("only splashes left when attacking rightmost minion", () => {
+      const state = setupWithSnakeSpear();
+      state.players[1].board = [
+        makeBoardMinion({ name: "Left", currentHealth: 5 }),
+        makeBoardMinion({ name: "Right", currentHealth: 5 }),
+      ];
+      heroAttack(state, 1, 1);
+      expect(state.players[1].board[0].currentHealth).toBe(4); // left: 5 - 1
+      expect(state.players[1].board[1].currentHealth).toBe(1); // right: 5 - 4
+    });
+
+    it("no splash when attacking a lone minion", () => {
+      const state = setupWithSnakeSpear();
+      state.players[1].board = [makeBoardMinion({ name: "Solo", currentHealth: 5 })];
+      heroAttack(state, 1, 0);
+      expect(state.players[1].board[0].currentHealth).toBe(1); // 5 - 4, no splash
+    });
+
+    it("splash fires on last durability swing (weapon destroyed)", () => {
+      const state = initializeGame(makeDeck(), makeDeck());
+      state.players[0].weapon = { name: "丈八蛇矛", attack: 4, durability: 1 };
+      state.players[0].heroWindfuryAttacksLeft = 1;
+      state.players[1].board = [
+        makeBoardMinion({ name: "Left", currentHealth: 5 }),
+        makeBoardMinion({ name: "Mid", currentHealth: 5 }),
+        makeBoardMinion({ name: "Right", currentHealth: 5 }),
+      ];
+      heroAttack(state, 1, 1);
+      expect(state.players[0].weapon).toBeNull();
+      expect(state.players[1].board[0].currentHealth).toBe(4); // splash still fires
+      expect(state.players[1].board[2].currentHealth).toBe(4);
+    });
+
+    it("splash does not hit immune adjacent minions", () => {
+      const state = setupWithSnakeSpear();
+      state.players[1].board = [
+        makeBoardMinion({ name: "Left", currentHealth: 5, isImmune: true }),
+        makeBoardMinion({ name: "Mid", currentHealth: 5 }),
+        makeBoardMinion({ name: "Right", currentHealth: 5 }),
+      ];
+      heroAttack(state, 1, 1);
+      expect(state.players[1].board[0].currentHealth).toBe(5); // immune, no splash
+      expect(state.players[1].board[2].currentHealth).toBe(4); // not immune
+    });
+
+    it("no splash when attacking enemy hero", () => {
+      const state = setupWithSnakeSpear();
+      state.players[1].board = [makeBoardMinion({ name: "Bystander", currentHealth: 5 })];
+      heroAttack(state, 1); // attack hero, not minion
+      // Bystander should be untouched
+      expect(state.players[1].board[0].currentHealth).toBe(5);
+    });
+
+    it("splash kills adjacent minions and they are removed", () => {
+      const state = setupWithSnakeSpear();
+      state.players[1].board = [
+        makeBoardMinion({ name: "Left", currentHealth: 1 }),
+        makeBoardMinion({ name: "Mid", currentHealth: 5 }),
+        makeBoardMinion({ name: "Right", currentHealth: 1 }),
+      ];
+      heroAttack(state, 1, 1);
+      // Left and Right should die from 1 splash damage
+      expect(state.players[1].board).toHaveLength(1);
+      expect(state.players[1].board[0].name).toBe("Mid");
+    });
+
+    it("splash survives JSON-based state cloning", () => {
+      const state = setupWithSnakeSpear();
+      const cloned: GameState = JSON.parse(JSON.stringify(state));
+      cloned.players[1].board = [
+        makeBoardMinion({ name: "Left", currentHealth: 5 }),
+        makeBoardMinion({ name: "Mid", currentHealth: 5 }),
+        makeBoardMinion({ name: "Right", currentHealth: 5 }),
+      ];
+      heroAttack(cloned, 1, 1);
+      expect(cloned.players[1].board[0].currentHealth).toBe(4);
+      expect(cloned.players[1].board[2].currentHealth).toBe(4);
     });
   });
 });
