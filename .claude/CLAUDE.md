@@ -1,13 +1,12 @@
-# Autopo execute Session
+# Autopo test Session
 
 ## Work Unit
-Persistence verification — end-to-end test: create player, earn gold, buy packs, upgrade cards, refresh (simulate localStorage reload), verify all state preserved
+Main menu navigation update and build verification — add Shop and Collection links to main menu, ensure all new routes accessible, run npm run build to verify no errors
 
 ## Acceptance Criteria
-- Full flow: init → earn gold → buy pack → upgrade card → reload → state intact
-- Player level and XP survive reload
-- Gold balance correct after transactions
-- Card collection with upgrade levels persisted
+- Main menu has links to /shop and /collection
+- All navigation works correctly
+- npm run build succeeds with zero errors
 - All tests pass
 
 ## Rules
