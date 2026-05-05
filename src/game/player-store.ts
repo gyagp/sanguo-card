@@ -1,10 +1,22 @@
 import { PlayerProfile, OwnedCard, STARTER_CARDS, XP_THRESHOLDS, PACK_PRICE, UPGRADE_COSTS, DUPLICATE_COST_PER_LEVEL } from "./progression";
 import { Card, Rarity } from "./types";
 import { cards } from "./cards";
+import { adventureChapters } from "./adventure-data";
 
 const MAX_UPGRADE_LEVEL = 3;
 
 const STORAGE_KEY = "sanguo-card-player";
+const ADVENTURE_STORAGE_KEY = "sanguo-card-adventure";
+
+export interface StageProgress {
+  completed: boolean;
+  stars: number;
+}
+
+export interface AdventureProgress {
+  stages: Record<string, StageProgress>;
+  chaptersUnlocked: string[];
+}
 
 export function initializeNewPlayer(): PlayerProfile {
   return {
@@ -208,4 +220,85 @@ export function getUpgradedStats(
   if (upgradeLevel >= 3) attack += 1;
 
   return { attack, health };
+}
+
+function initializeAdventureProgress(): AdventureProgress {
+  return {
+    stages: {},
+    chaptersUnlocked: [adventureChapters[0].id],
+  };
+}
+
+export function saveAdventureProgress(progress: AdventureProgress): void {
+  localStorage.setItem(ADVENTURE_STORAGE_KEY, JSON.stringify(progress));
+}
+
+export function loadAdventureProgress(): AdventureProgress {
+  const raw = localStorage.getItem(ADVENTURE_STORAGE_KEY);
+  if (!raw) {
+    const progress = initializeAdventureProgress();
+    saveAdventureProgress(progress);
+    return progress;
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    const progress = initializeAdventureProgress();
+    saveAdventureProgress(progress);
+    return progress;
+  }
+  if (
+    typeof parsed !== "object" ||
+    parsed === null ||
+    typeof (parsed as Record<string, unknown>).stages !== "object" ||
+    (parsed as Record<string, unknown>).stages === null ||
+    !Array.isArray((parsed as Record<string, unknown>).chaptersUnlocked)
+  ) {
+    const progress = initializeAdventureProgress();
+    saveAdventureProgress(progress);
+    return progress;
+  }
+  return parsed as AdventureProgress;
+}
+
+export function isStageUnlocked(stageId: string, progress?: AdventureProgress): boolean {
+  const p = progress ?? loadAdventureProgress();
+  for (const chapter of adventureChapters) {
+    if (!p.chaptersUnlocked.includes(chapter.id)) continue;
+    for (let i = 0; i < chapter.stages.length; i++) {
+      if (chapter.stages[i].id === stageId) {
+        if (i === 0) return true;
+        const prevStage = chapter.stages[i - 1];
+        const prevProgress = p.stages[prevStage.id];
+        return !!prevProgress?.completed;
+      }
+    }
+  }
+  return false;
+}
+
+export function completeStage(stageId: string, stars: number, progress?: AdventureProgress): AdventureProgress {
+  const p = progress ?? loadAdventureProgress();
+  const existing = p.stages[stageId];
+  p.stages[stageId] = {
+    completed: true,
+    stars: existing ? Math.max(existing.stars, stars) : stars,
+  };
+
+  for (const chapter of adventureChapters) {
+    const bossStage = chapter.stages[chapter.stages.length - 1];
+    if (bossStage.id === stageId && bossStage.isBoss) {
+      const chapterIndex = adventureChapters.indexOf(chapter);
+      if (chapterIndex < adventureChapters.length - 1) {
+        const nextChapterId = adventureChapters[chapterIndex + 1].id;
+        if (!p.chaptersUnlocked.includes(nextChapterId)) {
+          p.chaptersUnlocked.push(nextChapterId);
+        }
+      }
+    }
+  }
+
+  saveAdventureProgress(p);
+  return p;
 }

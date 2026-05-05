@@ -1,13 +1,13 @@
 # Autopo test Session
 
 ## Work Unit
-Define adventure data model — Chapter, Stage, BossStage interfaces and 5-chapter/30-stage campaign data with enemy decks, rewards, boss rules, and star rating criteria
+Adventure progress persistence — save/load chapter unlock, stage stars, and completion state in localStorage
 
 ## Acceptance Criteria
-- AdventureChapter, AdventureStage, BossRule types exported from src/game/adventure-data.ts
-- 5 chapters with 6 stages each (5 normal + 1 boss) = 30 stages defined
-- Each stage has enemyDeck (card names array), difficulty, rewards (gold/xp/cards), starThresholds (hp% and turn count)
-- Boss stages have special rules (extraMana, fieldEffect, uniqueHeroPower)
+- AdventureProgress type with per-stage completion and star ratings
+- saveAdventureProgress/loadAdventureProgress functions in player-store.ts
+- Stages unlock sequentially within chapter; chapters unlock after boss clear
+- Progress survives page refresh
 - npm run build succeeds
 
 ## Rules
