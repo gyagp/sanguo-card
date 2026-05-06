@@ -25,6 +25,26 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+@keyframes trapPulse {
+  0%, 100% { box-shadow: 0 0 4px rgba(168, 85, 247, 0.3); }
+  50% { box-shadow: 0 0 12px rgba(168, 85, 247, 0.7); }
+}
+
+@keyframes trapReveal {
+  0% { background: rgba(0,0,0,0); }
+  10% { background: rgba(88,28,135,0.3); }
+  80% { background: rgba(88,28,135,0.3); }
+  100% { background: rgba(0,0,0,0); }
+}
+
+@keyframes trapRevealCard {
+  0% { opacity: 0; transform: scale(0.3) rotateY(180deg); }
+  20% { opacity: 1; transform: scale(1.1) rotateY(0deg); }
+  30% { transform: scale(1); }
+  80% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(0.8); }
+}
+
 @keyframes shrink {
   from { width: 100%; }
   to { width: 0%; }

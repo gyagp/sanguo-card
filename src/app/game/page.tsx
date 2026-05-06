@@ -7,7 +7,7 @@ import { AudioManager } from "./audio-manager";
 import { cards } from "../../game/cards";
 import { AIDifficulty } from "../../game/ai";
 import { addGold, addXP } from "../../game/player-store";
-import { createDeck, BoardMinion, PlayerState, Card as CardType, MAX_BOARD_SIZE, MAX_DECK_SIZE, Deck, Faction, FACTION_SYNERGIES, DECK_FACTION_THRESHOLD, Lane, ALL_LANES, getReachableLanes, getSpellReachableLanes, TerrainEffect, TerrainType, MAX_LANE_SIZE } from "../../game/types";
+import { createDeck, BoardMinion, PlayerState, Card as CardType, MAX_BOARD_SIZE, MAX_DECK_SIZE, Deck, Faction, FACTION_SYNERGIES, DECK_FACTION_THRESHOLD, Lane, ALL_LANES, getReachableLanes, getSpellReachableLanes, TerrainEffect, TerrainType, MAX_LANE_SIZE, ActiveTrap } from "../../game/types";
 import { useMemo, useState, useEffect, useRef, useCallback, forwardRef } from "react";
 
 const STORAGE_KEY = 'sanguo-card-decks';
@@ -152,6 +152,8 @@ function LegendaryBurst({ particles }: { particles: LegendaryParticle[] }) {
     </div>
   );
 }
+
+interface RevealedTrap { card: CardType; key: number; }
 
 interface DyingMinion {
   minion: BoardMinion;
@@ -942,6 +944,10 @@ function GameInner({ playerDeck, difficulty }: { playerDeck: Deck; difficulty: A
 
   const handCardRefs = useRef<Map<number, HTMLDivElement>>(new Map());
 
+  const [revealedTraps, setRevealedTraps] = useState<RevealedTrap[]>([]);
+  const revealKeyRef = useRef(0);
+  const prevOpponentTrapsRef = useRef<ActiveTrap[]>([]);
+
   const timeoutIds = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
 
   useEffect(() => {
@@ -957,6 +963,23 @@ function GameInner({ playerDeck, difficulty }: { playerDeck: Deck; difficulty: A
     }, delay);
     timeoutIds.current.add(id);
   }, []);
+
+  useEffect(() => {
+    const prevTraps = prevOpponentTrapsRef.current;
+    const currentTraps = gameState.players[1].activeTraps ?? [];
+    if (prevTraps.length > currentTraps.length) {
+      const currentCards = new Set(currentTraps.map(t => t.card));
+      const fired = prevTraps.filter(t => !currentCards.has(t.card));
+      if (fired.length > 0) {
+        const newReveals = fired.map(t => ({ card: t.card, key: revealKeyRef.current++ }));
+        setRevealedTraps(prev => [...prev, ...newReveals]);
+        safeTimeout(() => {
+          setRevealedTraps(prev => prev.filter(r => !newReveals.some(n => n.key === r.key)));
+        }, 1500 * animMultiplier);
+      }
+    }
+    prevOpponentTrapsRef.current = currentTraps;
+  }, [gameState.players, animMultiplier, safeTimeout]);
 
   const prevPlayerBoardLen = useRef(gameState.players[0].board.length);
   const prevEnemyBoardLen = useRef(gameState.players[1].board.length);
@@ -1300,6 +1323,22 @@ function GameInner({ playerDeck, difficulty }: { playerDeck: Deck; difficulty: A
         ))}
       </div>
 
+      {/* Opponent active traps (face down) */}
+      {(opponent.activeTraps?.length ?? 0) > 0 && (
+        <div className="flex items-center justify-center gap-1 sm:gap-1.5 py-0.5 px-2 shrink-0">
+          <span className="text-purple-300 text-[10px] sm:text-xs font-bold mr-1">陷阱 ×{opponent.activeTraps!.length}</span>
+          {opponent.activeTraps!.map((trap, i) => (
+            <div
+              key={`${trap.card.name}-${i}`}
+              className="w-6 h-8 sm:w-8 sm:h-11 md:w-10 md:h-14 bg-purple-900/80 border-2 border-purple-500 rounded-md shadow-md flex items-center justify-center"
+              style={{ animation: "trapPulse 2s ease-in-out infinite" }}
+            >
+              <span className="text-purple-300 text-xs sm:text-sm">?</span>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Opponent board */}
       <LaneBoardZone minions={opponent.board} label="对方战场" isEnemy hasAttackerSelected={selectedAttacker !== null || pendingSpell !== null || pendingLaneAoe !== null} validTargetIndices={validTargetIndices} onMinionClick={handleEnemyMinionClick} animations={enemyAnims} damageNumbers={enemyDmg} dyingMinions={enemyDying} impactParticles={enemyImpacts} legendaryParticles={enemyLegendaryParticles} legendaryShimmer={enemyLegendaryShimmer} animMultiplier={animMultiplier} showDamageNumbers={showDamageNumbers} terrain={gameState.terrain} />
 
@@ -1493,6 +1532,22 @@ function GameInner({ playerDeck, difficulty }: { playerDeck: Deck; difficulty: A
           }}
         />
       )}
+
+      {/* Trap reveal animation overlay */}
+      {revealedTraps.map(rt => (
+        <div
+          key={rt.key}
+          className="fixed inset-0 flex items-center justify-center pointer-events-none"
+          style={{ zIndex: 55, animation: `trapReveal ${1.5 * animMultiplier}s ease-out forwards` }}
+        >
+          <div className="relative scale-75 sm:scale-100" style={{ animation: `trapRevealCard ${1.5 * animMultiplier}s ease-out forwards` }}>
+            <Card card={rt.card} className="!border-purple-400 !shadow-[0_0_30px_rgba(168,85,247,0.8)]" />
+            <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-purple-600 text-white text-xs sm:text-sm font-bold px-3 py-1 rounded-full whitespace-nowrap">
+              陷阱触发!
+            </div>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

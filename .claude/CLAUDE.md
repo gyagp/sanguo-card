@@ -1,12 +1,12 @@
 # Autopo test Session
 
 ## Work Unit
-Implement trap card play and trigger engine — playing a trap sets it face-down, traps trigger on matching events during opponent's turn, triggered trap executes its effect and is removed
+Add trap card UI — show face-down trap icons for opponent's traps, reveal animation on trigger, update hand rendering for trap cards, show trap count indicator
 
 ## Acceptance Criteria
-- Traps can be played from hand (deducts mana, goes face-down)
-- Traps trigger correctly on matching opponent actions
-- Triggered traps are removed after firing
+- Opponent's traps shown as face-down icons
+- Trap trigger shows reveal animation
+- Trap cards render distinctly in hand
 - npm run build succeeds
 
 ## Rules

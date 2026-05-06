@@ -318,6 +318,42 @@ describe("Card component", () => {
     });
   });
 
+  describe("trap card visual treatment", () => {
+    it("applies purple ring for trap cards", () => {
+      const { container } = render(<Card card={makeCard({ type: "trap" })} />);
+      const cardEl = container.firstElementChild!;
+      expect(cardEl.className).toContain("ring-purple-500/60");
+    });
+
+    it("does NOT apply purple ring for non-trap cards", () => {
+      const { container } = render(<Card card={makeCard({ type: "minion" })} />);
+      const cardEl = container.firstElementChild!;
+      expect(cardEl.className).not.toContain("ring-purple-500/60");
+    });
+
+    it("shows 陷阱 badge for trap cards", () => {
+      render(<Card card={makeCard({ type: "trap" })} />);
+      expect(screen.getByText("陷阱")).toBeDefined();
+    });
+
+    it("does NOT show 陷阱 badge for non-trap cards", () => {
+      render(<Card card={makeCard({ type: "minion" })} />);
+      expect(screen.queryByText("陷阱")).toBeNull();
+    });
+
+    it("does NOT display attack/health stats for trap cards", () => {
+      const { container } = render(<Card card={makeCard({ type: "trap", attack: 0, health: 0 })} />);
+      const yellowCircle = container.querySelector("[class*='bg-yellow-600']");
+      expect(yellowCircle).toBeNull();
+    });
+
+    it("shows trap emoji fallback when PNG fails to load", () => {
+      const { container } = render(<Card card={makeCard({ type: "trap" })} />);
+      container.querySelectorAll("img").forEach(img => fireEvent.error(img));
+      expect(container.textContent).toContain("🪤");
+    });
+  });
+
   describe("hover animation classes", () => {
     it("has scale hover class for enlarge effect", () => {
       const { container } = render(<Card card={makeCard()} />);

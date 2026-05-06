@@ -357,3 +357,48 @@ describe("Lane UI acceptance criteria", () => {
     expect(pageContent).toMatch(/laneCount/);
   });
 });
+
+describe("Trap card UI", () => {
+  it("renders face-down trap icons for opponent's active traps", () => {
+    expect(pageContent).toMatch(/opponent\.activeTraps/);
+    expect(pageContent).toMatch(/陷阱/);
+    expect(pageContent).toMatch(/\?/);
+  });
+
+  it("uses optional chaining or nullish coalescing for activeTraps access", () => {
+    expect(pageContent).toMatch(/activeTraps\?\./);
+  });
+
+  it("shows trap count indicator", () => {
+    expect(pageContent).toMatch(/陷阱 ×/);
+  });
+
+  it("has trap reveal animation state and effect", () => {
+    expect(pageContent).toMatch(/revealedTraps/);
+    expect(pageContent).toMatch(/setRevealedTraps/);
+    expect(pageContent).toMatch(/prevOpponentTrapsRef/);
+  });
+
+  it("RevealedTrap interface is defined at module scope, not inside component", () => {
+    const componentMatch = pageContent.match(/export\s+default\s+function\s+\w+/);
+    expect(componentMatch).not.toBeNull();
+    const interfaceMatch = pageContent.match(/interface\s+RevealedTrap/);
+    expect(interfaceMatch).not.toBeNull();
+    const componentPos = componentMatch!.index!;
+    const interfacePos = interfaceMatch!.index!;
+    expect(interfacePos).toBeLessThan(componentPos);
+  });
+
+  it("trap face-down icons use composite keys, not bare array index", () => {
+    // The key should contain trap.card.name or similar, not just bare index
+    expect(pageContent).toMatch(/trap\.card\.name/);
+  });
+
+  it("trapPulse animation is applied to face-down trap icons", () => {
+    expect(pageContent).toMatch(/trapPulse/);
+  });
+
+  it("trap reveal animation cleans up after timeout", () => {
+    expect(pageContent).toMatch(/setRevealedTraps\(prev\s*=>\s*prev\.filter/);
+  });
+});

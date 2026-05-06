@@ -80,6 +80,7 @@ export default function Card({ card, onClick, className = "", draggable: isDragg
         ${rarityGlow[card.rarity]}
         ${rarityBanner[card.rarity]}
         ${factionBg[card.faction]}
+        ${card.type === "trap" ? "ring-2 ring-purple-500/60" : ""}
         ${className}
       `}
       style={card.rarity === "legendary" ? { animation: "legendaryCardGlow 2.5s ease-in-out infinite" } : undefined}
@@ -151,7 +152,7 @@ export default function Card({ card, onClick, className = "", draggable: isDragg
           />
         ) : (
           <div className="text-5xl opacity-60">
-            {card.type === "spell" ? "✨" : card.type === "weapon" ? "🗡️" : "⚔️"}
+            {card.type === "spell" ? "✨" : card.type === "weapon" ? "🗡️" : card.type === "trap" ? "🪤" : "⚔️"}
           </div>
         )}
       </div>
@@ -160,6 +161,13 @@ export default function Card({ card, onClick, className = "", draggable: isDragg
       <div className="mx-1 mt-1.5 text-center bg-black/30 rounded py-0.5 px-1">
         <p className="text-white font-bold text-sm truncate drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">{card.name}</p>
       </div>
+
+      {/* Trap type badge */}
+      {card.type === "trap" && (
+        <div className="absolute top-0 right-0 bg-purple-700 border border-purple-400 text-purple-100 text-[9px] font-bold px-1.5 py-0.5 rounded-bl-lg z-10">
+          陷阱
+        </div>
+      )}
 
       {/* Description */}
       <div className="mx-2.5 mt-1 h-12 overflow-hidden">
