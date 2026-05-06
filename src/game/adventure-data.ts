@@ -23,6 +23,7 @@ export interface AdventureStage {
   starThresholds: StarThresholds;
   isBoss: boolean;
   bossRules?: BossRule;
+  tutorialHints?: string[];
 }
 
 export interface AdventureChapter {
@@ -64,20 +65,26 @@ export const adventureChapters: AdventureChapter[] = [
     name: "黄巾之乱",
     description: "讨伐黄巾贼，保卫家园",
     stages: [
-      stage("ch1-1", "黄巾前哨", "击败黄巾斥候",
-        ["乡勇", "乡勇", "乡勇", "乡勇", "斥候骑兵", "斥候骑兵", "弓弩手", "弓弩手", "烽火", "烽火",
-         "乡勇", "乡勇", "斥候骑兵", "弓弩手", "烽火", "铁剑", "铁剑", "草药", "草药", "长枪兵"],
-        1,
-        { gold: 10, xp: 20 },
-        { threeStarMinHpPercent: 0.8, threeStarMaxTurns: 8, twoStarMinHpPercent: 0.5, twoStarMaxTurns: 12 },
-      ),
-      stage("ch1-2", "村庄保卫战", "保护村民免遭黄巾劫掠",
-        ["乡勇", "乡勇", "乡勇", "斥候骑兵", "斥候骑兵", "弓弩手", "弓弩手", "长枪兵", "长枪兵", "运粮车",
-         "烽火", "烽火", "草药", "草药", "铁剑", "铁剑", "乡勇", "弓弩手", "辎重车", "征兵令"],
-        2,
-        { gold: 15, xp: 25 },
-        { threeStarMinHpPercent: 0.7, threeStarMaxTurns: 9, twoStarMinHpPercent: 0.4, twoStarMaxTurns: 13 },
-      ),
+      {
+        ...stage("ch1-1", "黄巾前哨", "击败黄巾斥候",
+          ["乡勇", "乡勇", "乡勇", "乡勇", "斥候骑兵", "斥候骑兵", "弓弩手", "弓弩手", "烽火", "烽火",
+           "乡勇", "乡勇", "斥候骑兵", "弓弩手", "烽火", "铁剑", "铁剑", "草药", "草药", "长枪兵"],
+          1,
+          { gold: 10, xp: 20 },
+          { threeStarMinHpPercent: 0.8, threeStarMaxTurns: 8, twoStarMinHpPercent: 0.5, twoStarMaxTurns: 12 },
+        ),
+        tutorialHints: ["将手牌中的卡牌拖入战场来出牌", "法力水晶每回合增长，用来支付卡牌费用"],
+      },
+      {
+        ...stage("ch1-2", "村庄保卫战", "保护村民免遭黄巾劫掠",
+          ["乡勇", "乡勇", "乡勇", "斥候骑兵", "斥候骑兵", "弓弩手", "弓弩手", "长枪兵", "长枪兵", "运粮车",
+           "烽火", "烽火", "草药", "草药", "铁剑", "铁剑", "乡勇", "弓弩手", "辎重车", "征兵令"],
+          2,
+          { gold: 15, xp: 25 },
+          { threeStarMinHpPercent: 0.7, threeStarMaxTurns: 9, twoStarMinHpPercent: 0.4, twoStarMaxTurns: 13 },
+        ),
+        tutorialHints: ["点击你的随从然后点击敌方目标来攻击", "消灭敌方英雄即可获胜"],
+      },
       stage("ch1-3", "破寨之战", "攻破黄巾营寨",
         ["乡勇", "乡勇", "斥候骑兵", "斥候骑兵", "弓弩手", "弓弩手", "长枪兵", "长枪兵", "辎重车", "辎重车",
          "运粮车", "运粮车", "烽火", "烽火", "征兵令", "征兵令", "草药", "铁剑", "铁剑", "长枪兵"],
@@ -94,14 +101,14 @@ export const adventureChapters: AdventureChapter[] = [
       ),
       stage("ch1-5", "广宗城下", "攻打黄巾主力",
         ["长枪兵", "长枪兵", "长枪兵", "弓弩手", "弓弩手", "辎重车", "辎重车", "运粮车", "运粮车", "征兵令",
-         "征兵令", "烽火", "烽火", "伏兵", "草药", "草药", "铁剑", "铁剑", "许褚", "斥候骑兵"],
+         "征兵令", "烽火", "烽火", "征兵令", "草药", "草药", "铁剑", "铁剑", "长枪兵", "斥候骑兵"],
         3,
         { gold: 25, xp: 40 },
         { threeStarMinHpPercent: 0.5, threeStarMaxTurns: 11, twoStarMinHpPercent: 0.25, twoStarMaxTurns: 15 },
       ),
       bossStage("ch1-boss", "张角", "击败黄巾首领张角",
-        ["长枪兵", "长枪兵", "弓弩手", "弓弩手", "辎重车", "辎重车", "征兵令", "征兵令", "伏兵", "伏兵",
-         "运粮车", "运粮车", "烽火", "烽火", "草药", "草药", "许褚", "铁剑", "铁剑", "连环计"],
+        ["长枪兵", "长枪兵", "弓弩手", "弓弩手", "辎重车", "辎重车", "征兵令", "征兵令", "征兵令", "烽火",
+         "运粮车", "运粮车", "烽火", "烽火", "草药", "草药", "长枪兵", "铁剑", "铁剑", "斥候骑兵"],
         4,
         { gold: 50, xp: 80, cards: [{ cardName: "许褚", count: 1 }] },
         { threeStarMinHpPercent: 0.5, threeStarMaxTurns: 12, twoStarMinHpPercent: 0.2, twoStarMaxTurns: 16 },

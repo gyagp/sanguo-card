@@ -1,14 +1,13 @@
 # Autopo test Session
 
 ## Work Unit
-Post-battle results — star rating calculation, reward distribution, and progress update after PVE victory/defeat
+Chapter 1 黄巾之乱 polish — tutorial hints for first 2 stages, balanced enemy decks for new players, verify smooth difficulty curve
 
 ## Acceptance Criteria
-- Victory screen shows 1-3 stars based on remaining HP% and turn count
-- Rewards (gold, XP, specific cards) granted on first clear and displayed
-- Adventure progress updated in localStorage with star count
-- Defeat shows retry option
-- Next stage unlocked on victory
+- Stage 1-1 and 1-2 show brief gameplay hints (play cards, attack)
+- Chapter 1 enemy decks use only common/neutral cards with low cost curve
+- Boss 董卓 uses existing boss-ai.ts phases
+- All 6 stages in Chapter 1 are playable start to finish
 - npm run build succeeds
 
 ## Rules

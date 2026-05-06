@@ -265,6 +265,26 @@ function DeckPicker({ stage, onSelect, onBack }: { stage: AdventureStage; onSele
   );
 }
 
+function TutorialHints({ hints }: { hints: string[] }) {
+  const [dismissed, setDismissed] = useState(false);
+  if (dismissed || hints.length === 0) return null;
+  return (
+    <div className="relative mx-2 mt-2 rounded-lg border border-yellow-500/50 bg-yellow-900/40 px-4 py-3">
+      <button
+        onClick={() => setDismissed(true)}
+        className="absolute top-1 right-2 text-yellow-200/50 hover:text-yellow-200 text-sm"
+      >
+        ✕
+      </button>
+      <div className="space-y-1 text-sm text-yellow-200/90">
+        {hints.map((hint, i) => (
+          <p key={i}>💡 {hint}</p>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function AdventureBattle({ stage, playerDeck, chapterId }: { stage: AdventureStage; playerDeck: Deck; chapterId: string }) {
   const router = useRouter();
   const [selectedAttacker, setSelectedAttacker] = useState<number | null>(null);
@@ -421,6 +441,8 @@ function AdventureBattle({ stage, playerDeck, chapterId }: { stage: AdventureSta
         <span className="font-bold">{stage.name}</span>
         <span>法力 {p.hero.mana}/{p.maxMana}</span>
       </div>
+
+      {stage.tutorialHints && <TutorialHints hints={stage.tutorialHints} />}
 
       <div className="flex-1 flex flex-col px-2 py-2 gap-2 overflow-y-auto">
         <div className="text-center text-sm text-red-300">
