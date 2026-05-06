@@ -3,7 +3,11 @@ import {
   BoardMinion,
   Card,
   Lane,
+  ALL_LANES,
   MAX_BOARD_SIZE,
+  MAX_LANE_SIZE,
+  addMinionToLane,
+  getLaneCount,
   removeDeadMinions,
   drawCard,
   MAX_HAND_SIZE,
@@ -90,9 +94,9 @@ export const BOSS_DONGZHUO: BossDefinition = {
       hpThreshold: 0.5,
       strategyOverride: { playStyle: 'optimal', attackPriority: 'face' },
       turnStartEffect: (state: GameState, bossPlayer: 0 | 1): GameState => {
-        const board = state.players[bossPlayer].board;
-        if (board.length < MAX_BOARD_SIZE) {
-          board.push(createToken('西凉兵', 2, 1, 'qun'));
+        const player = state.players[bossPlayer];
+        if (player.board.length < MAX_BOARD_SIZE) {
+          addMinionToLane(player, createToken('西凉兵', 2, 1, 'qun'), Lane.Center);
         }
         return state;
       },
@@ -107,9 +111,8 @@ export const BOSS_DONGZHUO: BossDefinition = {
           minion.currentHealth -= 1;
         }
         removeDeadMinions(state);
-        const board = state.players[bossPlayer].board;
-        if (board.length < MAX_BOARD_SIZE) {
-          board.push(createToken('西凉精锐', 3, 2, 'qun'));
+        if (state.players[bossPlayer].board.length < MAX_BOARD_SIZE) {
+          addMinionToLane(state.players[bossPlayer], createToken('西凉精锐', 3, 2, 'qun'), Lane.Center);
         }
         return state;
       },
@@ -125,9 +128,8 @@ export const BOSS_ZHANGJIAO: BossDefinition = {
       hpThreshold: 1.0,
       strategyOverride: { playStyle: 'curve', attackPriority: 'smart' },
       turnStartEffect: (state: GameState, bossPlayer: 0 | 1): GameState => {
-        const board = state.players[bossPlayer].board;
-        if (board.length < MAX_BOARD_SIZE) {
-          board.push(createToken('乡勇', 1, 1, 'neutral'));
+        if (state.players[bossPlayer].board.length < MAX_BOARD_SIZE) {
+          addMinionToLane(state.players[bossPlayer], createToken('乡勇', 1, 1, 'neutral'), Lane.Center);
         }
         return state;
       },
@@ -137,9 +139,8 @@ export const BOSS_ZHANGJIAO: BossDefinition = {
       hpThreshold: 0.4,
       strategyOverride: { playStyle: 'optimal', attackPriority: 'face' },
       turnStartEffect: (state: GameState, bossPlayer: 0 | 1): GameState => {
-        const board = state.players[bossPlayer].board;
-        if (board.length < MAX_BOARD_SIZE) {
-          board.push(createToken('乡勇', 1, 1, 'neutral'));
+        if (state.players[bossPlayer].board.length < MAX_BOARD_SIZE) {
+          addMinionToLane(state.players[bossPlayer], createToken('乡勇', 1, 1, 'neutral'), Lane.Center);
         }
         state.players[bossPlayer].hero.health = Math.min(30, state.players[bossPlayer].hero.health + 3);
         drawCard(state.players[bossPlayer]);
@@ -203,9 +204,8 @@ export const BOSS_YUANSHAO: BossDefinition = {
         for (const minion of state.players[bossPlayer].board) {
           minion.currentHealth += 1;
         }
-        const board = state.players[bossPlayer].board;
-        if (board.length < MAX_BOARD_SIZE) {
-          board.push(createToken('袁军精锐', 3, 3, 'neutral'));
+        if (state.players[bossPlayer].board.length < MAX_BOARD_SIZE) {
+          addMinionToLane(state.players[bossPlayer], createToken('袁军精锐', 3, 3, 'neutral'), Lane.Center);
         }
         return state;
       },
@@ -253,11 +253,12 @@ export const BOSS_CAOCAO: BossDefinition = {
             if (oppBoard[i].currentAttack < oppBoard[lowestIdx].currentAttack) lowestIdx = i;
           }
           const stolen = oppBoard.splice(lowestIdx, 1)[0];
-          const bossBoard = state.players[bossPlayer].board;
-          if (bossBoard.length < MAX_BOARD_SIZE) {
+          const bossPlayer2 = state.players[bossPlayer];
+          if (bossPlayer2.board.length < MAX_BOARD_SIZE) {
             stolen.summoningSickness = true;
             stolen.hasAttacked = false;
-            bossBoard.push(stolen);
+            const targetLane = ALL_LANES.find(l => getLaneCount(bossPlayer2, l) < MAX_LANE_SIZE) ?? Lane.Center;
+            addMinionToLane(bossPlayer2, stolen, targetLane);
           }
         }
         return state;

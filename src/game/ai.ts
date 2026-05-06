@@ -1,4 +1,4 @@
-import { GameState, PlayerState, Card, BoardMinion, Faction, FACTION_SYNERGIES, getEffectiveCardCost } from './types';
+import { GameState, PlayerState, Card, BoardMinion, Faction, FACTION_SYNERGIES, getEffectiveCardCost, Lane, ALL_LANES, getLaneCount, MAX_LANE_SIZE } from './types';
 
 
 function pickSpellTarget(card: Card, state: GameState): number | undefined {
@@ -25,7 +25,8 @@ export interface PlayCardDecision {
   type: 'playCard';
   cardIndex: number;
   spellTarget?: number;
-  boardPosition?: number;
+  lane?: Lane;
+  slotIndex?: number;
 }
 
 export interface AttackDecision {
@@ -314,7 +315,7 @@ function getRandomPlayDecisions(state: GameState): PlayCardDecision[] {
   for (const idx of shuffled) {
     const cost = getEffectiveCardCost(player.hand[idx], player);
     if (cost <= mana) {
-      decisions.push({ type: 'playCard', cardIndex: idx, spellTarget: pickSpellTarget(player.hand[idx], state) });
+      decisions.push({ type: 'playCard', cardIndex: idx, spellTarget: pickSpellTarget(player.hand[idx], state), lane: pickLaneForMinion(player) });
       mana -= cost;
     }
   }
@@ -352,7 +353,7 @@ export function getOnCurvePlayDecisions(state: GameState): PlayCardDecision[] {
   for (const idx of sorted) {
     const cost = getEffectiveCardCost(player.hand[idx], player);
     if (cost <= mana) {
-      decisions.push({ type: 'playCard', cardIndex: idx, spellTarget: pickSpellTarget(player.hand[idx], state) });
+      decisions.push({ type: 'playCard', cardIndex: idx, spellTarget: pickSpellTarget(player.hand[idx], state), lane: pickLaneForMinion(player) });
       mana -= cost;
     }
   }
@@ -422,35 +423,59 @@ function applyFactionPlayOrder(decisions: PlayCardDecision[], player: PlayerStat
   return decisions;
 }
 
-function findBestShuPosition(board: BoardMinion[]): number | undefined {
-  if (board.length === 0) return undefined;
-
-  let bestPos = board.length;
-  let bestAdjacentShu = 0;
-
-  for (let pos = 0; pos <= board.length; pos++) {
-    let adjacentShu = 0;
-    if (pos > 0 && board[pos - 1].faction === "shu") adjacentShu++;
-    if (pos < board.length && board[pos].faction === "shu") adjacentShu++;
-    if (adjacentShu > bestAdjacentShu) {
-      bestAdjacentShu = adjacentShu;
-      bestPos = pos;
+function pickLaneForMinion(player: PlayerState): Lane {
+  for (const lane of ALL_LANES) {
+    if (getLaneCount(player, lane) < MAX_LANE_SIZE) {
+      return lane;
     }
   }
+  return Lane.Center;
+}
 
-  return bestAdjacentShu > 0 ? bestPos : undefined;
+function applyLaneAssignments(decisions: PlayCardDecision[], player: PlayerState): PlayCardDecision[] {
+  const laneCounts = new Map<Lane, number>();
+  for (const lane of ALL_LANES) {
+    laneCounts.set(lane, getLaneCount(player, lane));
+  }
+  return decisions.map(d => {
+    const card = player.hand[d.cardIndex];
+    if (card.type !== "minion") return d;
+    for (const lane of ALL_LANES) {
+      if ((laneCounts.get(lane) ?? 0) < MAX_LANE_SIZE) {
+        laneCounts.set(lane, (laneCounts.get(lane) ?? 0) + 1);
+        return { ...d, lane };
+      }
+    }
+    return d;
+  });
 }
 
 function applyFactionBoardPositions(decisions: PlayCardDecision[], player: PlayerState): PlayCardDecision[] {
+  decisions = applyLaneAssignments(decisions, player);
+
   if (player.deckFaction !== "shu") return decisions;
 
   return decisions.map(d => {
     const card = player.hand[d.cardIndex];
     if (card.type !== "minion" || card.faction !== "shu") return d;
-    const pos = findBestShuPosition(player.board);
-    if (pos === undefined) return d;
-    return { ...d, boardPosition: pos };
+    const bestLane = pickShuLane(player);
+    if (bestLane) return { ...d, lane: bestLane };
+    return d;
   });
+}
+
+function pickShuLane(player: PlayerState): Lane | undefined {
+  let bestLane: Lane | undefined;
+  let bestAdjacentShu = 0;
+  for (const lane of ALL_LANES) {
+    if (getLaneCount(player, lane) >= MAX_LANE_SIZE) continue;
+    const shuInLane = player.board.filter(m => m.lane === lane && m.faction === "shu").length;
+    if (shuInLane > bestAdjacentShu) {
+      bestAdjacentShu = shuInLane;
+      bestLane = lane;
+    }
+  }
+  return bestAdjacentShu > 0 ? bestLane : undefined;
 }
 
 class EasyAI implements AIStrategy {

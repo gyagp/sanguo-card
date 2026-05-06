@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
-  GameState, PlayerState, BoardMinion, Card, Faction,
+  GameState, PlayerState, BoardMinion, Card, Faction, Lane,
   recalculateShuBonuses, recalculateFactionSynergies, playCard,
   removeDeadMinions, createDeck, createPlayerState,
   gameEventBus,
@@ -27,6 +27,7 @@ function makeMinion(overrides: Partial<BoardMinion> & { faction: Faction }): Boa
     factionAttackBonus: 0, factionHealthBonus: 0,
     shuAdjacencyAtkBonus: 0, shuAdjacencyHpBonus: 0,
     brotherhoodAtkBonus: 0, brotherhoodHpBonus: 0, wuChargeBonus: 0, wuWeaponBonus: 0, wuComboAtkBonus: 0, wuComboHpBonus: 0, qunDebuff: 0,
+    lane: Lane.Center, slotIndex: 0,
     ...overrides,
   };
 }
@@ -49,6 +50,7 @@ function makeGameState(p0Board: BoardMinion[], p1Board: BoardMinion[]): GameStat
     board: [p0Board, p1Board],
     turn: 1, phase: 'playing', turnPhase: 'play', activePlayer: 0,
     spellsPlayed: [[], []], wuComboCount: [0, 0],
+    terrain: { [Lane.Left]: null, [Lane.Center]: null, [Lane.Right]: null },
   };
 }
 
@@ -212,7 +214,7 @@ describe('bonuses recalculated on minion play', () => {
     state.players[0].hand = [zhangCard];
     state.players[0].hero.mana = 10;
 
-    playCard(state, 0);
+    playCard(state, 0, undefined, undefined, undefined, Lane.Left);
 
     expect(state.players[0].board.length).toBe(3);
     for (const m of state.players[0].board) {

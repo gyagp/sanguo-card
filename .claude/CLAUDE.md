@@ -1,12 +1,13 @@
 # Autopo test Session
 
 ## Work Unit
-Define lane system types — Lane enum (left/center/right), LanePosition (lane + slot index), update BoardMinion to include lane/slot, add TerrainEffect type, update GameState with terrain and lane-based board structure
+Migrate board representation — replace flat board array with lane-based structure (3 lanes × 2 slots = 6 positions per player), update playCard to accept lane+slot, update all board iteration helpers (forEach, filter, find) to work with new structure
 
 ## Acceptance Criteria
-- Lane, LanePosition, TerrainEffect types exported from types.ts
-- BoardMinion has lane and slotIndex fields
-- GameState has terrain field typed as Record<Lane, TerrainEffect | null>
+- Board is stored as lane-based structure
+- playCard accepts lane and slot parameters
+- Helper functions getBoardMinions(), getMinionsByLane() exist
+- Backward compat: flat iteration still works via helper
 - npm run build succeeds
 
 ## Rules

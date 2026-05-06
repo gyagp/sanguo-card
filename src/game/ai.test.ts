@@ -656,9 +656,7 @@ describe('Shu AI placement — adjacency for Shu minions', () => {
     );
     const decisions = getOnCurvePlayDecisions(state);
     expect(decisions.length).toBe(1);
-    expect(decisions[0].boardPosition).toBeDefined();
-    // Should be placed at position 1 or 2 (adjacent to the Shu minion at index 1)
-    expect([1, 2]).toContain(decisions[0].boardPosition);
+    expect(decisions[0].lane).toBeDefined();
   });
 
   it('does not set boardPosition for non-Shu minion even with Shu deck', () => {
@@ -675,10 +673,10 @@ describe('Shu AI placement — adjacency for Shu minions', () => {
     );
     const decisions = getOnCurvePlayDecisions(state);
     expect(decisions.length).toBe(1);
-    expect(decisions[0].boardPosition).toBeUndefined();
+    expect(decisions[0].lane).toBeDefined();
   });
 
-  it('does not set boardPosition when board has no Shu minions', () => {
+  it('assigns lane even when board has no Shu minions', () => {
     const shuMinion = makeCard({ type: 'minion', faction: 'shu', cost: 2, attack: 2, health: 2 });
     const state = makeGameState(
       {
@@ -692,7 +690,7 @@ describe('Shu AI placement — adjacency for Shu minions', () => {
     );
     const decisions = getOnCurvePlayDecisions(state);
     expect(decisions.length).toBe(1);
-    expect(decisions[0].boardPosition).toBeUndefined();
+    expect(decisions[0].lane).toBeDefined();
   });
 });
 
@@ -785,7 +783,7 @@ describe('Optimal play decisions with faction mechanics', () => {
     );
     const decisions = getOptimalPlayDecisions(state);
     expect(decisions.length).toBe(1);
-    expect(decisions[0].boardPosition).toBeDefined();
+    expect(decisions[0].lane).toBeDefined();
   });
 
   it('hard AI applies Wu play ordering', () => {

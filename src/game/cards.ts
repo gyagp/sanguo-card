@@ -1,4 +1,4 @@
-import { Card, GameState, BoardMinion, MAX_BOARD_SIZE, MAX_HAND_SIZE, EffectContext, drawCard, STARTING_HP, gameEventBus, EventListener, GameEvent, applyFreeze, Lane } from "./types";
+import { Card, GameState, BoardMinion, MAX_BOARD_SIZE, MAX_HAND_SIZE, EffectContext, drawCard, STARTING_HP, gameEventBus, EventListener, GameEvent, applyFreeze, Lane, addMinionToLane } from "./types";
 
 export const cards: Card[] = [
   // === 普通 (10) ===
@@ -100,7 +100,7 @@ export const cards: Card[] = [
           brotherhoodAtkBonus: 0, brotherhoodHpBonus: 0, wuChargeBonus: 0, wuWeaponBonus: 0, wuComboAtkBonus: 0, wuComboHpBonus: 0, qunDebuff: 0,
           lane: Lane.Center, slotIndex: 0,
         };
-        player.board.push(token);
+        addMinionToLane(player, token, Lane.Center);
       }
       return state;
     },
@@ -318,7 +318,7 @@ export const cards: Card[] = [
     name: "刘备", cost: 6, attack: 4, health: 6, description: "战吼：召唤张飞（3/3冲锋）和关羽（4/4嘲讽）",
     rarity: "legendary", type: "minion", faction: "shu",
     battlecry: (state: GameState, context) => {
-      const board = state.players[context.player].board;
+      const player = state.players[context.player];
       const makeMinion = (name: string, atk: number, hp: number, extra: Partial<BoardMinion>): BoardMinion => ({
         name, cost: 0, attack: atk, health: hp, description: "",
         rarity: "common", type: "minion", faction: "shu",
@@ -332,11 +332,11 @@ export const cards: Card[] = [
         lane: Lane.Center, slotIndex: 0,
         ...extra,
       });
-      if (board.length < MAX_BOARD_SIZE) {
-        board.push(makeMinion("张飞", 3, 3, { charge: true, summoningSickness: false }));
+      if (player.board.length < MAX_BOARD_SIZE) {
+        addMinionToLane(player, makeMinion("张飞", 3, 3, { charge: true, summoningSickness: false }), Lane.Left);
       }
-      if (board.length < MAX_BOARD_SIZE) {
-        board.push(makeMinion("关羽", 4, 4, { taunt: true }));
+      if (player.board.length < MAX_BOARD_SIZE) {
+        addMinionToLane(player, makeMinion("关羽", 4, 4, { taunt: true }), Lane.Right);
       }
       return state;
     },

@@ -39,6 +39,14 @@ import {
   Lane,
   LanePosition,
   TerrainEffect,
+  getBoardMinions,
+  getMinionsByLane,
+  getLaneBoard,
+  getLaneCount,
+  addMinionToLane,
+  MAX_LANE_SIZE,
+  ALL_LANES,
+  LaneBoard,
 } from "./types";
 
 function makeCard(overrides: Partial<Card> = {}): Card {
@@ -452,8 +460,8 @@ describe("playCard", () => {
     expect(state.players[0].weapon).toEqual({ name: "Axe", attack: 3, durability: 2, windfury: undefined });
   });
 
-  it("MAX_BOARD_SIZE is 7", () => {
-    expect(MAX_BOARD_SIZE).toBe(7);
+  it("MAX_BOARD_SIZE is 6 (3 lanes × 2 slots)", () => {
+    expect(MAX_BOARD_SIZE).toBe(6);
   });
 });
 
@@ -1016,5 +1024,181 @@ describe("Lane system types", () => {
     expect(minion).toHaveProperty("slotIndex");
     expect(Object.values(Lane)).toContain(minion.lane);
     expect(typeof minion.slotIndex).toBe("number");
+  });
+});
+
+describe("Lane helper functions", () => {
+  it("getBoardMinions returns all minions on player board", () => {
+    const player = makePlayerState();
+    player.board = [
+      makeBoardMinion({ name: "A", lane: Lane.Left }),
+      makeBoardMinion({ name: "B", lane: Lane.Center }),
+      makeBoardMinion({ name: "C", lane: Lane.Right }),
+    ];
+    const minions = getBoardMinions(player);
+    expect(minions).toHaveLength(3);
+    expect(minions.map(m => m.name)).toEqual(["A", "B", "C"]);
+  });
+
+  it("getBoardMinions returns empty array for empty board", () => {
+    const player = makePlayerState();
+    expect(getBoardMinions(player)).toHaveLength(0);
+  });
+
+  it("getMinionsByLane filters minions by lane", () => {
+    const player = makePlayerState();
+    player.board = [
+      makeBoardMinion({ name: "L1", lane: Lane.Left }),
+      makeBoardMinion({ name: "C1", lane: Lane.Center }),
+      makeBoardMinion({ name: "L2", lane: Lane.Left }),
+      makeBoardMinion({ name: "R1", lane: Lane.Right }),
+    ];
+    const leftMinions = getMinionsByLane(player, Lane.Left);
+    expect(leftMinions).toHaveLength(2);
+    expect(leftMinions.map(m => m.name)).toEqual(["L1", "L2"]);
+
+    const centerMinions = getMinionsByLane(player, Lane.Center);
+    expect(centerMinions).toHaveLength(1);
+    expect(centerMinions[0].name).toBe("C1");
+
+    const rightMinions = getMinionsByLane(player, Lane.Right);
+    expect(rightMinions).toHaveLength(1);
+    expect(rightMinions[0].name).toBe("R1");
+  });
+
+  it("getMinionsByLane returns empty for lane with no minions", () => {
+    const player = makePlayerState();
+    player.board = [makeBoardMinion({ lane: Lane.Left })];
+    expect(getMinionsByLane(player, Lane.Right)).toHaveLength(0);
+  });
+
+  it("getLaneBoard returns minions grouped by lane", () => {
+    const player = makePlayerState();
+    player.board = [
+      makeBoardMinion({ name: "L1", lane: Lane.Left }),
+      makeBoardMinion({ name: "C1", lane: Lane.Center }),
+      makeBoardMinion({ name: "R1", lane: Lane.Right }),
+    ];
+    const lb = getLaneBoard(player);
+    expect(lb[Lane.Left]).toHaveLength(1);
+    expect(lb[Lane.Center]).toHaveLength(1);
+    expect(lb[Lane.Right]).toHaveLength(1);
+  });
+
+  it("getLaneCount returns count of minions in a lane", () => {
+    const player = makePlayerState();
+    player.board = [
+      makeBoardMinion({ lane: Lane.Left }),
+      makeBoardMinion({ lane: Lane.Left }),
+      makeBoardMinion({ lane: Lane.Center }),
+    ];
+    expect(getLaneCount(player, Lane.Left)).toBe(2);
+    expect(getLaneCount(player, Lane.Center)).toBe(1);
+    expect(getLaneCount(player, Lane.Right)).toBe(0);
+  });
+
+  it("addMinionToLane adds minion and sets lane/slot", () => {
+    const player = makePlayerState();
+    const minion = makeBoardMinion({ name: "New" });
+    const result = addMinionToLane(player, minion, Lane.Right);
+    expect(result).toBe(true);
+    expect(player.board).toHaveLength(1);
+    expect(minion.lane).toBe(Lane.Right);
+    expect(minion.slotIndex).toBe(0);
+  });
+
+  it("addMinionToLane rejects when board is full", () => {
+    const player = makePlayerState();
+    for (let i = 0; i < MAX_BOARD_SIZE; i++) {
+      player.board.push(makeBoardMinion({ lane: ALL_LANES[i % 3] }));
+    }
+    const minion = makeBoardMinion({ name: "Extra" });
+    expect(addMinionToLane(player, minion, Lane.Center)).toBe(false);
+  });
+
+  it("addMinionToLane rejects when lane is full (MAX_LANE_SIZE = 2)", () => {
+    const player = makePlayerState();
+    player.board = [
+      makeBoardMinion({ lane: Lane.Left }),
+      makeBoardMinion({ lane: Lane.Left }),
+    ];
+    const minion = makeBoardMinion({ name: "Third" });
+    expect(addMinionToLane(player, minion, Lane.Left)).toBe(false);
+    expect(MAX_LANE_SIZE).toBe(2);
+  });
+
+  it("ALL_LANES contains all three lanes", () => {
+    expect(ALL_LANES).toEqual([Lane.Left, Lane.Center, Lane.Right]);
+  });
+});
+
+describe("playCard with lane parameters", () => {
+  function setupGame(mana: number, handCards: Card[]): GameState {
+    const state = initializeGame(makeDeck(), makeDeck());
+    state.players[0].hero.mana = mana;
+    state.players[0].maxMana = mana;
+    state.players[0].hand = [...handCards];
+    return state;
+  }
+
+  it("playCard accepts lane parameter and places minion in specified lane", () => {
+    const card = makeCard({ cost: 1, type: "minion" });
+    const state = setupGame(5, [card]);
+    const result = playCard(state, 0, undefined, undefined, undefined, Lane.Right);
+    expect(result.success).toBe(true);
+    expect(state.players[0].board[0].lane).toBe(Lane.Right);
+  });
+
+  it("playCard accepts slotIndex parameter", () => {
+    const card = makeCard({ cost: 1, type: "minion" });
+    const state = setupGame(5, [card]);
+    const result = playCard(state, 0, undefined, undefined, undefined, Lane.Left, 1);
+    expect(result.success).toBe(true);
+    expect(state.players[0].board[0].lane).toBe(Lane.Left);
+    expect(state.players[0].board[0].slotIndex).toBe(1);
+  });
+
+  it("playCard defaults lane to Center when not specified", () => {
+    const card = makeCard({ cost: 1, type: "minion" });
+    const state = setupGame(5, [card]);
+    playCard(state, 0);
+    expect(state.players[0].board[0].lane).toBe(Lane.Center);
+  });
+
+  it("playCard rejects when specified lane is full", () => {
+    const state = setupGame(10, [makeCard({ cost: 1, type: "minion" })]);
+    state.players[0].board = [
+      makeBoardMinion({ lane: Lane.Left }),
+      makeBoardMinion({ lane: Lane.Left }),
+    ];
+    const result = playCard(state, 0, undefined, undefined, undefined, Lane.Left);
+    expect(result.success).toBe(false);
+    expect(result.error).toBe("Lane is full");
+  });
+
+  it("playCard allows placing in different lanes up to board max", () => {
+    const state = setupGame(10, []);
+    for (const lane of ALL_LANES) {
+      for (let i = 0; i < MAX_LANE_SIZE; i++) {
+        state.players[0].hand.push(makeCard({ cost: 1, type: "minion", name: `${lane}-${i}` }));
+        const result = playCard(state, 0, undefined, undefined, undefined, lane);
+        expect(result.success).toBe(true);
+      }
+    }
+    expect(state.players[0].board).toHaveLength(MAX_BOARD_SIZE);
+  });
+
+  it("flat iteration via getBoardMinions works across all lanes", () => {
+    const state = setupGame(10, []);
+    state.players[0].board = [
+      makeBoardMinion({ name: "L", lane: Lane.Left }),
+      makeBoardMinion({ name: "C", lane: Lane.Center }),
+      makeBoardMinion({ name: "R", lane: Lane.Right }),
+    ];
+    const all = getBoardMinions(state.players[0]);
+    expect(all).toHaveLength(3);
+    expect(all.map(m => m.name)).toContain("L");
+    expect(all.map(m => m.name)).toContain("C");
+    expect(all.map(m => m.name)).toContain("R");
   });
 });

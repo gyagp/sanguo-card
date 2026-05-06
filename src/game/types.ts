@@ -291,7 +291,40 @@ export interface GameState {
 
 export const MAX_MANA = 10;
 export const STARTING_HP = 30;
-export const MAX_BOARD_SIZE = 7;
+export const MAX_BOARD_SIZE = 6;
+export const MAX_LANE_SIZE = 2;
+export const ALL_LANES: Lane[] = [Lane.Left, Lane.Center, Lane.Right];
+
+export type LaneBoard = Record<Lane, BoardMinion[]>;
+
+export function getBoardMinions(player: PlayerState): BoardMinion[] {
+  return player.board;
+}
+
+export function getMinionsByLane(player: PlayerState, lane: Lane): BoardMinion[] {
+  return player.board.filter(m => m.lane === lane);
+}
+
+export function getLaneBoard(player: PlayerState): LaneBoard {
+  return {
+    [Lane.Left]: player.board.filter(m => m.lane === Lane.Left),
+    [Lane.Center]: player.board.filter(m => m.lane === Lane.Center),
+    [Lane.Right]: player.board.filter(m => m.lane === Lane.Right),
+  };
+}
+
+export function getLaneCount(player: PlayerState, lane: Lane): number {
+  return player.board.filter(m => m.lane === lane).length;
+}
+
+export function addMinionToLane(player: PlayerState, minion: BoardMinion, lane: Lane, slotIndex?: number): boolean {
+  if (player.board.length >= MAX_BOARD_SIZE) return false;
+  if (getLaneCount(player, lane) >= MAX_LANE_SIZE) return false;
+  minion.lane = lane;
+  minion.slotIndex = slotIndex ?? getLaneCount(player, lane);
+  player.board.push(minion);
+  return true;
+}
 
 export function createPlayerState(deck: Deck): PlayerState {
   return {
@@ -486,7 +519,9 @@ export function playCard(
   handIndex: number,
   targetIndex?: number,
   rng: () => number = Math.random,
-  boardPosition?: number,
+  _boardPosition?: number,
+  lane: Lane = Lane.Center,
+  slotIndex?: number,
 ): PlayCardResult {
   const player = state.players[state.activePlayer];
 
@@ -505,6 +540,9 @@ export function playCard(
   if (card.type === "minion") {
     if (player.board.length >= MAX_BOARD_SIZE) {
       return { success: false, error: "Board is full" };
+    }
+    if (getLaneCount(player, lane) >= MAX_LANE_SIZE) {
+      return { success: false, error: "Lane is full" };
     }
     player.hero.mana -= card.cost;
     player.hand.splice(handIndex, 1);
@@ -528,13 +566,9 @@ export function playCard(
       shuAdjacencyHpBonus: 0,
       brotherhoodAtkBonus: 0,
       brotherhoodHpBonus: 0, wuChargeBonus: 0, wuWeaponBonus: 0, wuComboAtkBonus: 0, wuComboHpBonus: 0, qunDebuff: 0,
-      lane: Lane.Center, slotIndex: 0,
+      lane: lane, slotIndex: slotIndex ?? getLaneCount(player, lane),
     };
-    if (boardPosition !== undefined && boardPosition >= 0 && boardPosition < player.board.length) {
-      player.board.splice(boardPosition, 0, minion);
-    } else {
-      player.board.push(minion);
-    }
+    player.board.push(minion);
     recalculateFactionSynergies(player);
 
     if (card.faction === "wu" && card.charge && player.deckFaction === "wu" && player.hasDeckFactionBonus) {
@@ -1141,7 +1175,7 @@ export const FACTION_HERO_POWERS: Record<Faction, HeroPower> = {
         brotherhoodHpBonus: 0, wuChargeBonus: 0, wuWeaponBonus: 0, wuComboAtkBonus: 0, wuComboHpBonus: 0, qunDebuff: 0,
         lane: Lane.Center, slotIndex: 0,
       };
-      player.board.push(token);
+      addMinionToLane(player, token, Lane.Center);
     },
   },
   qun: {
@@ -1228,7 +1262,7 @@ export const UPGRADED_FACTION_HERO_POWERS: Partial<Record<Faction, HeroPower>> =
         brotherhoodHpBonus: 0, wuChargeBonus: 0, wuWeaponBonus: 0, wuComboAtkBonus: 0, wuComboHpBonus: 0, qunDebuff: 0,
         lane: Lane.Center, slotIndex: 0,
       };
-      player.board.push(token);
+      addMinionToLane(player, token, Lane.Center);
     },
   },
   qun: {
