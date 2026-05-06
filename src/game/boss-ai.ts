@@ -590,6 +590,18 @@ export class BossAI implements AIStrategy {
     }
     return state;
   }
+
+  mulliganHand(hand: Card[]): number[] {
+    const toReplace: number[] = [];
+    for (let i = 0; i < hand.length; i++) {
+      if (hand[i].cost > 3) toReplace.push(i);
+    }
+    return toReplace;
+  }
+
+  shouldGetBonusCard(): boolean {
+    return true;
+  }
 }
 
 export const BOSSES: Record<string, BossDefinition> = {

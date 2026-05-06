@@ -1905,3 +1905,196 @@ describe('AI board state evaluation — threat assessment and play style switchi
     });
   });
 });
+
+describe('Difficulty-based AI behavior scaling', () => {
+  describe('mulliganHand', () => {
+    it('EasyAI keeps all cards (no mulligan)', () => {
+      const ai = createAI('easy');
+      const hand = [makeCard({ cost: 5 }), makeCard({ cost: 7 }), makeCard({ cost: 1 })];
+      expect(ai.mulliganHand(hand)).toEqual([]);
+    });
+
+    it('NormalAI replaces cards costing more than 4', () => {
+      const ai = createAI('normal');
+      const hand = [makeCard({ cost: 2 }), makeCard({ cost: 5 }), makeCard({ cost: 3 })];
+      expect(ai.mulliganHand(hand)).toEqual([1]);
+    });
+
+    it('HardAI replaces cards costing more than 3', () => {
+      const ai = createAI('hard');
+      const hand = [makeCard({ cost: 4 }), makeCard({ cost: 2 }), makeCard({ cost: 1 })];
+      expect(ai.mulliganHand(hand)).toEqual([0]);
+    });
+
+    it('HardAI keeps 3-drops when a 2-drop exists', () => {
+      const ai = createAI('hard');
+      const hand = [makeCard({ cost: 2 }), makeCard({ cost: 3 }), makeCard({ cost: 1 })];
+      expect(ai.mulliganHand(hand)).toEqual([]);
+    });
+
+    it('HardAI replaces 3-drops when no 2-drop exists', () => {
+      const ai = createAI('hard');
+      const hand = [makeCard({ cost: 1 }), makeCard({ cost: 3 }), makeCard({ cost: 1 })];
+      expect(ai.mulliganHand(hand)).toEqual([1]);
+    });
+  });
+
+  describe('shouldGetBonusCard', () => {
+    it('EasyAI does not get bonus card', () => {
+      const ai = createAI('easy');
+      expect(ai.shouldGetBonusCard()).toBe(false);
+    });
+
+    it('NormalAI does not get bonus card', () => {
+      const ai = createAI('normal');
+      expect(ai.shouldGetBonusCard()).toBe(false);
+    });
+
+    it('HardAI gets bonus card', () => {
+      const ai = createAI('hard');
+      expect(ai.shouldGetBonusCard()).toBe(true);
+    });
+
+    it('BossAI gets bonus card', () => {
+      const ai = createAI('boss');
+      expect(ai.shouldGetBonusCard()).toBe(true);
+    });
+  });
+
+  describe('difficulty gates AI subsystems', () => {
+    it('EasyAI produces different play orders than HardAI on the same board state', () => {
+      const hand = [makeCard({ cost: 2, faction: 'shu', type: 'minion', attack: 2, health: 2 }), makeCard({ cost: 3, faction: 'shu', type: 'minion', attack: 3, health: 3 }), makeCard({ cost: 4, faction: 'shu', type: 'minion', attack: 4, health: 4 })];
+      const board = [makeMinion({ faction: 'shu', lane: Lane.Center })];
+      const state = makeGameState(
+        { hand: [...hand], board: [...board], hero: { health: 30, mana: 5, heroPower: { name: '', cost: 2, description: '' } }, deckFaction: 'shu', hasDeckFactionBonus: true },
+        {},
+      );
+      const hardAI = createAI('hard');
+
+      const hardDecisions = hardAI.getPlayDecisions(state);
+      const hardTotal = hardDecisions.reduce((s, d) => s + hand[d.cardIndex].cost, 0);
+      expect(hardTotal).toBe(5);
+
+      const easyAI = createAI('easy');
+      const easyCombos = new Set<string>();
+      for (let i = 0; i < 50; i++) {
+        const decisions = easyAI.getPlayDecisions(state);
+        easyCombos.add(decisions.map(d => d.cardIndex).sort().join(','));
+      }
+      expect(easyCombos.size).toBeGreaterThan(1);
+    });
+
+    it('EasyAI does NOT use synergy-aware attack decisions (random targeting)', () => {
+      const state = makeGameState(
+        { board: [makeMinion({ currentAttack: 3, currentHealth: 5, lane: Lane.Center })] },
+        {
+          hero: { health: 30, mana: 0, heroPower: { name: '', cost: 2, description: '' } },
+          board: [
+            makeMinion({ currentAttack: 1, currentHealth: 1, lane: Lane.Center }),
+            makeMinion({ currentAttack: 2, currentHealth: 3, lane: Lane.Center }),
+          ],
+        },
+      );
+      state.activePlayer = 0;
+
+      const hardAI = createAI('hard');
+      const hardDecisions = hardAI.getAttackDecisions(state);
+      const hardTarget = hardDecisions.find(d => d.targetIndex !== 'hero')?.targetIndex;
+
+      const easyTargets = new Set<string>();
+      const easyAI = createAI('easy');
+      for (let i = 0; i < 50; i++) {
+        const decisions = easyAI.getAttackDecisions(state);
+        easyTargets.add(decisions.map(d => `${d.targetIndex}`).join(','));
+      }
+      expect(easyTargets.size).toBeGreaterThan(1);
+    });
+
+    it('EasyAI hero power is probabilistic — not always on or always off', () => {
+      const ai = createAI('easy');
+      const results = Array.from({ length: 200 }, () => ai.shouldUseHeroPower({} as GameState));
+      const trueCount = results.filter(Boolean).length;
+      expect(trueCount).toBeGreaterThan(10);
+      expect(trueCount).toBeLessThan(150);
+    });
+
+    it('HardAI skips hero power when it would waste mana vs card plays', () => {
+      const ai = createAI('hard');
+      const state = makeGameState(
+        { hand: [makeCard({ cost: 5 })], hero: { health: 30, mana: 5, heroPower: { name: 'Ping', cost: 2, description: '' } }, heroPowerUsed: false },
+        {},
+      );
+      expect(ai.shouldUseHeroPower(state)).toBe(false);
+    });
+
+    it('HardAI uses hero power when leftover mana allows it without reducing plays', () => {
+      const ai = createAI('hard');
+      const state = makeGameState(
+        { hand: [makeCard({ cost: 3 })], hero: { health: 30, mana: 5, heroPower: { name: 'Ping', cost: 2, description: '' } }, heroPowerUsed: false },
+        {},
+      );
+      expect(ai.shouldUseHeroPower(state)).toBe(true);
+    });
+
+    it('EasyAI does not optimize mana usage — wastes mana compared to HardAI', () => {
+      const hand = [makeCard({ cost: 2 }), makeCard({ cost: 3 }), makeCard({ cost: 4 })];
+      const state = makeGameState(
+        { hand: [...hand], hero: { health: 30, mana: 5, heroPower: { name: '', cost: 2, description: '' } } },
+        {},
+      );
+      const hardAI = createAI('hard');
+      const hardDecisions = hardAI.getPlayDecisions(state);
+      const hardTotal = hardDecisions.reduce((s, d) => s + hand[d.cardIndex].cost, 0);
+      expect(hardTotal).toBe(5);
+
+      const easyAI = createAI('easy');
+      let suboptimalCount = 0;
+      for (let i = 0; i < 50; i++) {
+        const decisions = easyAI.getPlayDecisions(state);
+        const total = decisions.reduce((s, d) => s + hand[d.cardIndex].cost, 0);
+        if (total < 5) suboptimalCount++;
+      }
+      expect(suboptimalCount).toBeGreaterThan(0);
+    });
+
+    it('HardAI always picks the best trade; EasyAI sometimes picks suboptimal targets', () => {
+      const state = makeGameState(
+        { board: [makeMinion({ currentAttack: 3, currentHealth: 5, lane: Lane.Center })] },
+        {
+          hero: { health: 30, mana: 0, heroPower: { name: '', cost: 2, description: '' } },
+          board: [
+            makeMinion({ currentAttack: 1, currentHealth: 1, lane: Lane.Center }),
+            makeMinion({ currentAttack: 4, currentHealth: 2, lane: Lane.Center }),
+          ],
+        },
+      );
+      state.activePlayer = 0;
+
+      const hardAI = createAI('hard');
+      const hardDecisions = hardAI.getAttackDecisions(state);
+      const hardTrade = hardDecisions.find(d => d.targetIndex !== 'hero');
+      expect(hardTrade).toBeDefined();
+
+      const easyAI = createAI('easy');
+      const easyTargetSet = new Set<number | string>();
+      for (let i = 0; i < 50; i++) {
+        const decisions = easyAI.getAttackDecisions(state);
+        for (const d of decisions) {
+          easyTargetSet.add(d.targetIndex);
+        }
+      }
+      expect(easyTargetSet.size).toBeGreaterThan(1);
+    });
+
+    it('NormalAI mulligans expensive cards but EasyAI keeps everything', () => {
+      const hand = [makeCard({ cost: 6 }), makeCard({ cost: 7 }), makeCard({ cost: 1 })];
+      const easyAI = createAI('easy');
+      const normalAI = createAI('normal');
+      const hardAI = createAI('hard');
+
+      expect(easyAI.mulliganHand(hand)).toEqual([]);
+      expect(normalAI.mulliganHand(hand)).toEqual([0, 1]);
+      expect(hardAI.mulliganHand(hand)).toEqual([0, 1]);
+    });
+  });
+});

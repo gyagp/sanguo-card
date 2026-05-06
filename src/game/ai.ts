@@ -516,6 +516,8 @@ export interface AIStrategy {
   getPlayDecisions(state: GameState): PlayCardDecision[];
   getAttackDecisions(state: GameState): AttackDecision[];
   shouldUseHeroPower(state: GameState): boolean;
+  mulliganHand(hand: Card[]): number[];
+  shouldGetBonusCard(): boolean;
 }
 
 function getRandomPlayDecisions(state: GameState): PlayCardDecision[] {
@@ -806,6 +808,14 @@ class EasyAI implements AIStrategy {
   shouldUseHeroPower(): boolean {
     return Math.random() < 0.3;
   }
+
+  mulliganHand(): number[] {
+    return [];
+  }
+
+  shouldGetBonusCard(): boolean {
+    return false;
+  }
 }
 
 class NormalAI implements AIStrategy {
@@ -822,6 +832,18 @@ class NormalAI implements AIStrategy {
   shouldUseHeroPower(state: GameState): boolean {
     const player = state.players[state.activePlayer];
     return !player.heroPowerUsed && player.hero.mana >= player.hero.heroPower.cost;
+  }
+
+  mulliganHand(hand: Card[]): number[] {
+    const toReplace: number[] = [];
+    for (let i = 0; i < hand.length; i++) {
+      if (hand[i].cost > 4) toReplace.push(i);
+    }
+    return toReplace;
+  }
+
+  shouldGetBonusCard(): boolean {
+    return false;
   }
 }
 
@@ -846,6 +868,23 @@ class HardAI implements AIStrategy {
     const manaUsedWith = bestWith.reduce((s, i) => s + player.hand[i].cost, 0) + player.hero.heroPower.cost;
     return manaUsedWith >= manaUsedWithout;
   }
+
+  mulliganHand(hand: Card[]): number[] {
+    const toReplace: number[] = [];
+    const hasTwoDrop = hand.some(c => c.cost === 2);
+    for (let i = 0; i < hand.length; i++) {
+      if (hand[i].cost > 3) {
+        toReplace.push(i);
+      } else if (hand[i].cost === 3 && !hasTwoDrop) {
+        toReplace.push(i);
+      }
+    }
+    return toReplace;
+  }
+
+  shouldGetBonusCard(): boolean {
+    return true;
+  }
 }
 
 export function createAI(difficulty: AIDifficulty): AIStrategy {
@@ -854,6 +893,39 @@ export function createAI(difficulty: AIDifficulty): AIStrategy {
     case 'normal': return new NormalAI();
     case 'hard': return new HardAI();
     case 'boss': return new HardAI();
+  }
+}
+
+export function performAIMulligan(state: GameState, difficulty: AIDifficulty): void {
+  const ai = createAI(difficulty);
+  const aiPlayerIndex = 1;
+  const player = state.players[aiPlayerIndex];
+  const toReplace = ai.mulliganHand(player.hand);
+  if (toReplace.length === 0) return;
+
+  const deck = player.deck as Card[];
+  for (const idx of toReplace.sort((a, b) => b - a)) {
+    const removed = player.hand.splice(idx, 1)[0];
+    deck.push(removed);
+  }
+  for (let i = deck.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [deck[i], deck[j]] = [deck[j], deck[i]];
+  }
+  for (let i = 0; i < toReplace.length && deck.length > 0; i++) {
+    player.hand.push(deck.shift()!);
+  }
+}
+
+export function applyAIBonusCard(state: GameState, difficulty: AIDifficulty): void {
+  const ai = createAI(difficulty);
+  if (!ai.shouldGetBonusCard()) return;
+
+  const aiPlayerIndex = 1;
+  const player = state.players[aiPlayerIndex];
+  const deck = player.deck as Card[];
+  if (deck.length > 0) {
+    player.hand.push(deck.shift()!);
   }
 }
 

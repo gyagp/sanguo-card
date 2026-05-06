@@ -18,7 +18,7 @@ import {
   Lane,
   TerrainEffect,
 } from "../game/types";
-import { AIDifficulty, createAI, AIDecision, AIStrategy } from "../game/ai";
+import { AIDifficulty, createAI, AIDecision, AIStrategy, performAIMulligan, applyAIBonusCard } from "../game/ai";
 import { BossAI, PhaseTransitionEvent } from "../game/boss-ai";
 import { getHeroPowerForPlayer, FACTION_HERO_POWERS, UPGRADED_FACTION_HERO_POWERS } from "../game/hero-powers";
 
@@ -136,6 +136,10 @@ export function useGameState(deck1: Deck, deck2: Deck, aiDifficulty?: AIDifficul
       for (const [lane, effect] of Object.entries(bossInit.terrain)) {
         state.terrain[lane as Lane] = effect;
       }
+    }
+    if (aiDifficulty) {
+      performAIMulligan(state, aiDifficulty);
+      applyAIBonusCard(state, aiDifficulty);
     }
     startTurn(state);
     return state;

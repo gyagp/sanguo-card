@@ -1,13 +1,13 @@
 # Autopo test Session
 
 ## Work Unit
-Difficulty-based AI deck quality — easy AI uses weaker cards/more basics, hard AI uses optimal cards with better synergy, difficulty number (1-10) influences card pool and rarity distribution
+Difficulty-based AI behavior scaling — hard AI gets bonus starting cards, better mulligan, and uses all keyword/synergy systems; easy AI ignores advanced tactics
 
 ## Acceptance Criteria
-- Easy difficulty decks use mostly common/basic cards
-- Hard difficulty decks include rares and legendaries
-- Difficulty 1-10 maps to card quality tiers
-- AI deck builder respects faction synergy at higher difficulties
+- Hard AI draws extra card on turn 1 or gets coin
+- Hard AI mulligans for curve; easy AI keeps random hand
+- Hard AI uses all keyword awareness and synergy; easy AI uses basic logic
+- Difficulty level gates which AI subsystems are active
 
 ## Rules
 # Rules
