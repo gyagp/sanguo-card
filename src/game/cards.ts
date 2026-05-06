@@ -738,7 +738,7 @@ export const cards: Card[] = [
     },
   },
 
-  // === 陷阱 (5) ===
+  // === 陷阱 (7) ===
   {
     name: "埋伏", cost: 2, attack: 0, health: 0, description: "陷阱：当对手的随从攻击时，对其造成3点伤害",
     rarity: "rare", type: "trap", faction: "shu",
@@ -746,6 +746,31 @@ export const cards: Card[] = [
     trapEffect: (state: GameState, context) => {
       if (context.triggeringMinion) {
         context.triggeringMinion.currentHealth -= 3;
+      }
+      return state;
+    },
+  },
+  {
+    name: "奇兵突袭", cost: 2, attack: 0, health: 0, description: "陷阱：当对手召唤随从时，召唤一个2/1蜀国伏兵",
+    rarity: "rare", type: "trap", faction: "shu",
+    trapTrigger: "on_play",
+    trapEffect: (state: GameState, context) => {
+      const trapOwner = context.player === 0 ? 1 : 0;
+      const ownerBoard = state.players[trapOwner].board;
+      if (ownerBoard.length < 7) {
+        ownerBoard.push(createTokenMinion("蜀国伏兵"));
+      }
+      return state;
+    },
+  },
+  {
+    name: "义勇奋战", cost: 3, attack: 0, health: 0, description: "陷阱：当对手的随从攻击时，使己方所有随从获得+1攻击力",
+    rarity: "rare", type: "trap", faction: "shu",
+    trapTrigger: "on_attack",
+    trapEffect: (state: GameState, context) => {
+      const trapOwner = context.player === 0 ? 1 : 0;
+      for (const minion of state.players[trapOwner].board) {
+        minion.currentAttack += 1;
       }
       return state;
     },

@@ -1,11 +1,10 @@
 # Autopo test Session
 
 ## Work Unit
-Add 5 Shu spells and 2 Shu weapons — design faction-themed spells (buffs/charge/combos) and weapons
+Add 2 Shu trap cards — design traps fitting Shu aggressive identity (e.g., ambush trap, reinforcement trap)
 
 ## Acceptance Criteria
-- 5 new Shu spells added
-- 2 new Shu weapons added
+- 2 Shu trap cards added
 - npm run build succeeds
 
 ## Rules
