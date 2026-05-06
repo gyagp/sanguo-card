@@ -1,13 +1,13 @@
-# Autopo test Session
+# Autopo execute Session
 
 ## Work Unit
-AI board state evaluation — implement threat assessment and play style switching (aggro vs control) based on board advantage, life totals, and card count
+Test AI board state evaluation — verify aggro/control mode switching based on board advantage and life totals
 
 ## Acceptance Criteria
-- AI calculates board advantage score (own board power vs enemy)
-- AI switches between aggro (go face) and control (trade) based on board state
-- Losing AI plays more defensively, winning AI pushes damage
-- Board evaluation considers taunt, divine shield, and keyword threats
+- Tests for board advantage calculation
+- Tests for aggro mode when winning
+- Tests for control mode when losing
+- vitest run passes
 
 ## Rules
 # Rules
