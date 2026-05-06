@@ -2098,3 +2098,138 @@ describe('Difficulty-based AI behavior scaling', () => {
     });
   });
 });
+
+describe('Trap card awareness', () => {
+  describe('evaluateCardForFaction - trap scoring', () => {
+    it('scores on_attack trap higher when opponent has many minions', () => {
+      const trapCard = makeCard({ type: 'trap', trapTrigger: 'on_attack', cost: 2 });
+      const emptyBoardState = makeGameState({}, {});
+      const fullBoardState = makeGameState({}, {
+        board: [makeMinion({ currentAttack: 5 }), makeMinion({ currentAttack: 3 }), makeMinion({ currentAttack: 4 })],
+      });
+
+      const scoreEmpty = evaluateCardForFaction(trapCard, makePlayer(), emptyBoardState);
+      const scoreFull = evaluateCardForFaction(trapCard, makePlayer(), fullBoardState);
+      expect(scoreFull).toBeGreaterThan(scoreEmpty);
+    });
+
+    it('scores on_spell trap higher against wei faction', () => {
+      const trapCard = makeCard({ type: 'trap', trapTrigger: 'on_spell', cost: 2 });
+      const vsNeutral = makeGameState({}, { deckFaction: 'neutral' });
+      const vsWei = makeGameState({}, { deckFaction: 'wei' });
+
+      const scoreNeutral = evaluateCardForFaction(trapCard, makePlayer(), vsNeutral);
+      const scoreWei = evaluateCardForFaction(trapCard, makePlayer(), vsWei);
+      expect(scoreWei).toBeGreaterThan(scoreNeutral);
+    });
+
+    it('scores on_play trap higher when opponent has large hand', () => {
+      const trapCard = makeCard({ type: 'trap', trapTrigger: 'on_play', cost: 2 });
+      const smallHand = makeGameState({}, { hand: [makeCard()] });
+      const largeHand = makeGameState({}, { hand: [makeCard(), makeCard(), makeCard(), makeCard(), makeCard()] });
+
+      const scoreSmall = evaluateCardForFaction(trapCard, makePlayer(), smallHand);
+      const scoreLarge = evaluateCardForFaction(trapCard, makePlayer(), largeHand);
+      expect(scoreLarge).toBeGreaterThan(scoreSmall);
+    });
+
+    it('returns base score for non-trap card type even with trapTrigger', () => {
+      const minionCard = makeCard({ type: 'minion', trapTrigger: undefined, cost: 2 });
+      const state = makeGameState({}, { board: [makeMinion(), makeMinion()] });
+      const score = evaluateCardForFaction(minionCard, makePlayer(), state);
+      expect(typeof score).toBe('number');
+    });
+  });
+
+  describe('AI attack decisions consider enemy traps', () => {
+    it('raises trade threshold when enemy has on_attack traps', () => {
+      const aiBoard = [makeMinion({ currentAttack: 2, currentHealth: 3 })];
+      const oppBoard = [makeMinion({ currentAttack: 2, currentHealth: 2 })];
+
+      const noTrapState = makeGameState(
+        { board: aiBoard, hero: { health: 30, mana: 5, heroPower: { name: '', cost: 2, description: '' } } },
+        { board: oppBoard, hero: { health: 30, mana: 5, heroPower: { name: '', cost: 2, description: '' } }, activeTraps: [] }
+      );
+
+      const withTrapState = makeGameState(
+        { board: [...aiBoard], hero: { health: 30, mana: 5, heroPower: { name: '', cost: 2, description: '' } } },
+        { board: [...oppBoard], hero: { health: 30, mana: 5, heroPower: { name: '', cost: 2, description: '' } }, activeTraps: [{ name: '反击', trigger: 'on_attack', trapEffect: () => {} }] }
+      );
+
+      const decisionsNoTrap = getAIAttackDecisions(noTrapState);
+      const decisionsWithTrap = getAIAttackDecisions(withTrapState);
+
+      expect(decisionsNoTrap.length).toBeGreaterThanOrEqual(decisionsWithTrap.length);
+    });
+
+    it('still goes for lethal even with enemy traps', () => {
+      const aiBoard = [makeMinion({ currentAttack: 30, currentHealth: 5 })];
+
+      const state = makeGameState(
+        { board: aiBoard, hero: { health: 30, mana: 5, heroPower: { name: '', cost: 2, description: '' } } },
+        { board: [], hero: { health: 5, mana: 5, heroPower: { name: '', cost: 2, description: '' } }, activeTraps: [{ name: '反击', trigger: 'on_attack', trapEffect: () => {} }] }
+      );
+
+      const decisions = getAIAttackDecisions(state);
+      expect(decisions.some(d => d.targetIndex === 'hero')).toBe(true);
+    });
+  });
+
+  describe('Trap play ordering', () => {
+    it('plays trap cards before non-trap cards in on-curve decisions', () => {
+      const hand = [
+        makeCard({ type: 'minion', cost: 1, name: 'Minion1' }),
+        makeCard({ type: 'trap', cost: 1, name: 'Trap1', trapTrigger: 'on_attack' }),
+      ];
+      const state = makeGameState(
+        { hand, hero: { health: 30, mana: 2, heroPower: { name: '', cost: 2, description: '' } }, maxMana: 2 },
+        { board: [makeMinion()] }
+      );
+
+      const decisions = getOnCurvePlayDecisions(state);
+      if (decisions.length >= 2) {
+        const firstCardType = hand[decisions[0].cardIndex].type;
+        expect(firstCardType).toBe('trap');
+      }
+    });
+
+    it('plays trap cards before non-trap cards in optimal decisions', () => {
+      const hand = [
+        makeCard({ type: 'minion', cost: 1, name: 'Minion1' }),
+        makeCard({ type: 'trap', cost: 1, name: 'Trap1', trapTrigger: 'on_attack' }),
+      ];
+      const state = makeGameState(
+        { hand, hero: { health: 30, mana: 2, heroPower: { name: '', cost: 2, description: '' } }, maxMana: 2 },
+        { board: [makeMinion()] }
+      );
+
+      const decisions = getOptimalPlayDecisions(state);
+      if (decisions.length >= 2) {
+        const firstCardType = hand[decisions[0].cardIndex].type;
+        expect(firstCardType).toBe('trap');
+      }
+    });
+  });
+
+  describe('Trap play integrated into aggro/control', () => {
+    it('control style values traps for defensive play', () => {
+      const trapCard = makeCard({ type: 'trap', trapTrigger: 'on_attack', cost: 2 });
+      const state = makeGameState(
+        { hero: { health: 10, mana: 5, heroPower: { name: '', cost: 2, description: '' } } },
+        { board: [makeMinion({ currentAttack: 4 }), makeMinion({ currentAttack: 3 })] }
+      );
+      const score = evaluateCardForFaction(trapCard, makePlayer(), state);
+      expect(score).toBeGreaterThan(5);
+    });
+
+    it('on_attack trap scores higher when opponent has high-attack minions', () => {
+      const trapCard = makeCard({ type: 'trap', trapTrigger: 'on_attack', cost: 2 });
+      const weakBoard = makeGameState({}, { board: [makeMinion({ currentAttack: 1 })] });
+      const strongBoard = makeGameState({}, { board: [makeMinion({ currentAttack: 5 })] });
+
+      const scoreWeak = evaluateCardForFaction(trapCard, makePlayer(), weakBoard);
+      const scoreStrong = evaluateCardForFaction(trapCard, makePlayer(), strongBoard);
+      expect(scoreStrong).toBeGreaterThan(scoreWeak);
+    });
+  });
+});

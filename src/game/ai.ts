@@ -1,4 +1,4 @@
-import { GameState, PlayerState, Card, BoardMinion, Faction, Rarity, FACTION_SYNERGIES, getEffectiveCardCost, Lane, ALL_LANES, getLaneCount, MAX_LANE_SIZE, getReachableLanes, getSpellReachableLanes, TerrainType, MAX_DECK_SIZE, DECK_FACTION_THRESHOLD } from './types';
+import { GameState, PlayerState, Card, BoardMinion, Faction, Rarity, FACTION_SYNERGIES, getEffectiveCardCost, Lane, ALL_LANES, getLaneCount, MAX_LANE_SIZE, getReachableLanes, getSpellReachableLanes, TerrainType, MAX_DECK_SIZE, DECK_FACTION_THRESHOLD, TrapTrigger } from './types';
 
 
 type SpellCategory = 'freeze' | 'destroy' | 'damage' | 'buff' | 'generic';
@@ -149,6 +149,34 @@ const FACTION_SYNERGY_WEIGHT = 2;
 
 export type PlayStyle = 'aggro' | 'control';
 
+function evaluateTrapCard(card: Card, state: GameState, playerIndex: 0 | 1): number {
+  const opponent = state.players[playerIndex === 0 ? 1 : 0];
+  const trigger = card.trapTrigger;
+  if (!trigger) return 0;
+
+  let score = 3;
+
+  if (trigger === 'on_attack') {
+    score += opponent.board.length * 2;
+    if (opponent.board.some(m => m.currentAttack >= 4)) score += 2;
+  } else if (trigger === 'on_spell') {
+    const opponentSpellsInHand = opponent.hand.filter(c => c.type === 'spell').length;
+    score += opponentSpellsInHand > 0 ? 3 : 0;
+    if (opponent.deckFaction === 'wei') score += 3;
+  } else if (trigger === 'on_play') {
+    score += opponent.hand.length > 3 ? 3 : 1;
+  } else if (trigger === 'on_turn_start') {
+    score += 2;
+  }
+
+  return score;
+}
+
+function countEnemyTrapsOfTrigger(state: GameState, playerIndex: 0 | 1, trigger: TrapTrigger): number {
+  const opponent = state.players[playerIndex === 0 ? 1 : 0];
+  return (opponent.activeTraps || []).filter(t => t.trigger === trigger).length;
+}
+
 export function calculateBoardPower(board: BoardMinion[]): number {
   let power = 0;
   for (const m of board) {
@@ -195,6 +223,9 @@ export function determinePlayStyle(state: GameState, playerIndex: 0 | 1): PlaySt
     m.currentAttack >= 5 || m.windfury || (m.hasDivineShield && m.currentAttack >= 3)
   );
   if (enemyHasThreat) return 'control';
+
+  const hasTrapInHand = player.hand.some(c => c.type === 'trap');
+  if (hasTrapInHand && advantage < 3) return 'control';
 
   return 'aggro';
 }
@@ -277,7 +308,7 @@ export function getPlayableCards(hand: Card[], currentMana: number, player?: Pla
   return indices;
 }
 
-export function getBestManaUsage(hand: Card[], currentMana: number, board?: BoardMinion[], player?: PlayerState): number[] {
+export function getBestManaUsage(hand: Card[], currentMana: number, board?: BoardMinion[], player?: PlayerState, state?: GameState): number[] {
   const playable = getPlayableCards(hand, currentMana, player);
   if (playable.length === 0) return [];
 
@@ -328,7 +359,7 @@ export function getBestManaUsage(hand: Card[], currentMana: number, board?: Boar
 
       if (player) {
         for (const idx of combo) {
-          synergyScore += evaluateCardForFaction(hand[idx], player);
+          synergyScore += evaluateCardForFaction(hand[idx], player, state);
         }
       }
 
@@ -418,6 +449,9 @@ export function getAIAttackDecisions(state: GameState, playStyle?: PlayStyle): A
 
   const style = playStyle ?? determinePlayStyle(state, aiIndex as 0 | 1);
 
+  const enemyAttackTraps = countEnemyTrapsOfTrigger(state, aiIndex as 0 | 1, 'on_attack');
+  const trapRiskPenalty = enemyAttackTraps * 3;
+
   const available = aiBoard.filter(
     (m) => !m.summoningSickness && !(m.hasAttacked && m.windfuryAttacksLeft <= 0),
   );
@@ -434,7 +468,7 @@ export function getAIAttackDecisions(state: GameState, playStyle?: PlayStyle): A
     return decisions;
   }
 
-  const tradeThreshold = style === 'control' ? -3 : 0;
+  const tradeThreshold = (style === 'control' ? -3 : 0) + trapRiskPenalty;
 
   const decisions: AttackDecision[] = [];
   const usedAttackers = new Set<number>();
@@ -497,6 +531,9 @@ export function getAIAttackDecisions(state: GameState, playStyle?: PlayStyle): A
         evaluateTrade(minion, m) > tradeThreshold
       );
       if (hasWorthwhileTrade) continue;
+    }
+    if (enemyAttackTraps > 0 && minion.currentHealth <= 3 && !minion.hasDivineShield) {
+      continue;
     }
     const remainingAttacks = Math.max(minion.windfuryAttacksLeft, 0);
     for (let r = 0; r < remainingAttacks; r++) {
@@ -584,22 +621,29 @@ export function getOnCurvePlayDecisions(state: GameState): PlayCardDecision[] {
   }
   decisions = applyFactionPlayOrder(decisions, player, state);
   decisions = applyFactionBoardPositions(decisions, player, state);
+  decisions = applyTrapPlayOrder(decisions, player);
   return decisions;
 }
 
 export function getOptimalPlayDecisions(state: GameState): PlayCardDecision[] {
   const player = state.players[state.activePlayer];
-  const bestCombo = getBestManaUsage(player.hand, player.hero.mana, player.board, player);
+  const bestCombo = getBestManaUsage(player.hand, player.hero.mana, player.board, player, state);
   let decisions: PlayCardDecision[] = bestCombo.map(idx => ({ type: 'playCard' as const, cardIndex: idx, spellTarget: pickSpellTarget(player.hand[idx], state), targetLane: pickSpellTargetLane(player.hand[idx], state), lane: pickLaneForMinion(player, player.hand[idx], state) }));
   decisions = applyFactionPlayOrder(decisions, player, state);
   decisions = applyFactionBoardPositions(decisions, player, state);
+  decisions = applyTrapPlayOrder(decisions, player);
   return decisions;
 }
 
 const WEI_SPELL_BONUS = 3;
 const QUN_VARIANCE_TOLERANCE = 2;
 
-export function evaluateCardForFaction(card: Card, player: PlayerState): number {
+export function evaluateCardForFaction(card: Card, player: PlayerState, state?: GameState): number {
+  if (card.type === 'trap' && state) {
+    const playerIndex = state.activePlayer as 0 | 1;
+    return evaluateTrapCard(card, state, playerIndex);
+  }
+
   let score = card.attack + card.health + (card.taunt ? 2 : 0) + (card.charge ? 1 : 0);
 
   if (player.deckFaction === "wei") {
@@ -686,6 +730,13 @@ function applyFactionPlayOrder(decisions: PlayCardDecision[], player: PlayerStat
   }
 
   return decisions;
+}
+
+function applyTrapPlayOrder(decisions: PlayCardDecision[], player: PlayerState): PlayCardDecision[] {
+  if (decisions.length <= 1) return decisions;
+  const traps = decisions.filter(d => player.hand[d.cardIndex].type === 'trap');
+  const nonTraps = decisions.filter(d => player.hand[d.cardIndex].type !== 'trap');
+  return [...traps, ...nonTraps];
 }
 
 function pickLaneForMinion(player: PlayerState, card?: Card, state?: GameState): Lane {
@@ -862,8 +913,8 @@ class HardAI implements AIStrategy {
     const player = state.players[state.activePlayer];
     if (player.heroPowerUsed || player.hero.mana < player.hero.heroPower.cost) return false;
     const manaAfter = player.hero.mana - player.hero.heroPower.cost;
-    const bestWithout = getBestManaUsage(player.hand, player.hero.mana, player.board, player);
-    const bestWith = getBestManaUsage(player.hand, manaAfter, player.board, player);
+    const bestWithout = getBestManaUsage(player.hand, player.hero.mana, player.board, player, state);
+    const bestWith = getBestManaUsage(player.hand, manaAfter, player.board, player, state);
     const manaUsedWithout = bestWithout.reduce((s, i) => s + player.hand[i].cost, 0);
     const manaUsedWith = bestWith.reduce((s, i) => s + player.hand[i].cost, 0) + player.hero.heroPower.cost;
     return manaUsedWith >= manaUsedWithout;

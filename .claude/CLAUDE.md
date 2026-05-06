@@ -1,13 +1,13 @@
-# Autopo execute Session
+# Autopo test Session
 
 ## Work Unit
-Test difficulty scaling — verify deck quality differences, behavior differences, and challenge level across easy/normal/hard
+AI trap card awareness — AI plays trap cards strategically, avoids triggering enemy traps when possible, and uses trap-setting as part of defensive play
 
 ## Acceptance Criteria
-- Tests for deck quality at different difficulties
-- Tests for AI behavior differences across difficulties
-- Tests that hard AI makes strictly better decisions than easy AI
-- vitest run passes
+- AI plays trap cards when opponent is likely to trigger them
+- AI considers known enemy traps when deciding attacks/spells
+- Hard AI delays attacks to bait opponent before setting traps
+- Trap play integrated into aggro/control decision making
 
 ## Rules
 # Rules
