@@ -806,6 +806,73 @@ describe('Optimal play decisions with faction mechanics', () => {
   });
 });
 
+describe('AI keyword awareness — scoring', () => {
+  it('penalizes attacking divine shield minions', () => {
+    const attacker = makeMinion({ currentAttack: 3, currentHealth: 4 });
+    const shielded = makeMinion({ currentAttack: 2, currentHealth: 3, hasDivineShield: true });
+    const unshielded = makeMinion({ currentAttack: 2, currentHealth: 3, hasDivineShield: false });
+    expect(evaluateTrade(attacker, shielded)).toBeLessThan(evaluateTrade(attacker, unshielded));
+  });
+
+  it('gives bonus for stealth-broken targets (had stealth, lost it)', () => {
+    const attacker = makeMinion({ currentAttack: 3, currentHealth: 4 });
+    const stealthBroken = makeMinion({ currentAttack: 2, currentHealth: 3, isStealth: false, stealth: true });
+    const normal = makeMinion({ currentAttack: 2, currentHealth: 3, isStealth: false });
+    expect(evaluateTrade(attacker, stealthBroken)).toBeGreaterThan(evaluateTrade(attacker, normal));
+  });
+
+  it('gives bonus for damaged minions', () => {
+    const attacker = makeMinion({ currentAttack: 3, currentHealth: 4 });
+    const damaged = makeMinion({ currentAttack: 2, currentHealth: 2, health: 5 });
+    const full = makeMinion({ currentAttack: 2, currentHealth: 5, health: 5 });
+    expect(evaluateTrade(attacker, damaged)).toBeGreaterThan(evaluateTrade(attacker, full));
+  });
+
+  it('taunt bonus is highest priority in scoring', () => {
+    const attacker = makeMinion({ currentAttack: 3, currentHealth: 4 });
+    const taunt = makeMinion({ currentAttack: 2, currentHealth: 3, taunt: true });
+    const noTaunt = makeMinion({ currentAttack: 2, currentHealth: 3 });
+    expect(evaluateTrade(attacker, taunt)).toBeGreaterThan(evaluateTrade(attacker, noTaunt));
+  });
+
+  it('AI prefers non-shield target over divine shield when both available', () => {
+    const state = makeGameState(
+      { board: [makeMinion({ currentAttack: 3, currentHealth: 4, lane: Lane.Center })] },
+      {
+        hero: { health: 30, mana: 0, heroPower: { name: '', cost: 2, description: '' } },
+        board: [
+          makeMinion({ currentAttack: 2, currentHealth: 2, hasDivineShield: true, lane: Lane.Center }),
+          makeMinion({ currentAttack: 2, currentHealth: 2, hasDivineShield: false, lane: Lane.Center }),
+        ],
+      },
+    );
+    state.activePlayer = 0;
+    const decisions = getAIAttackDecisions(state);
+    const trade = decisions.find(d => d.targetIndex !== 'hero');
+    expect(trade).toBeDefined();
+    // Should prefer the non-shielded target (index 1)
+    expect(trade!.targetIndex).toBe(1);
+  });
+
+  it('AI targets taunt before non-taunt in same lane', () => {
+    const state = makeGameState(
+      { board: [makeMinion({ currentAttack: 5, currentHealth: 5, lane: Lane.Center })] },
+      {
+        hero: { health: 30, mana: 0, heroPower: { name: '', cost: 2, description: '' } },
+        board: [
+          makeMinion({ currentAttack: 3, currentHealth: 3, lane: Lane.Center }),
+          makeMinion({ currentAttack: 1, currentHealth: 3, taunt: true, lane: Lane.Center }),
+        ],
+      },
+    );
+    state.activePlayer = 0;
+    const decisions = getAIAttackDecisions(state);
+    // With taunt present, AI must attack taunt (index 1)
+    expect(decisions.length).toBeGreaterThan(0);
+    expect(decisions[0].targetIndex).toBe(1);
+  });
+});
+
 describe('AI responds within 2-second budget', () => {
   const difficulties: AIDifficulty[] = ['easy', 'normal', 'hard'];
 
@@ -989,6 +1056,27 @@ describe('AI lane system — attack respects lane adjacency', () => {
     const decisions = getAIAttackDecisions(state);
     expect(decisions.length).toBe(1);
     expect(decisions[0].targetIndex).toBe(0);
+  });
+
+  it('AI does not skip non-taunt targets when taunt is in unreachable lane', () => {
+    const state = makeGameState(
+      { board: [
+        makeMinion({ currentAttack: 5, currentHealth: 5, lane: Lane.Left }),
+        makeMinion({ currentAttack: 3, currentHealth: 3, lane: Lane.Right }),
+      ]},
+      {
+        hero: { health: 30, mana: 0, heroPower: { name: '', cost: 2, description: '' } },
+        board: [
+          makeMinion({ currentAttack: 1, currentHealth: 2, lane: Lane.Left }),
+          makeMinion({ currentAttack: 1, currentHealth: 10, taunt: true, lane: Lane.Right }),
+        ],
+      },
+    );
+    state.activePlayer = 0;
+    const decisions = getAIAttackDecisions(state);
+    // Left attacker can't reach Right taunt — should still attack Left defender
+    const leftAttack = decisions.find(d => d.attackerIndex === 0 && d.targetIndex === 0);
+    expect(leftAttack).toBeDefined();
   });
 
   it('does not place in full lane', () => {

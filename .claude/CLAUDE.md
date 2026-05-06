@@ -1,13 +1,13 @@
-# Autopo execute Session
+# Autopo test Session
 
 ## Work Unit
-Write tests for trap card system — test trap play, trigger on each event type, trap removal after trigger, multiple traps active, interaction with other effects
+AI keyword awareness — prioritize attacking taunt minions, avoid wasting attacks on divine shield, prefer removing stealth-broken targets
 
 ## Acceptance Criteria
-- Tests cover all trap triggers
-- Tests verify trap removal
-- Tests verify multi-trap scenarios
-- vitest run passes
+- AI targets taunt minions before non-taunt
+- AI avoids attacking divine shield minions when better targets exist
+- AI prioritizes killing damaged/stealth-broken minions
+- getAIAttackDecisions scoring reflects keyword awareness
 
 ## Rules
 # Rules

@@ -76,6 +76,10 @@ const HERO_HEALTH_WEIGHT = 0.5;
 const MANA_ADVANTAGE_WEIGHT = 0.3;
 const TRADE_KILL_BONUS = 5;
 const TRADE_SURVIVE_BONUS = 3;
+const TAUNT_PRIORITY_BONUS = 10;
+const DIVINE_SHIELD_PENALTY = -8;
+const STEALTH_BROKEN_BONUS = 4;
+const DAMAGED_MINION_BONUS = 3;
 const FACTION_SYNERGY_WEIGHT = 2;
 
 export function countFactionMinions(board: BoardMinion[], faction: Faction): number {
@@ -210,8 +214,10 @@ export function evaluateTrade(
   attacker: BoardMinion,
   defender: BoardMinion,
 ): number {
+  const defenderHasShield = defender.hasDivineShield;
+  const effectiveAttackerDamage = defenderHasShield ? 0 : attacker.currentAttack;
   const attackerDies = defender.currentAttack >= attacker.currentHealth;
-  const defenderDies = attacker.currentAttack >= defender.currentHealth;
+  const defenderDies = effectiveAttackerDamage >= defender.currentHealth;
 
   const attackerValue = attacker.currentAttack + attacker.currentHealth;
   const defenderValue = defender.currentAttack + defender.currentHealth;
@@ -221,7 +227,7 @@ export function evaluateTrade(
   if (defenderDies) {
     score += defenderValue + TRADE_KILL_BONUS;
   } else {
-    score += attacker.currentAttack;
+    score += effectiveAttackerDamage;
   }
 
   if (attackerDies) {
@@ -229,6 +235,23 @@ export function evaluateTrade(
   } else {
     score += TRADE_SURVIVE_BONUS;
     score -= defender.currentAttack;
+  }
+
+  if (defender.taunt) {
+    score += TAUNT_PRIORITY_BONUS;
+  }
+
+  if (defenderHasShield && !defenderDies) {
+    score += DIVINE_SHIELD_PENALTY;
+  }
+
+  if (!defender.isStealth && defender.stealth) {
+    score += STEALTH_BROKEN_BONUS;
+  }
+
+  // health is the Card's original max HP; currentHealth < health means the minion is damaged
+  if (defender.currentHealth < defender.health) {
+    score += DAMAGED_MINION_BONUS;
   }
 
   return score;
@@ -280,12 +303,16 @@ export function getAIAttackDecisions(state: GameState): AttackDecision[] {
       const attacker = aiBoard[a];
       if (attacker.summoningSickness || (attacker.hasAttacked && attacker.windfuryAttacksLeft <= 0)) continue;
       const reachable = getReachableLanes(attacker.lane);
+      const hasTaunts = opponentBoard.some(m => m.taunt && !m.isStealth && reachable.includes(m.lane));
       for (let d = 0; d < opponentBoard.length; d++) {
-        if (!reachable.includes(opponentBoard[d].lane)) continue;
+        const defender = opponentBoard[d];
+        if (!reachable.includes(defender.lane)) continue;
+        if (defender.isStealth) continue;
+        if (hasTaunts && !defender.taunt) continue;
         trades.push({
           attackerIndex: a,
           defenderIndex: d,
-          score: evaluateTrade(attacker, opponentBoard[d]),
+          score: evaluateTrade(attacker, defender),
         });
       }
     }
@@ -310,7 +337,7 @@ export function getAIAttackDecisions(state: GameState): AttackDecision[] {
     const minion = aiBoard[a];
     if (minion.summoningSickness || (minion.hasAttacked && minion.windfuryAttacksLeft <= 0) || usedAttackers.has(a)) continue;
     const reachable = getReachableLanes(minion.lane);
-    const reachableTaunts = opponentBoard.filter(m => m.taunt && reachable.includes(m.lane));
+    const reachableTaunts = opponentBoard.filter(m => m.taunt && !m.isStealth && reachable.includes(m.lane));
     if (reachableTaunts.length > 0) {
       const tauntIdx = opponentBoard.indexOf(reachableTaunts[0]);
       if (!usedDefenders.has(tauntIdx)) {
