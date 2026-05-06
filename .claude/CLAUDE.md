@@ -1,12 +1,11 @@
 # Autopo test Session
 
 ## Work Unit
-Add 5 Wei spells and 2 Wei weapons — design faction-themed spells (control/armor/draw) and weapons
+Add 5 Shu spells and 2 Shu weapons — design faction-themed spells (buffs/charge/combos) and weapons
 
 ## Acceptance Criteria
-- 5 new Wei spells added
-- 2 new Wei weapons added
-- Effects fit Wei identity
+- 5 new Shu spells added
+- 2 new Shu weapons added
 - npm run build succeeds
 
 ## Rules
