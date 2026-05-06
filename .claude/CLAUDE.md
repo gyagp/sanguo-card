@@ -1,11 +1,12 @@
 # Autopo execute Session
 
 ## Work Unit
-Test AI trap awareness — verify trap play timing and trap avoidance decisions
+Integration test — play full AI vs AI games at each difficulty, verify no crashes, reasonable game length, and hard AI wins more often than easy AI
 
 ## Acceptance Criteria
-- Tests for AI trap card play decisions
-- Tests for AI avoiding enemy traps
+- AI vs AI games complete without errors at all difficulties
+- Hard AI wins >60% vs easy AI over 10 simulated games
+- Average game length is 8-20 turns
 - vitest run passes
 
 ## Rules

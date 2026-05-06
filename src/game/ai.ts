@@ -564,11 +564,15 @@ function getRandomPlayDecisions(state: GameState): PlayCardDecision[] {
   const shuffled = [...playable].sort(() => Math.random() - 0.5);
   const decisions: PlayCardDecision[] = [];
   let mana = player.hero.mana;
+  const maxPlays = Math.ceil(shuffled.length * 0.6);
+  let played = 0;
   for (const idx of shuffled) {
+    if (played >= maxPlays) break;
     const cost = getEffectiveCardCost(player.hand[idx], player);
     if (cost <= mana) {
       decisions.push({ type: 'playCard', cardIndex: idx, spellTarget: pickSpellTarget(player.hand[idx], state), targetLane: pickSpellTargetLane(player.hand[idx], state), lane: pickLaneForMinion(player, player.hand[idx], state) });
       mana -= cost;
+      played++;
     }
   }
   return decisions;
@@ -584,6 +588,7 @@ function getRandomAttackDecisions(state: GameState): AttackDecision[] {
   for (let a = 0; a < aiBoard.length; a++) {
     const minion = aiBoard[a];
     if (minion.summoningSickness || (minion.hasAttacked && minion.windfuryAttacksLeft <= 0)) continue;
+    if (Math.random() < 0.25) continue;
     const reachable = getReachableLanes(minion.lane);
     const reachableTargets = opponentBoard
       .map((m, i) => ({ m, i }))
@@ -857,7 +862,7 @@ class EasyAI implements AIStrategy {
   }
 
   shouldUseHeroPower(): boolean {
-    return Math.random() < 0.3;
+    return Math.random() < 0.15;
   }
 
   mulliganHand(): number[] {
@@ -947,10 +952,9 @@ export function createAI(difficulty: AIDifficulty): AIStrategy {
   }
 }
 
-export function performAIMulligan(state: GameState, difficulty: AIDifficulty): void {
+export function performAIMulligan(state: GameState, difficulty: AIDifficulty, playerIndex: 0 | 1 = 1): void {
   const ai = createAI(difficulty);
-  const aiPlayerIndex = 1;
-  const player = state.players[aiPlayerIndex];
+  const player = state.players[playerIndex];
   const toReplace = ai.mulliganHand(player.hand);
   if (toReplace.length === 0) return;
 
@@ -968,12 +972,11 @@ export function performAIMulligan(state: GameState, difficulty: AIDifficulty): v
   }
 }
 
-export function applyAIBonusCard(state: GameState, difficulty: AIDifficulty): void {
+export function applyAIBonusCard(state: GameState, difficulty: AIDifficulty, playerIndex: 0 | 1 = 1): void {
   const ai = createAI(difficulty);
   if (!ai.shouldGetBonusCard()) return;
 
-  const aiPlayerIndex = 1;
-  const player = state.players[aiPlayerIndex];
+  const player = state.players[playerIndex];
   const deck = player.deck as Card[];
   if (deck.length > 0) {
     player.hand.push(deck.shift()!);
