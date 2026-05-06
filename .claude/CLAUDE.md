@@ -1,13 +1,12 @@
-# Autopo test Session
+# Autopo execute Session
 
 ## Work Unit
-AI trap card awareness — AI plays trap cards strategically, avoids triggering enemy traps when possible, and uses trap-setting as part of defensive play
+Test AI trap awareness — verify trap play timing and trap avoidance decisions
 
 ## Acceptance Criteria
-- AI plays trap cards when opponent is likely to trigger them
-- AI considers known enemy traps when deciding attacks/spells
-- Hard AI delays attacks to bait opponent before setting traps
-- Trap play integrated into aggro/control decision making
+- Tests for AI trap card play decisions
+- Tests for AI avoiding enemy traps
+- vitest run passes
 
 ## Rules
 # Rules
