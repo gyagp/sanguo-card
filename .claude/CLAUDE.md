@@ -1,13 +1,12 @@
 # Autopo test Session
 
 ## Work Unit
-Update attack UI for lane restrictions — highlight only valid attack targets (same/adjacent lane), show lane labels, update spell targeting UI to show lane selection for AOE spells
+Add terrain effects to 3+ PVE adventure stages — configure lane terrain for boss stages and special stages, verify terrain displays and applies correctly during gameplay
 
 ## Acceptance Criteria
-- Only valid targets highlight when selecting attacker
-- Invalid targets visually dimmed/unclickable
-- AOE spells show lane selection step before resolving
-- Lane labels visible (左/中/右)
+- At least 3 PVE stages have terrain effects configured
+- Terrain visually renders in PVE battles
+- Terrain mechanics apply correctly during gameplay
 - npm run build succeeds
 
 ## Rules

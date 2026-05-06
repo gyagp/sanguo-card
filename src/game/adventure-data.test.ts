@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { adventureChapters, AdventureChapter, AdventureStage } from "./adventure-data";
+import { TerrainType, Lane } from "./types";
 import { cards } from "./cards";
 
 function getChapter(id: string): AdventureChapter {
@@ -246,6 +247,71 @@ describe("Escalating difficulty", () => {
         );
       }
     }
+  });
+});
+
+describe("PVE terrain configuration", () => {
+  const allStages = adventureChapters.flatMap(ch => ch.stages);
+  const stagesWithTerrain = allStages.filter(s => s.terrain && Object.keys(s.terrain).length > 0);
+
+  it("at least 3 PVE stages have terrain effects configured", () => {
+    expect(stagesWithTerrain.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it("each terrain config uses valid TerrainType values", () => {
+    const validTypes = Object.values(TerrainType);
+    for (const stage of stagesWithTerrain) {
+      for (const effect of Object.values(stage.terrain!)) {
+        expect(validTypes).toContain(effect.type);
+      }
+    }
+  });
+
+  it("each terrain config uses valid Lane keys", () => {
+    const validLanes = Object.values(Lane);
+    for (const stage of stagesWithTerrain) {
+      for (const lane of Object.keys(stage.terrain!)) {
+        expect(validLanes).toContain(lane);
+      }
+    }
+  });
+
+  it("terrain effects have name and description", () => {
+    for (const stage of stagesWithTerrain) {
+      for (const effect of Object.values(stage.terrain!)) {
+        expect(effect.name).toBeTruthy();
+        expect(effect.description).toBeTruthy();
+      }
+    }
+  });
+
+  it("ch1-boss (张角) has HealingAura in center lane", () => {
+    const stage = allStages.find(s => s.id === "ch1-boss")!;
+    expect(stage.terrain).toBeDefined();
+    expect(stage.terrain![Lane.Center]?.type).toBe(TerrainType.HealingAura);
+  });
+
+  it("ch2-4 (火烧洛阳) has Fire in all 3 lanes", () => {
+    const stage = allStages.find(s => s.id === "ch2-4")!;
+    expect(stage.terrain).toBeDefined();
+    expect(stage.terrain![Lane.Left]?.type).toBe(TerrainType.Fire);
+    expect(stage.terrain![Lane.Center]?.type).toBe(TerrainType.Fire);
+    expect(stage.terrain![Lane.Right]?.type).toBe(TerrainType.Fire);
+  });
+
+  it("ch4-3 (草船借箭) has Stealth in right lane", () => {
+    const stage = allStages.find(s => s.id === "ch4-3")!;
+    expect(stage.terrain).toBeDefined();
+    expect(stage.terrain![Lane.Right]?.type).toBe(TerrainType.Stealth);
+  });
+
+  it("boss stages with terrain have thematic terrain choices", () => {
+    const ch2Boss = allStages.find(s => s.id === "ch2-boss")!;
+    expect(ch2Boss.terrain![Lane.Left]?.type).toBe(TerrainType.Fire);
+    expect(ch2Boss.terrain![Lane.Right]?.type).toBe(TerrainType.Fire);
+
+    const ch5Boss = allStages.find(s => s.id === "ch5-boss")!;
+    expect(ch5Boss.terrain![Lane.Center]?.type).toBe(TerrainType.Stealth);
   });
 });
 
