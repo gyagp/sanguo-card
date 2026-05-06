@@ -120,3 +120,72 @@ describe("AI faction-concentrated deck building", () => {
     expect(allRarities.size).toBeGreaterThanOrEqual(2);
   });
 });
+
+describe("Numeric difficulty (1-10) deck quality", () => {
+  it("difficulty 1 produces only common cards", () => {
+    const decks = Array.from({ length: 10 }, () => buildFactionDeck(cards, undefined, 1));
+    for (const deck of decks) {
+      expect(deck).toHaveLength(MAX_DECK_SIZE);
+      for (const card of deck) {
+        expect(card.rarity).toBe("common");
+      }
+    }
+  });
+
+  it("difficulty 3 allows common and rare but not epic or legendary", () => {
+    const decks = Array.from({ length: 10 }, () => buildFactionDeck(cards, undefined, 3));
+    for (const deck of decks) {
+      expect(deck).toHaveLength(MAX_DECK_SIZE);
+      for (const card of deck) {
+        expect(["common", "rare"]).toContain(card.rarity);
+      }
+    }
+  });
+
+  it("difficulty 5 allows epic cards", () => {
+    const decks = Array.from({ length: 30 }, () => buildFactionDeck(cards, undefined, 5));
+    const allRarities = new Set(decks.flat().map(c => c.rarity));
+    expect(allRarities).toContain("epic");
+    expect(allRarities).not.toContain("legendary");
+  });
+
+  it("difficulty 7+ includes legendary cards", () => {
+    const decks = Array.from({ length: 50 }, () => buildFactionDeck(cards, undefined, 7));
+    const allRarities = new Set(decks.flat().map(c => c.rarity));
+    expect(allRarities).toContain("legendary");
+  });
+
+  it("difficulty 10 has highest concentration of rare/epic/legendary", () => {
+    const decks10 = Array.from({ length: 50 }, () => buildFactionDeck(cards, undefined, 10));
+    const decks3 = Array.from({ length: 50 }, () => buildFactionDeck(cards, undefined, 3));
+    const nonCommon10 = decks10.flat().filter(c => c.rarity !== "common").length;
+    const nonCommon3 = decks3.flat().filter(c => c.rarity !== "common").length;
+    expect(nonCommon10).toBeGreaterThan(nonCommon3);
+  });
+
+  it("higher difficulty increases faction synergy (more faction cards)", () => {
+    const decks10 = Array.from({ length: 30 }, () => buildFactionDeck(cards, undefined, 10));
+    const decks1 = Array.from({ length: 30 }, () => buildFactionDeck(cards, undefined, 1));
+    const avgFaction10 = decks10.reduce((sum, deck) => {
+      const faction = getDeckFaction(deck);
+      return sum + deck.filter(c => c.faction === faction).length;
+    }, 0) / decks10.length;
+    const avgFaction1 = decks1.reduce((sum, deck) => {
+      const faction = getDeckFaction(deck);
+      return sum + deck.filter(c => c.faction === faction).length;
+    }, 0) / decks1.length;
+    expect(avgFaction10).toBeGreaterThan(avgFaction1);
+  });
+
+  it("weightedPickCards with empty candidates returns empty array", () => {
+    const result = buildFactionDeck([], undefined, 5);
+    expect(result).toHaveLength(0);
+  });
+
+  it("numericDifficulty overrides legacy string difficulty", () => {
+    const deck = buildFactionDeck(cards, "easy", 10);
+    expect(deck).toHaveLength(MAX_DECK_SIZE);
+    const rarities = new Set(deck.map(c => c.rarity));
+    expect(rarities.size).toBeGreaterThan(1);
+  });
+});

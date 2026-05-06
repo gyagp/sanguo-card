@@ -1,4 +1,4 @@
-import { GameState, PlayerState, Card, BoardMinion, Faction, FACTION_SYNERGIES, getEffectiveCardCost, Lane, ALL_LANES, getLaneCount, MAX_LANE_SIZE, getReachableLanes, getSpellReachableLanes, TerrainType, MAX_DECK_SIZE, DECK_FACTION_THRESHOLD } from './types';
+import { GameState, PlayerState, Card, BoardMinion, Faction, Rarity, FACTION_SYNERGIES, getEffectiveCardCost, Lane, ALL_LANES, getLaneCount, MAX_LANE_SIZE, getReachableLanes, getSpellReachableLanes, TerrainType, MAX_DECK_SIZE, DECK_FACTION_THRESHOLD } from './types';
 
 
 type SpellCategory = 'freeze' | 'destroy' | 'damage' | 'buff' | 'generic';
@@ -859,37 +859,93 @@ export function createAI(difficulty: AIDifficulty): AIStrategy {
 
 const FACTION_CHOICES: Exclude<Faction, 'neutral'>[] = ['shu', 'wei', 'wu', 'qun'];
 
-export function buildFactionDeck(cardPool: Card[], difficulty?: AIDifficulty): Card[] {
-  let pool = cardPool;
-  if (difficulty === 'easy') {
-    pool = cardPool.filter(c => c.rarity === 'common');
-  } else if (difficulty === 'normal') {
-    pool = cardPool.filter(c => c.rarity === 'common' || c.rarity === 'rare');
+function getRarityWeights(numericDifficulty: number): Record<Rarity, number> {
+  const d = Math.max(1, Math.min(10, numericDifficulty));
+  return {
+    common:    Math.max(0, 100 - d * 8),
+    rare:      d >= 2 ? Math.min(40, (d - 1) * 5) : 0,
+    epic:      d >= 4 ? Math.min(30, (d - 3) * 5) : 0,
+    legendary: d >= 7 ? Math.min(20, (d - 6) * 5) : 0,
+  };
+}
+
+function filterPoolByDifficulty(cardPool: Card[], difficulty?: AIDifficulty, numericDifficulty?: number): Card[] {
+  if (numericDifficulty != null) {
+    const weights = getRarityWeights(numericDifficulty);
+    const allowedRarities = (Object.keys(weights) as Rarity[]).filter(r => weights[r] > 0);
+    return cardPool.filter(c => allowedRarities.includes(c.rarity));
   }
+  if (difficulty === 'easy') return cardPool.filter(c => c.rarity === 'common');
+  if (difficulty === 'normal') return cardPool.filter(c => c.rarity === 'common' || c.rarity === 'rare');
+  return cardPool;
+}
+
+function weightedPickCards(candidates: Card[], count: number, numericDifficulty?: number): Card[] {
+  if (candidates.length === 0) return [];
+  if (numericDifficulty == null) {
+    const result: Card[] = [];
+    while (result.length < count) {
+      result.push({ ...candidates[result.length % candidates.length] });
+    }
+    return result;
+  }
+
+  const weights = getRarityWeights(numericDifficulty);
+  const totalWeight = candidates.reduce((sum, c) => sum + weights[c.rarity], 0);
+  if (totalWeight === 0) {
+    const result: Card[] = [];
+    while (result.length < count) {
+      result.push({ ...candidates[result.length % candidates.length] });
+    }
+    return result;
+  }
+
+  const result: Card[] = [];
+  while (result.length < count) {
+    const prevLen = result.length;
+    let roll = Math.random() * totalWeight;
+    for (const card of candidates) {
+      roll -= weights[card.rarity];
+      if (roll <= 0) {
+        result.push({ ...card });
+        break;
+      }
+    }
+    if (result.length === prevLen) {
+      result.push({ ...candidates[candidates.length - 1] });
+    }
+  }
+  return result;
+}
+
+export function buildFactionDeck(cardPool: Card[], difficulty?: AIDifficulty, numericDifficulty?: number): Card[] {
+  const pool = filterPoolByDifficulty(cardPool, difficulty, numericDifficulty);
 
   const faction = FACTION_CHOICES[Math.floor(Math.random() * FACTION_CHOICES.length)];
   const factionCards = pool.filter(c => c.faction === faction);
   const neutralCards = pool.filter(c => c.faction === 'neutral');
 
   if (factionCards.length === 0) {
-    const deck: Card[] = [];
-    while (deck.length < MAX_DECK_SIZE) {
-      deck.push({ ...pool[deck.length % pool.length] });
-    }
-    return deck;
+    return weightedPickCards(pool, MAX_DECK_SIZE, numericDifficulty);
   }
 
-  const deck: Card[] = [];
-  const targetFactionCount = Math.max(DECK_FACTION_THRESHOLD, Math.min(factionCards.length * 2, MAX_DECK_SIZE - 4));
+  const d = numericDifficulty != null ? Math.max(1, Math.min(10, numericDifficulty)) : 5;
+  const synergyBonus = Math.floor(d * 0.5);
+  const targetFactionCount = Math.min(
+    MAX_DECK_SIZE - 2,
+    DECK_FACTION_THRESHOLD + synergyBonus
+  );
 
-  while (deck.length < targetFactionCount && deck.length < MAX_DECK_SIZE) {
-    deck.push({ ...factionCards[deck.length % factionCards.length] });
-  }
+  const deck = weightedPickCards(factionCards, Math.min(targetFactionCount, MAX_DECK_SIZE), numericDifficulty);
 
   const fillers = neutralCards.length > 0 ? neutralCards : pool.filter(c => c.faction !== faction);
+  if (deck.length < MAX_DECK_SIZE && fillers.length > 0) {
+    const fillerCards = weightedPickCards(fillers, MAX_DECK_SIZE - deck.length, numericDifficulty);
+    deck.push(...fillerCards);
+  }
+
   while (deck.length < MAX_DECK_SIZE) {
-    const idx = (deck.length - targetFactionCount) % Math.max(fillers.length, 1);
-    deck.push({ ...fillers[idx] });
+    deck.push({ ...pool[deck.length % pool.length] });
   }
 
   for (let i = deck.length - 1; i > 0; i--) {

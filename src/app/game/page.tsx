@@ -162,8 +162,16 @@ interface DyingMinion {
   expiry: number;
 }
 
+const DIFFICULTY_TO_NUMERIC: Record<AIDifficulty, number> = {
+  easy: 2,
+  normal: 5,
+  hard: 9,
+  boss: 10,
+};
+
 function buildRandomDeck(difficulty?: AIDifficulty): CardType[] {
-  return buildFactionDeck(cards, difficulty);
+  const numeric = difficulty ? DIFFICULTY_TO_NUMERIC[difficulty] : undefined;
+  return buildFactionDeck(cards, difficulty, numeric);
 }
 
 function loadSavedDecks(): SavedDeck[] {

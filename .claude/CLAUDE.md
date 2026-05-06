@@ -1,13 +1,13 @@
-# Autopo execute Session
+# Autopo test Session
 
 ## Work Unit
-Test Boss AI — verify phase transitions, special mechanics, hero power usage, and reactive behaviors
+Difficulty-based AI deck quality — easy AI uses weaker cards/more basics, hard AI uses optimal cards with better synergy, difficulty number (1-10) influences card pool and rarity distribution
 
 ## Acceptance Criteria
-- Tests for each boss phase transition trigger
-- Tests for boss-specific turn effects
-- Tests for reactive boss behaviors
-- vitest run passes
+- Easy difficulty decks use mostly common/basic cards
+- Hard difficulty decks include rares and legendaries
+- Difficulty 1-10 maps to card quality tiers
+- AI deck builder respects faction synergy at higher difficulties
 
 ## Rules
 # Rules
