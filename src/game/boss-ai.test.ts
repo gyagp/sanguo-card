@@ -13,6 +13,7 @@ import {
   PhaseTransitionEvent,
 } from './boss-ai';
 import { GameState, initializeGame, createDeck, Card, startTurn, Lane } from './types';
+import { PlayCardDecision } from './ai';
 
 function makeCard(overrides: Partial<Card> = {}): Card {
   return {
@@ -539,5 +540,260 @@ describe('Boss special mechanics', () => {
     state.players[0].hand = [makeCard({ name: '草药', type: 'spell' })];
     const bossAI = new BossAI(BOSS_SIMAYI, 1, 40);
     expect(bossAI.shouldUseHeroPower(state)).toBe(false);
+  });
+
+  it('LvBu uses hero power when board has minion with attack >= 4', () => {
+    const state = makeGameState();
+    state.activePlayer = 1;
+    state.players[1].hero.mana = 5;
+    state.players[1].heroPowerUsed = false;
+    state.players[1].board.push(makeBoardMinion('吕布', 8, 8));
+    const bossAI = new BossAI(BOSS_LVBU, 1, 30);
+    expect(bossAI.shouldUseHeroPower(state)).toBe(true);
+  });
+
+  it('LvBu does not use hero power when no minion has attack >= 4', () => {
+    const state = makeGameState();
+    state.activePlayer = 1;
+    state.players[1].hero.mana = 5;
+    state.players[1].heroPowerUsed = false;
+    state.players[1].board.push(makeBoardMinion('兵', 2, 2));
+    const bossAI = new BossAI(BOSS_LVBU, 1, 30);
+    expect(bossAI.shouldUseHeroPower(state)).toBe(false);
+  });
+
+  it('YuanShao uses hero power when board has fewer than 3 minions', () => {
+    const state = makeGameState();
+    state.activePlayer = 1;
+    state.players[1].hero.mana = 5;
+    state.players[1].heroPowerUsed = false;
+    state.players[1].board.push(makeBoardMinion('兵', 1, 1));
+    const bossAI = new BossAI(BOSS_YUANSHAO, 1, 30);
+    expect(bossAI.shouldUseHeroPower(state)).toBe(true);
+  });
+
+  it('YuanShao does not use hero power when board has 3+ minions', () => {
+    const state = makeGameState();
+    state.activePlayer = 1;
+    state.players[1].hero.mana = 5;
+    state.players[1].heroPowerUsed = false;
+    for (let i = 0; i < 3; i++) {
+      state.players[1].board.push(makeBoardMinion('兵', 1, 1));
+    }
+    const bossAI = new BossAI(BOSS_YUANSHAO, 1, 30);
+    expect(bossAI.shouldUseHeroPower(state)).toBe(false);
+  });
+
+  it('LvBu face attack override prefers hero target', () => {
+    const state = makeGameState();
+    state.activePlayer = 1;
+    state.players[1].board.push(makeBoardMinion('兵', 3, 3));
+    state.players[0].board.push(makeBoardMinion('敌兵', 1, 1));
+    const bossAI = new BossAI(BOSS_LVBU, 1, 30);
+    const attacks = bossAI.getAttackDecisions(state);
+    expect(attacks.every(a => a.targetIndex === 'hero')).toBe(true);
+  });
+});
+
+describe('Phase transitions for all bosses', () => {
+  function makeBoardMinion(name: string, atk: number, hp: number) {
+    return {
+      name, cost: 1, attack: atk, health: hp, description: '', type: 'minion' as const,
+      rarity: 'common' as const, faction: 'neutral' as const,
+      currentAttack: atk, currentHealth: hp,
+      summoningSickness: false, hasAttacked: false, hasDivineShield: false,
+      isStealth: false, isFrozen: false, freezeTurnsLeft: 0, isImmune: false,
+      windfuryAttacksLeft: 1, enrageActive: false, enrageBonus: 0,
+      factionAttackBonus: 0, factionHealthBonus: 0,
+      formationAtkBonus: 0, formationHpBonus: 0,
+      brotherhoodAtkBonus: 0, brotherhoodHpBonus: 0,
+      wuChargeBonus: 0, wuWeaponBonus: 0, wuComboAtkBonus: 0, wuComboHpBonus: 0,
+      qunDebuff: 0, lane: Lane.Center, slotIndex: 0,
+    };
+  }
+
+  it('ZhangJiao transitions from 太平道 to 黄天当立', () => {
+    const state = makeGameState();
+    state.players[1].hero.health = 30;
+    const bossAI = new BossAI(BOSS_ZHANGJIAO, 1, 30);
+    expect(bossAI.checkPhaseTransition(state)).toBeNull();
+
+    state.players[1].hero.health = 10;
+    const transition = bossAI.checkPhaseTransition(state);
+    expect(transition).not.toBeNull();
+    expect(transition!.fromPhase).toBe('太平道');
+    expect(transition!.toPhase).toBe('黄天当立');
+    expect(transition!.announcement).toBe('张角召唤黄巾力士！');
+  });
+
+  it('LvBu transitions from 无双 to 困兽', () => {
+    const state = makeGameState();
+    state.players[1].hero.health = 30;
+    const bossAI = new BossAI(BOSS_LVBU, 1, 30);
+    expect(bossAI.checkPhaseTransition(state)).toBeNull();
+
+    state.players[1].hero.health = 8;
+    const transition = bossAI.checkPhaseTransition(state);
+    expect(transition).not.toBeNull();
+    expect(transition!.fromPhase).toBe('无双');
+    expect(transition!.toPhase).toBe('困兽');
+  });
+
+  it('YuanShao transitions from 四世三公 to 溃败', () => {
+    const state = makeGameState();
+    state.players[1].hero.health = 30;
+    const bossAI = new BossAI(BOSS_YUANSHAO, 1, 30);
+    expect(bossAI.checkPhaseTransition(state)).toBeNull();
+
+    state.players[1].hero.health = 10;
+    const transition = bossAI.checkPhaseTransition(state);
+    expect(transition).not.toBeNull();
+    expect(transition!.fromPhase).toBe('四世三公');
+    expect(transition!.toPhase).toBe('溃败');
+  });
+
+  it('CaoCao transitions from 挟天子 to 绝地反击', () => {
+    const state = makeGameState();
+    state.players[1].hero.health = 30;
+    const bossAI = new BossAI(BOSS_CAOCAO, 1, 30);
+    expect(bossAI.checkPhaseTransition(state)).toBeNull();
+
+    state.players[1].hero.health = 8;
+    const transition = bossAI.checkPhaseTransition(state);
+    expect(transition).not.toBeNull();
+    expect(transition!.fromPhase).toBe('挟天子');
+    expect(transition!.toPhase).toBe('绝地反击');
+  });
+
+  it('SimaYi transitions through all 3 phases', () => {
+    const state = makeGameState();
+    state.players[1].hero.health = 40;
+    const bossAI = new BossAI(BOSS_SIMAYI, 1, 40);
+    expect(bossAI.checkPhaseTransition(state)).toBeNull();
+
+    state.players[1].hero.health = 20;
+    const t1 = bossAI.checkPhaseTransition(state);
+    expect(t1).not.toBeNull();
+    expect(t1!.fromPhase).toBe('鹰视狼顾');
+    expect(t1!.toPhase).toBe('诡计');
+
+    state.players[1].hero.health = 8;
+    const t2 = bossAI.checkPhaseTransition(state);
+    expect(t2).not.toBeNull();
+    expect(t2!.fromPhase).toBe('诡计');
+    expect(t2!.toPhase).toBe('天命');
+  });
+
+  it('DongZhuo transitions through all 3 phases', () => {
+    const state = makeGameState();
+    state.players[1].hero.health = 30;
+    const bossAI = new BossAI(BOSS_DONGZHUO, 1, 30);
+
+    state.players[1].hero.health = 15;
+    const t1 = bossAI.checkPhaseTransition(state);
+    expect(t1!.toPhase).toBe('暴怒');
+
+    state.players[1].hero.health = 7;
+    const t2 = bossAI.checkPhaseTransition(state);
+    expect(t2!.fromPhase).toBe('暴怒');
+    expect(t2!.toPhase).toBe('困兽犹斗');
+  });
+});
+
+describe('YuanShao turn start effects', () => {
+  function makeBoardMinion(name: string, atk: number, hp: number) {
+    return {
+      name, cost: 1, attack: atk, health: hp, description: '', type: 'minion' as const,
+      rarity: 'common' as const, faction: 'neutral' as const,
+      currentAttack: atk, currentHealth: hp,
+      summoningSickness: false, hasAttacked: false, hasDivineShield: false,
+      isStealth: false, isFrozen: false, freezeTurnsLeft: 0, isImmune: false,
+      windfuryAttacksLeft: 1, enrageActive: false, enrageBonus: 0,
+      factionAttackBonus: 0, factionHealthBonus: 0,
+      formationAtkBonus: 0, formationHpBonus: 0,
+      brotherhoodAtkBonus: 0, brotherhoodHpBonus: 0,
+      wuChargeBonus: 0, wuWeaponBonus: 0, wuComboAtkBonus: 0, wuComboHpBonus: 0,
+      qunDebuff: 0, lane: Lane.Center, slotIndex: 0,
+    };
+  }
+
+  it('phase 1 buffs existing minion HP by 1', () => {
+    const state = makeGameState();
+    state.players[1].hero.health = 30;
+    state.players[1].board.push(makeBoardMinion('卫兵', 2, 3));
+    const bossAI = new BossAI(BOSS_YUANSHAO, 1, 30);
+    bossAI.applyTurnStartEffect(state);
+    expect(state.players[1].board[0].currentHealth).toBe(4);
+  });
+});
+
+describe('CaoCao reactive behaviors', () => {
+  it('play override prioritizes spells over minions', () => {
+    const state = makeGameState();
+    state.activePlayer = 1;
+    state.players[1].hero.health = 30;
+    state.players[1].hero.mana = 5;
+    const spell = makeCard({ name: '火攻', type: 'spell', cost: 2 });
+    const minion = makeCard({ name: '兵', type: 'minion', cost: 2 });
+    state.players[1].hand = [minion, spell];
+    const bossAI = new BossAI(BOSS_CAOCAO, 1, 30);
+    const defaultDecisions: PlayCardDecision[] = [
+      { type: 'play', cardIndex: 0, lane: Lane.Center },
+      { type: 'play', cardIndex: 1, lane: Lane.Center },
+    ];
+    const overridden = BOSS_CAOCAO.specialMechanics!.getPlayOverride!(state, 1, defaultDecisions);
+    expect(overridden[0].cardIndex).toBe(1);
+  });
+});
+
+describe('SimaYi reactive behaviors', () => {
+  function makeBoardMinion(name: string, atk: number, hp: number) {
+    return {
+      name, cost: 1, attack: atk, health: hp, description: '', type: 'minion' as const,
+      rarity: 'common' as const, faction: 'neutral' as const,
+      currentAttack: atk, currentHealth: hp,
+      summoningSickness: false, hasAttacked: false, hasDivineShield: false,
+      isStealth: false, isFrozen: false, freezeTurnsLeft: 0, isImmune: false,
+      windfuryAttacksLeft: 1, enrageActive: false, enrageBonus: 0,
+      factionAttackBonus: 0, factionHealthBonus: 0,
+      formationAtkBonus: 0, formationHpBonus: 0,
+      brotherhoodAtkBonus: 0, brotherhoodHpBonus: 0,
+      wuChargeBonus: 0, wuWeaponBonus: 0, wuComboAtkBonus: 0, wuComboHpBonus: 0,
+      qunDebuff: 0, lane: Lane.Center, slotIndex: 0,
+    };
+  }
+
+  it('play override prioritizes spells when opponent has 4+ minions', () => {
+    const state = makeGameState();
+    state.activePlayer = 1;
+    state.players[1].hero.mana = 10;
+    for (let i = 0; i < 4; i++) {
+      state.players[0].board.push(makeBoardMinion('敌兵', 1, 1));
+    }
+    const spell = makeCard({ name: '火攻', type: 'spell', cost: 2 });
+    const minion = makeCard({ name: '兵', type: 'minion', cost: 2 });
+    state.players[1].hand = [minion, spell];
+    const defaultDecisions: PlayCardDecision[] = [
+      { type: 'play', cardIndex: 0, lane: Lane.Center },
+      { type: 'play', cardIndex: 1, lane: Lane.Center },
+    ];
+    const overridden = BOSS_SIMAYI.specialMechanics!.getPlayOverride!(state, 1, defaultDecisions);
+    expect(overridden[0].cardIndex).toBe(1);
+  });
+
+  it('play override does not reorder when opponent has fewer than 4 minions', () => {
+    const state = makeGameState();
+    state.activePlayer = 1;
+    state.players[1].hero.mana = 10;
+    state.players[0].board.push(makeBoardMinion('敌兵', 1, 1));
+    const spell = makeCard({ name: '火攻', type: 'spell', cost: 2 });
+    const minion = makeCard({ name: '兵', type: 'minion', cost: 2 });
+    state.players[1].hand = [minion, spell];
+    const defaultDecisions: PlayCardDecision[] = [
+      { type: 'play', cardIndex: 0, lane: Lane.Center },
+      { type: 'play', cardIndex: 1, lane: Lane.Center },
+    ];
+    const overridden = BOSS_SIMAYI.specialMechanics!.getPlayOverride!(state, 1, defaultDecisions);
+    expect(overridden[0].cardIndex).toBe(0);
   });
 });

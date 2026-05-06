@@ -1,13 +1,13 @@
-# Autopo test Session
+# Autopo execute Session
 
 ## Work Unit
-Boss AI special mechanics — bosses use unique hero powers strategically, have immunity windows, and react to player board state
+Test Boss AI — verify phase transitions, special mechanics, hero power usage, and reactive behaviors
 
 ## Acceptance Criteria
-- Bosses use hero powers at optimal times
-- At least 2 bosses have conditional immunity or damage reduction
-- Bosses react to player board (e.g., AoE when player has 4+ minions)
-- Boss AI overrides default attack/play logic with boss-specific strategies
+- Tests for each boss phase transition trigger
+- Tests for boss-specific turn effects
+- Tests for reactive boss behaviors
+- vitest run passes
 
 ## Rules
 # Rules
