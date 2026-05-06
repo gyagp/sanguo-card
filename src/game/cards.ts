@@ -447,6 +447,40 @@ export const cards: Card[] = [
       return state;
     },
   },
+  // === 陷阱 (3) ===
+  {
+    name: "埋伏", cost: 2, attack: 0, health: 0, description: "陷阱：当对手的随从攻击时，对其造成3点伤害",
+    rarity: "rare", type: "trap", faction: "shu",
+    trapTrigger: "on_attack",
+    trapEffect: (state: GameState, context) => {
+      if (context.triggeringMinion) {
+        context.triggeringMinion.currentHealth -= 3;
+      }
+      return state;
+    },
+  },
+  {
+    name: "反间计", cost: 3, attack: 0, health: 0, description: "陷阱：当对手施放法术时，对敌方英雄造成4点伤害",
+    rarity: "rare", type: "trap", faction: "wei",
+    trapTrigger: "on_spell",
+    trapEffect: (state: GameState, context) => {
+      const enemy = context.player === 0 ? 1 : 0;
+      state.players[enemy].hero.health -= 4;
+      return state;
+    },
+  },
+  {
+    name: "疑兵之计", cost: 2, attack: 0, health: 0, description: "陷阱：当对手召唤随从时，使其获得-2攻击力",
+    rarity: "rare", type: "trap", faction: "qun",
+    trapTrigger: "on_play",
+    trapEffect: (state: GameState, context) => {
+      const target = context.triggeringMinion;
+      if (target) {
+        target.currentAttack = Math.max(0, target.currentAttack - 2);
+      }
+      return state;
+    },
+  },
 ];
 
 const spellCardPool = cards.filter(c => c.type === "spell");

@@ -1,12 +1,12 @@
 # Autopo test Session
 
 ## Work Unit
-Add trap card type to the type system — extend CardType with 'trap', add TrapTrigger type (on_attack, on_spell, on_play, on_turn_start), add trap-related fields to Card interface, add trap state tracking to GameState
+Implement trap card play and trigger engine — playing a trap sets it face-down, traps trigger on matching events during opponent's turn, triggered trap executes its effect and is removed
 
 ## Acceptance Criteria
-- CardType includes 'trap'
-- Card interface has trapTrigger and trapEffect fields
-- GameState tracks active traps per player
+- Traps can be played from hand (deducts mana, goes face-down)
+- Traps trigger correctly on matching opponent actions
+- Triggered traps are removed after firing
 - npm run build succeeds
 
 ## Rules

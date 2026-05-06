@@ -49,7 +49,7 @@ describe("cards acceptance criteria", () => {
       expect(typeof c.health).toBe("number");
       expect(typeof c.description).toBe("string");
       expect(["common", "rare", "epic", "legendary"]).toContain(c.rarity);
-      expect(["minion", "spell", "weapon"]).toContain(c.type);
+      expect(["minion", "spell", "weapon", "trap"]).toContain(c.type);
     }
   });
 });

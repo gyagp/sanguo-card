@@ -21,8 +21,8 @@ beforeEach(() => {
 });
 
 describe('Collection data integrity', () => {
-  it('has exactly 34 cards', () => {
-    expect(cards).toHaveLength(34);
+  it('has correct number of cards', () => {
+    expect(cards).toHaveLength(37);
   });
 
   it('every card has faction and rarity', () => {
@@ -57,12 +57,12 @@ describe('New player initialization', () => {
 });
 
 describe('Owned vs unowned cards', () => {
-  it('new player owns 10 of 34 cards', () => {
+  it('new player owns 10 cards', () => {
     const p = initializeNewPlayer();
     const ownedNames = new Set(p.ownedCards.map(oc => oc.cardName));
     const ownedCount = cards.filter(c => ownedNames.has(c.name)).length;
     expect(ownedCount).toBe(10);
-    expect(cards.length - ownedCount).toBe(24);
+    expect(cards.length - ownedCount).toBe(cards.length - 10);
   });
 });
 
@@ -97,12 +97,12 @@ describe('Filtering', () => {
 });
 
 describe('Progress calculation', () => {
-  it('progress is ownedCount / 34', () => {
+  it('progress is ownedCount / total', () => {
     const p = initializeNewPlayer();
     const ownedNames = new Set(p.ownedCards.map(oc => oc.cardName));
     const ownedCount = cards.filter(c => ownedNames.has(c.name)).length;
     const progress = ownedCount / cards.length;
-    expect(progress).toBeCloseTo(10 / 34, 5);
+    expect(progress).toBeCloseTo(10 / cards.length, 5);
   });
 });
 

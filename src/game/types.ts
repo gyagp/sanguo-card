@@ -77,6 +77,7 @@ export interface EffectContext {
   spellDamage?: number;
   targetIndex?: number;
   targetLane?: Lane;
+  triggeringMinion?: BoardMinion;
 }
 
 export type Effect = (state: GameState, context: EffectContext) => GameState;
@@ -492,6 +493,8 @@ export function startTurn(state: GameState): DrawResult {
 
   applyQunTurnStartDebuff(state, state.activePlayer);
 
+  checkAndTriggerTraps(state, "on_turn_start", state.activePlayer);
+
   return result;
 }
 
@@ -714,6 +717,8 @@ export function playCard(
       }
     }
 
+    checkAndTriggerTraps(state, "on_play", state.activePlayer, { triggeringMinion: minion });
+
     return { success: true };
   }
 
@@ -754,6 +759,22 @@ export function playCard(
       drawCard(player);
     }
 
+    checkAndTriggerTraps(state, "on_spell", state.activePlayer, { triggeringCard: card });
+
+    return { success: true };
+  }
+
+  if (card.type === "trap") {
+    if (!card.trapTrigger || !card.trapEffect) {
+      return { success: false, error: "Trap card missing trigger or effect" };
+    }
+    player.hero.mana -= card.cost;
+    player.hand.splice(handIndex, 1);
+    player.activeTraps.push({
+      card: { ...card },
+      trigger: card.trapTrigger,
+      effect: card.trapEffect,
+    });
     return { success: true };
   }
 
@@ -844,6 +865,49 @@ export function removeDeadMinions(state: GameState): void {
       player.board = player.board.filter((m) => !dyingSet.has(m));
       recalculateFactionSynergies(player);
     }
+  }
+}
+
+export interface TrapTriggerContext {
+  triggeringMinion?: BoardMinion;
+  triggeringCard?: Card;
+}
+
+const TRAP_TRIGGER_EVENT_MAP: Record<TrapTrigger, GameEventType> = {
+  on_attack: "attack",
+  on_spell: "spell_played",
+  on_play: "minion_played",
+  on_turn_start: "turn_start",
+};
+
+export function checkAndTriggerTraps(state: GameState, trigger: TrapTrigger, triggeringPlayer: 0 | 1, triggerContext?: TrapTriggerContext): void {
+  const opponentIdx = triggeringPlayer === 0 ? 1 : 0;
+  const opponent = state.players[opponentIdx];
+  const trapsToFire: ActiveTrap[] = [];
+
+  for (const trap of opponent.activeTraps) {
+    if (trap.trigger === trigger) {
+      trapsToFire.push(trap);
+    }
+  }
+
+  const eventType = TRAP_TRIGGER_EVENT_MAP[trigger];
+
+  for (const trap of trapsToFire) {
+    const source: BoardMinion | Card = triggerContext?.triggeringMinion ?? triggerContext?.triggeringCard ?? trap.card;
+    const context: EffectContext = {
+      event: { type: eventType, player: triggeringPlayer, source },
+      sourceCard: trap.card,
+      player: opponentIdx,
+      triggeringMinion: triggerContext?.triggeringMinion,
+    };
+    trap.effect(state, context);
+  }
+
+  if (trapsToFire.length > 0) {
+    opponent.activeTraps = opponent.activeTraps.filter(t => !trapsToFire.includes(t));
+    checkEnrage(state);
+    removeDeadMinions(state);
   }
 }
 
@@ -941,6 +1005,7 @@ export function attackMinion(
 
   checkEnrage(state);
   removeDeadMinions(state);
+  checkAndTriggerTraps(state, "on_attack", state.activePlayer, { triggeringMinion: attackingMinion });
 
   return { success: true };
 }
@@ -1018,6 +1083,8 @@ export function attackHero(
   if (result3 !== null) {
     state.phase = "ended";
   }
+
+  checkAndTriggerTraps(state, "on_attack", state.activePlayer, { triggeringMinion: attackingMinion });
 
   return { success: true };
 }
