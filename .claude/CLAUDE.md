@@ -1,13 +1,14 @@
-# Autopo test Session
+# Autopo execute Session
 
 ## Work Unit
-Update weapon splash and deathrattle effects for lane system — weapon splash hits adjacent-in-lane, deathrattle AOE respects lanes, verify all card effects work with new board structure
+Tests for lane system core — test lane-restricted attacks, formation bonus calculation, terrain effect application, spell lane targeting, and board migration helpers
 
 ## Acceptance Criteria
-- Weapon splash damage hits same-lane minions adjacent by slot
-- Deathrattle effects that reference board positions use lane-aware logic
-- All existing card effects verified working
-- npm run build succeeds
+- Tests for attack lane validation (same lane OK, adjacent OK, far lane rejected)
+- Tests for formation bonus (+1/+1 same faction same lane)
+- Tests for each terrain effect (fire damage, healing, stealth)
+- Tests for lane AOE spell targeting
+- All tests pass with vitest run
 
 ## Rules
 # Rules
