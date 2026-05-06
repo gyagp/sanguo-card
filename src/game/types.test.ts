@@ -36,6 +36,9 @@ import {
   useHeroPower,
   removeDeadMinions,
   checkWinCondition,
+  Lane,
+  LanePosition,
+  TerrainEffect,
 } from "./types";
 
 function makeCard(overrides: Partial<Card> = {}): Card {
@@ -149,6 +152,7 @@ describe("GameState interface", () => {
       turnPhase: "play",
       activePlayer: 0,
       spellsPlayed: [[], []], wuComboCount: [0, 0],
+      terrain: { [Lane.Left]: null, [Lane.Center]: null, [Lane.Right]: null },
     };
     expect(state.players).toHaveLength(2);
     expect(state.board).toHaveLength(2);
@@ -167,6 +171,7 @@ describe("GameState interface", () => {
         turnPhase: "play",
         activePlayer: 0,
         spellsPlayed: [[], []], wuComboCount: [0, 0],
+        terrain: { [Lane.Left]: null, [Lane.Center]: null, [Lane.Right]: null },
       };
       expect(state.phase).toBe(phase);
     });
@@ -467,6 +472,7 @@ function makeBoardMinion(overrides: Partial<BoardMinion> = {}): BoardMinion {
     windfuryAttacksLeft: 1,
     enrageActive: false,
     enrageBonus: 0, factionAttackBonus: 0, factionHealthBonus: 0, shuAdjacencyAtkBonus: 0, shuAdjacencyHpBonus: 0, brotherhoodAtkBonus: 0, brotherhoodHpBonus: 0, wuChargeBonus: 0, wuWeaponBonus: 0, wuComboAtkBonus: 0, wuComboHpBonus: 0, qunDebuff: 0,
+    lane: Lane.Center, slotIndex: 0,
     ...overrides,
   };
 }
@@ -951,5 +957,64 @@ describe("Battlecry execution in playCard", () => {
     playCard(state, 0);
     expect(state.players[1].board).toHaveLength(0);
     expect(state.players[0].board[0].currentHealth).toBe(4);
+  });
+});
+
+describe("Lane system types", () => {
+  it("Lane enum has left, center, right values", () => {
+    expect(Lane.Left).toBe("left");
+    expect(Lane.Center).toBe("center");
+    expect(Lane.Right).toBe("right");
+  });
+
+  it("LanePosition has lane and slotIndex", () => {
+    const pos: LanePosition = { lane: Lane.Left, slotIndex: 2 };
+    expect(pos.lane).toBe(Lane.Left);
+    expect(pos.slotIndex).toBe(2);
+  });
+
+  it("TerrainEffect has name, description, and modifiers", () => {
+    const terrain: TerrainEffect = {
+      name: "Forest",
+      description: "Grants stealth",
+      attackModifier: 0,
+      healthModifier: 1,
+    };
+    expect(terrain.name).toBe("Forest");
+    expect(terrain.attackModifier).toBe(0);
+    expect(terrain.healthModifier).toBe(1);
+  });
+
+  it("BoardMinion has lane and slotIndex fields", () => {
+    const minion = makeBoardMinion({ lane: Lane.Right, slotIndex: 1 });
+    expect(minion.lane).toBe(Lane.Right);
+    expect(minion.slotIndex).toBe(1);
+  });
+
+  it("BoardMinion defaults lane to center via makeBoardMinion", () => {
+    const minion = makeBoardMinion();
+    expect(minion).toHaveProperty("lane");
+    expect(minion).toHaveProperty("slotIndex");
+  });
+
+  it("GameState has terrain field typed as Record<Lane, TerrainEffect | null>", () => {
+    const state = initializeGame(makeDeck(), makeDeck());
+    expect(state.terrain).toBeDefined();
+    expect(state.terrain[Lane.Left]).toBeNull();
+    expect(state.terrain[Lane.Center]).toBeNull();
+    expect(state.terrain[Lane.Right]).toBeNull();
+  });
+
+  it("playCard sets lane and slotIndex on created BoardMinion", () => {
+    const card = makeCard({ cost: 1, type: "minion" });
+    const state = initializeGame(makeDeck(), makeDeck());
+    state.players[0].hero.mana = 10;
+    state.players[0].hand = [card];
+    playCard(state, 0);
+    const minion = state.players[0].board[0];
+    expect(minion).toHaveProperty("lane");
+    expect(minion).toHaveProperty("slotIndex");
+    expect(Object.values(Lane)).toContain(minion.lane);
+    expect(typeof minion.slotIndex).toBe("number");
   });
 });

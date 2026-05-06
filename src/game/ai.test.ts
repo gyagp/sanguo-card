@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { evaluateBoard, getPlayableCards, getBestManaUsage, AIDecision, findLethal, evaluateTrade, getAIAttackDecisions, createAI, AIDifficulty, AIStrategy, evaluateCardForFaction, getOnCurvePlayDecisions, getOptimalPlayDecisions } from './ai';
-import { GameState, PlayerState, Card, BoardMinion, Deck, Faction } from './types';
+import { GameState, PlayerState, Card, BoardMinion, Deck, Faction, Lane } from './types';
 
 function makeCard(overrides: Partial<Card> = {}): Card {
   return {
@@ -30,7 +30,7 @@ function makeMinion(overrides: Partial<BoardMinion> = {}): BoardMinion {
     isImmune: false,
     windfuryAttacksLeft: 1,
     enrageActive: false,
-    enrageBonus: 0, factionAttackBonus: 0, factionHealthBonus: 0, shuAdjacencyAtkBonus: 0, shuAdjacencyHpBonus: 0, brotherhoodAtkBonus: 0, brotherhoodHpBonus: 0, wuChargeBonus: 0, wuWeaponBonus: 0, wuComboAtkBonus: 0, wuComboHpBonus: 0, qunDebuff: 0,
+    enrageBonus: 0, factionAttackBonus: 0, factionHealthBonus: 0, shuAdjacencyAtkBonus: 0, shuAdjacencyHpBonus: 0, brotherhoodAtkBonus: 0, brotherhoodHpBonus: 0, wuChargeBonus: 0, wuWeaponBonus: 0, wuComboAtkBonus: 0, wuComboHpBonus: 0, qunDebuff: 0, lane: Lane.Center, slotIndex: 0,
     ...overrides,
   };
 }
@@ -61,6 +61,7 @@ function makeGameState(p1: Partial<PlayerState> = {}, p2: Partial<PlayerState> =
     turnPhase: 'play',
     activePlayer: 0,
     spellsPlayed: [[], []], wuComboCount: [0, 0],
+    terrain: { [Lane.Left]: null, [Lane.Center]: null, [Lane.Right]: null },
   };
 }
 

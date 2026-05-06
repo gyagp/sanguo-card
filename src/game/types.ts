@@ -190,6 +190,24 @@ export interface RegisteredListener {
   listener: EventListener;
 }
 
+export enum Lane {
+  Left = "left",
+  Center = "center",
+  Right = "right",
+}
+
+export interface LanePosition {
+  lane: Lane;
+  slotIndex: number;
+}
+
+export interface TerrainEffect {
+  name: string;
+  description: string;
+  attackModifier: number;
+  healthModifier: number;
+}
+
 export interface BoardMinion extends Card {
   currentAttack: number;
   currentHealth: number;
@@ -214,6 +232,8 @@ export interface BoardMinion extends Card {
   wuComboAtkBonus: number;
   wuComboHpBonus: number;
   qunDebuff: number;
+  lane: Lane;
+  slotIndex: number;
   registeredListeners?: RegisteredListener[];
 }
 
@@ -266,6 +286,7 @@ export interface GameState {
   activePlayer: 0 | 1;
   spellsPlayed: [Card[], Card[]];
   wuComboCount: [number, number];
+  terrain: Record<Lane, TerrainEffect | null>;
 }
 
 export const MAX_MANA = 10;
@@ -301,6 +322,7 @@ export function initializeGame(deck1: Deck, deck2: Deck): GameState {
     turnPhase: "start",
     activePlayer: 0,
     spellsPlayed: [[], []], wuComboCount: [0, 0],
+    terrain: { [Lane.Left]: null, [Lane.Center]: null, [Lane.Right]: null },
   };
 
   state.players[0].hero.heroPower = getHeroPowerForPlayer(deck1);
@@ -506,6 +528,7 @@ export function playCard(
       shuAdjacencyHpBonus: 0,
       brotherhoodAtkBonus: 0,
       brotherhoodHpBonus: 0, wuChargeBonus: 0, wuWeaponBonus: 0, wuComboAtkBonus: 0, wuComboHpBonus: 0, qunDebuff: 0,
+      lane: Lane.Center, slotIndex: 0,
     };
     if (boardPosition !== undefined && boardPosition >= 0 && boardPosition < player.board.length) {
       player.board.splice(boardPosition, 0, minion);
@@ -1116,6 +1139,7 @@ export const FACTION_HERO_POWERS: Record<Faction, HeroPower> = {
         shuAdjacencyHpBonus: 0,
         brotherhoodAtkBonus: 0,
         brotherhoodHpBonus: 0, wuChargeBonus: 0, wuWeaponBonus: 0, wuComboAtkBonus: 0, wuComboHpBonus: 0, qunDebuff: 0,
+        lane: Lane.Center, slotIndex: 0,
       };
       player.board.push(token);
     },
@@ -1202,6 +1226,7 @@ export const UPGRADED_FACTION_HERO_POWERS: Partial<Record<Faction, HeroPower>> =
         shuAdjacencyHpBonus: 0,
         brotherhoodAtkBonus: 0,
         brotherhoodHpBonus: 0, wuChargeBonus: 0, wuWeaponBonus: 0, wuComboAtkBonus: 0, wuComboHpBonus: 0, qunDebuff: 0,
+        lane: Lane.Center, slotIndex: 0,
       };
       player.board.push(token);
     },

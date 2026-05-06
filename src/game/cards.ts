@@ -1,4 +1,4 @@
-import { Card, GameState, BoardMinion, MAX_BOARD_SIZE, MAX_HAND_SIZE, EffectContext, drawCard, STARTING_HP, gameEventBus, EventListener, GameEvent, applyFreeze } from "./types";
+import { Card, GameState, BoardMinion, MAX_BOARD_SIZE, MAX_HAND_SIZE, EffectContext, drawCard, STARTING_HP, gameEventBus, EventListener, GameEvent, applyFreeze, Lane } from "./types";
 
 export const cards: Card[] = [
   // === 普通 (10) ===
@@ -98,6 +98,7 @@ export const cards: Card[] = [
           factionAttackBonus: 0, factionHealthBonus: 0,
           shuAdjacencyAtkBonus: 0, shuAdjacencyHpBonus: 0,
           brotherhoodAtkBonus: 0, brotherhoodHpBonus: 0, wuChargeBonus: 0, wuWeaponBonus: 0, wuComboAtkBonus: 0, wuComboHpBonus: 0, qunDebuff: 0,
+          lane: Lane.Center, slotIndex: 0,
         };
         player.board.push(token);
       }
@@ -328,6 +329,7 @@ export const cards: Card[] = [
         factionAttackBonus: 0, factionHealthBonus: 0,
         shuAdjacencyAtkBonus: 0, shuAdjacencyHpBonus: 0,
         brotherhoodAtkBonus: 0, brotherhoodHpBonus: 0, wuChargeBonus: 0, wuWeaponBonus: 0, wuComboAtkBonus: 0, wuComboHpBonus: 0, qunDebuff: 0,
+        lane: Lane.Center, slotIndex: 0,
         ...extra,
       });
       if (board.length < MAX_BOARD_SIZE) {

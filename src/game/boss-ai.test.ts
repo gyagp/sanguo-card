@@ -11,7 +11,7 @@ import {
   BOSSES,
   createBossAIFromRule,
 } from './boss-ai';
-import { GameState, initializeGame, createDeck, Card, startTurn } from './types';
+import { GameState, initializeGame, createDeck, Card, startTurn, Lane } from './types';
 
 function makeCard(overrides: Partial<Card> = {}): Card {
   return {
@@ -104,7 +104,7 @@ describe('DongZhuo turn start effects', () => {
       shuAdjacencyAtkBonus: 0, shuAdjacencyHpBonus: 0,
       brotherhoodAtkBonus: 0, brotherhoodHpBonus: 0,
       wuChargeBonus: 0, wuWeaponBonus: 0, wuComboAtkBonus: 0, wuComboHpBonus: 0,
-      qunDebuff: 0,
+      qunDebuff: 0, lane: Lane.Center, slotIndex: 0,
     });
     const bossAI = new BossAI(BOSS_DONGZHUO, 1, 30);
     bossAI.applyTurnStartEffect(state);
@@ -161,7 +161,7 @@ describe('SimaYi herb card fix', () => {
       shuAdjacencyAtkBonus: 0, shuAdjacencyHpBonus: 0,
       brotherhoodAtkBonus: 0, brotherhoodHpBonus: 0,
       wuChargeBonus: 0, wuWeaponBonus: 0, wuComboAtkBonus: 0, wuComboHpBonus: 0,
-      qunDebuff: 0,
+      qunDebuff: 0, lane: Lane.Center, slotIndex: 0,
     });
     const bossAI = new BossAI(BOSS_SIMAYI, 1, 30);
     bossAI.applyTurnStartEffect(state);
@@ -241,7 +241,7 @@ describe('LvBu turn start effects', () => {
       shuAdjacencyAtkBonus: 0, shuAdjacencyHpBonus: 0,
       brotherhoodAtkBonus: 0, brotherhoodHpBonus: 0,
       wuChargeBonus: 0, wuWeaponBonus: 0, wuComboAtkBonus: 0, wuComboHpBonus: 0,
-      qunDebuff: 0,
+      qunDebuff: 0, lane: Lane.Center, slotIndex: 0,
     });
     const bossAI = new BossAI(BOSS_LVBU, 1, 30);
     bossAI.applyTurnStartEffect(state);
@@ -264,7 +264,7 @@ describe('CaoCao turn start effects', () => {
       shuAdjacencyAtkBonus: 0, shuAdjacencyHpBonus: 0,
       brotherhoodAtkBonus: 0, brotherhoodHpBonus: 0,
       wuChargeBonus: 0, wuWeaponBonus: 0, wuComboAtkBonus: 0, wuComboHpBonus: 0,
-      qunDebuff: 0,
+      qunDebuff: 0, lane: Lane.Center, slotIndex: 0,
     };
     state.players[0].board.push(minion);
     const bossAI = new BossAI(BOSS_CAOCAO, 1, 30);
@@ -290,7 +290,7 @@ describe('difficulty scaling', () => {
       shuAdjacencyAtkBonus: 0, shuAdjacencyHpBonus: 0,
       brotherhoodAtkBonus: 0, brotherhoodHpBonus: 0,
       wuChargeBonus: 0, wuWeaponBonus: 0, wuComboAtkBonus: 0, wuComboHpBonus: 0,
-      qunDebuff: 0,
+      qunDebuff: 0, lane: Lane.Center, slotIndex: 0,
     });
     const bossAI = new BossAI(BOSS_DONGZHUO, 1, 30);
     const attacks = bossAI.getAttackDecisions(state);

@@ -1,15 +1,13 @@
-# Autopo execute Session
+# Autopo test Session
 
 ## Work Unit
-Adventure mode tests — test progress persistence, star rating calculation, stage unlocking logic, reward distribution, and boss rule application
+Define lane system types — Lane enum (left/center/right), LanePosition (lane + slot index), update BoardMinion to include lane/slot, add TerrainEffect type, update GameState with terrain and lane-based board structure
 
 ## Acceptance Criteria
-- Verify trivial test passes first (test infra check)
-- Tests for star rating: 3 stars at high HP + low turns, 1 star at low HP + high turns
-- Tests for progress: stages unlock sequentially, chapter unlocks after boss
-- Tests for rewards: gold/xp/cards granted correctly
-- Tests for boss rules: extra mana applied, field effects active
-- vitest run passes all adventure tests
+- Lane, LanePosition, TerrainEffect types exported from types.ts
+- BoardMinion has lane and slotIndex fields
+- GameState has terrain field typed as Record<Lane, TerrainEffect | null>
+- npm run build succeeds
 
 ## Rules
 # Rules

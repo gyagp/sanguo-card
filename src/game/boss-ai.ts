@@ -2,6 +2,7 @@ import {
   GameState,
   BoardMinion,
   Card,
+  Lane,
   MAX_BOARD_SIZE,
   removeDeadMinions,
   drawCard,
@@ -72,6 +73,7 @@ function createToken(name: string, attack: number, health: number, faction: Card
     shuAdjacencyHpBonus: 0,
     brotherhoodAtkBonus: 0,
     brotherhoodHpBonus: 0, wuChargeBonus: 0, wuWeaponBonus: 0, wuComboAtkBonus: 0, wuComboHpBonus: 0, qunDebuff: 0,
+    lane: Lane.Center, slotIndex: 0,
   };
 }
 
