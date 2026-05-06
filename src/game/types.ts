@@ -255,13 +255,11 @@ export const WEAPON_ON_ATTACK_HOOKS: Record<string, WeaponOnAttack> = {
   "丈八蛇矛": (s, tpi, tmi) => {
     if (tmi === undefined) return;
     const board = s.players[tpi].board;
-    if (tmi > 0) {
-      const left = board[tmi - 1];
-      if (left && !left.isImmune) left.currentHealth -= 1;
-    }
-    if (tmi < board.length - 1) {
-      const right = board[tmi + 1];
-      if (right && !right.isImmune) right.currentHealth -= 1;
+    const target = board[tmi];
+    if (!target) return;
+    const sameLane = board.filter((m, i) => i !== tmi && m.lane === target.lane);
+    for (const m of sameLane) {
+      if (!m.isImmune) m.currentHealth -= 1;
     }
   },
 };

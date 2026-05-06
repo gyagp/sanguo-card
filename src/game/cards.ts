@@ -1,4 +1,4 @@
-import { Card, GameState, BoardMinion, MAX_BOARD_SIZE, MAX_HAND_SIZE, EffectContext, drawCard, STARTING_HP, gameEventBus, EventListener, GameEvent, applyFreeze, Lane, addMinionToLane } from "./types";
+import { Card, GameState, BoardMinion, MAX_BOARD_SIZE, MAX_HAND_SIZE, EffectContext, drawCard, STARTING_HP, gameEventBus, EventListener, GameEvent, applyFreeze, Lane, addMinionToLane, getReachableLanes } from "./types";
 
 export const cards: Card[] = [
   // === 普通 (10) ===
@@ -253,8 +253,13 @@ export const cards: Card[] = [
       const enemy = context.player === 0 ? 1 : 0;
       const sourceMinion = context.sourceCard as BoardMinion;
       const dmg = sourceMinion.currentAttack;
+      const reachable = getReachableLanes(sourceMinion.lane);
       const enemyBoard = state.players[enemy].board;
-      if (enemyBoard.length > 0) {
+      const laneTargets = enemyBoard.filter(m => reachable.includes(m.lane));
+      if (laneTargets.length > 0) {
+        const target = laneTargets[Math.floor(Math.random() * laneTargets.length)];
+        target.currentHealth -= dmg;
+      } else if (enemyBoard.length > 0) {
         const target = enemyBoard[Math.floor(Math.random() * enemyBoard.length)];
         target.currentHealth -= dmg;
       } else {

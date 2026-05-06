@@ -1,12 +1,12 @@
 # Autopo test Session
 
 ## Work Unit
-Add terrain effects to 3+ PVE adventure stages — configure lane terrain for boss stages and special stages, verify terrain displays and applies correctly during gameplay
+Update weapon splash and deathrattle effects for lane system — weapon splash hits adjacent-in-lane, deathrattle AOE respects lanes, verify all card effects work with new board structure
 
 ## Acceptance Criteria
-- At least 3 PVE stages have terrain effects configured
-- Terrain visually renders in PVE battles
-- Terrain mechanics apply correctly during gameplay
+- Weapon splash damage hits same-lane minions adjacent by slot
+- Deathrattle effects that reference board positions use lane-aware logic
+- All existing card effects verified working
 - npm run build succeeds
 
 ## Rules
