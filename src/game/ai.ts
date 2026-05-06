@@ -151,6 +151,28 @@ export function countFactionMinions(board: BoardMinion[], faction: Faction): num
   return board.filter(m => m.faction === faction).length;
 }
 
+function getSynergyTierValue(faction: Exclude<Faction, "neutral">, currentCount: number): number {
+  const synergy = FACTION_SYNERGIES[faction];
+  let value = 0;
+  for (const tier of synergy.tiers) {
+    if (currentCount >= tier.requiredCount) {
+      value = tier.attackBonus + tier.healthBonus;
+    }
+  }
+  return value;
+}
+
+function getSynergyGainFromCard(card: Card, board: BoardMinion[]): number {
+  if (card.type !== "minion" || card.faction === "neutral") return 0;
+  const faction = card.faction as Exclude<Faction, "neutral">;
+  const currentCount = countFactionMinions(board, faction);
+  const currentValue = getSynergyTierValue(faction, currentCount);
+  const newValue = getSynergyTierValue(faction, currentCount + 1);
+  const tierJump = newValue - currentValue;
+  if (tierJump > 0) return tierJump * (currentCount + 1);
+  return newValue > 0 ? 1 : 0;
+}
+
 export function evaluateFactionSynergy(board: BoardMinion[]): number {
   let score = 0;
   for (const faction of ['shu', 'wei', 'wu', 'qun'] as const) {
@@ -530,6 +552,9 @@ export function evaluateCardForFaction(card: Card, player: PlayerState): number 
     if (card.battlecry) score += QUN_VARIANCE_TOLERANCE;
   }
 
+  const synergyGain = getSynergyGainFromCard(card, player.board);
+  score += synergyGain * 2;
+
   if (card.type === "spell") {
     const category = classifySpell(card);
     if (category === 'buff' && player.board.length > 0) {
@@ -557,7 +582,9 @@ function applyFactionPlayOrder(decisions: PlayCardDecision[], player: PlayerStat
       if (costA !== costB) return costA - costB;
       if (cardA.type === "spell" && cardB.type !== "spell") return -1;
       if (cardA.type !== "spell" && cardB.type === "spell") return 1;
-      return 0;
+      const synergyA = getSynergyGainFromCard(cardA, player.board);
+      const synergyB = getSynergyGainFromCard(cardB, player.board);
+      return synergyB - synergyA;
     });
     return sorted;
   }
@@ -565,6 +592,11 @@ function applyFactionPlayOrder(decisions: PlayCardDecision[], player: PlayerStat
   if (player.deckFaction === "wei") {
     const spells = decisions.filter(d => player.hand[d.cardIndex].type === "spell");
     const nonSpells = decisions.filter(d => player.hand[d.cardIndex].type !== "spell");
+    nonSpells.sort((a, b) => {
+      const synergyA = getSynergyGainFromCard(player.hand[a.cardIndex], player.board);
+      const synergyB = getSynergyGainFromCard(player.hand[b.cardIndex], player.board);
+      return synergyB - synergyA;
+    });
     return [...nonSpells, ...spells];
   }
 
@@ -601,8 +633,13 @@ function pickLaneForMinion(player: PlayerState, card?: Card, state?: GameState):
     let score = 0;
 
     if (card && card.faction !== "neutral") {
-      const sameFactionInLane = player.board.filter(m => m.lane === lane && m.faction === card.faction).length;
+      const faction = card.faction as Exclude<Faction, "neutral">;
+      const sameFactionInLane = player.board.filter(m => m.lane === lane && m.faction === faction).length;
       if (sameFactionInLane >= 1) score += 5;
+      const totalFactionOnBoard = countFactionMinions(player.board, faction);
+      const currentTierValue = getSynergyTierValue(faction, totalFactionOnBoard);
+      const newTierValue = getSynergyTierValue(faction, totalFactionOnBoard + 1);
+      if (newTierValue > currentTierValue) score += 3;
     }
 
     if (state?.terrain) {
@@ -637,8 +674,13 @@ function applyLaneAssignments(decisions: PlayCardDecision[], player: PlayerState
     for (const lane of available) {
       let score = 0;
       if (card.faction !== "neutral") {
-        const sameFaction = player.board.filter(m => m.lane === lane && m.faction === card.faction).length;
+        const faction = card.faction as Exclude<Faction, "neutral">;
+        const sameFaction = player.board.filter(m => m.lane === lane && m.faction === faction).length;
         if (sameFaction >= 1) score += 5;
+        const totalFactionOnBoard = countFactionMinions(player.board, faction);
+        const currentTierValue = getSynergyTierValue(faction, totalFactionOnBoard);
+        const newTierValue = getSynergyTierValue(faction, totalFactionOnBoard + 1);
+        if (newTierValue > currentTierValue) score += 3;
       }
       if (state?.terrain) {
         const terrain = state.terrain[lane];

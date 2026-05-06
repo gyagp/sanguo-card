@@ -1,12 +1,13 @@
 # Autopo test Session
 
 ## Work Unit
-AI faction synergy deck building — when AI builds/selects decks, prefer faction-concentrated decks to activate deck bonuses and board synergies
+AI faction-aware play order and lane placement — Wu plays cheapest first for combo, Wei plays minions before spells, place same-faction minions in same lane for formation bonus
 
 ## Acceptance Criteria
-- AI deck selection prefers faction concentration
-- Adventure stage AI decks are faction-coherent
-- Hard AI values faction synergy in card play order
+- Wu AI plays cheapest cards first to build combo count
+- Wei AI plays minions before spells for spell damage on board
+- Lane placement clusters same-faction minions for formation bonus
+- Existing faction play order logic enhanced with synergy tier awareness
 
 ## Rules
 # Rules
