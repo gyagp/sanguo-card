@@ -113,7 +113,7 @@ export function useGameState(deck1: Deck, deck2: Deck, aiDifficulty?: AIDifficul
         isStealth: false, isFrozen: false, freezeTurnsLeft: 0, isImmune: false,
         windfuryAttacksLeft: 1, enrageActive: false, enrageBonus: 0,
         factionAttackBonus: 0, factionHealthBonus: 0,
-        shuAdjacencyAtkBonus: 0, shuAdjacencyHpBonus: 0,
+        formationAtkBonus: 0, formationHpBonus: 0,
         brotherhoodAtkBonus: 0, brotherhoodHpBonus: 0,
         wuChargeBonus: 0, wuWeaponBonus: 0, wuComboAtkBonus: 0, wuComboHpBonus: 0, qunDebuff: 0,
         lane: Lane.Center, slotIndex: 0,

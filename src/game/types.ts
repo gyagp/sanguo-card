@@ -224,8 +224,8 @@ export interface BoardMinion extends Card {
   enrageBonus: number;
   factionAttackBonus: number;
   factionHealthBonus: number;
-  shuAdjacencyAtkBonus: number;
-  shuAdjacencyHpBonus: number;
+  formationAtkBonus: number;
+  formationHpBonus: number;
   brotherhoodAtkBonus: number;
   brotherhoodHpBonus: number;
   wuChargeBonus: number;
@@ -493,12 +493,50 @@ export function recalculateFactionSynergies(player: PlayerState): void {
     minion.currentHealth += minion.factionHealthBonus - oldHpBonus;
   }
 
-  recalculateShuBonuses(player);
+  recalculateFormationBonuses(player);
 }
 
 const BROTHERHOOD_NAMES = new Set(["刘备", "关羽", "张飞"]);
 
-export function recalculateShuBonuses(player: PlayerState): void {
+export function recalculateFormationBonuses(player: PlayerState): void {
+  const board = player.board;
+
+  const laneFactions = new Map<Lane, Map<Faction, number>>();
+  for (const minion of board) {
+    if (minion.faction === "neutral") continue;
+    let factionMap = laneFactions.get(minion.lane);
+    if (!factionMap) {
+      factionMap = new Map();
+      laneFactions.set(minion.lane, factionMap);
+    }
+    factionMap.set(minion.faction, (factionMap.get(minion.faction) ?? 0) + 1);
+  }
+
+  for (const minion of board) {
+    const oldFormAtk = minion.formationAtkBonus;
+    const oldFormHp = minion.formationHpBonus;
+
+    let formAtk = 0;
+    let formHp = 0;
+    if (minion.faction !== "neutral") {
+      const factionMap = laneFactions.get(minion.lane);
+      const sameFactionInLane = factionMap?.get(minion.faction) ?? 0;
+      if (sameFactionInLane >= 2) {
+        formAtk = 1;
+        formHp = 1;
+      }
+    }
+    minion.formationAtkBonus = formAtk;
+    minion.formationHpBonus = formHp;
+
+    minion.currentAttack += (formAtk - oldFormAtk);
+    minion.currentHealth += (formHp - oldFormHp);
+  }
+
+  recalculateBrotherhoodBonuses(player);
+}
+
+function recalculateBrotherhoodBonuses(player: PlayerState): void {
   const board = player.board;
 
   const hasBrotherhood =
@@ -506,21 +544,11 @@ export function recalculateShuBonuses(player: PlayerState): void {
     board.some(m => m.name === "关羽") &&
     board.some(m => m.name === "张飞");
 
-  for (let i = 0; i < board.length; i++) {
-    const minion = board[i];
+  for (const minion of board) {
     if (minion.faction !== "shu") continue;
 
-    const oldAdjAtk = minion.shuAdjacencyAtkBonus;
-    const oldAdjHp = minion.shuAdjacencyHpBonus;
     const oldBroAtk = minion.brotherhoodAtkBonus;
     const oldBroHp = minion.brotherhoodHpBonus;
-
-    let adjAtk = 0;
-    let adjHp = 0;
-    if (i > 0 && board[i - 1].faction === "shu") { adjAtk += 1; adjHp += 1; }
-    if (i < board.length - 1 && board[i + 1].faction === "shu") { adjAtk += 1; adjHp += 1; }
-    minion.shuAdjacencyAtkBonus = adjAtk;
-    minion.shuAdjacencyHpBonus = adjHp;
 
     let broAtk = 0;
     let broHp = 0;
@@ -531,8 +559,8 @@ export function recalculateShuBonuses(player: PlayerState): void {
     minion.brotherhoodAtkBonus = broAtk;
     minion.brotherhoodHpBonus = broHp;
 
-    minion.currentAttack += (adjAtk - oldAdjAtk) + (broAtk - oldBroAtk);
-    minion.currentHealth += (adjHp - oldAdjHp) + (broHp - oldBroHp);
+    minion.currentAttack += (broAtk - oldBroAtk);
+    minion.currentHealth += (broHp - oldBroHp);
   }
 }
 
@@ -584,8 +612,8 @@ export function playCard(
       enrageBonus: 0,
       factionAttackBonus: 0,
       factionHealthBonus: 0,
-      shuAdjacencyAtkBonus: 0,
-      shuAdjacencyHpBonus: 0,
+      formationAtkBonus: 0,
+      formationHpBonus: 0,
       brotherhoodAtkBonus: 0,
       brotherhoodHpBonus: 0, wuChargeBonus: 0, wuWeaponBonus: 0, wuComboAtkBonus: 0, wuComboHpBonus: 0, qunDebuff: 0,
       lane: lane, slotIndex: slotIndex ?? getLaneCount(player, lane),
@@ -1198,8 +1226,8 @@ export const FACTION_HERO_POWERS: Record<Faction, HeroPower> = {
         enrageBonus: 0,
         factionAttackBonus: 0,
         factionHealthBonus: 0,
-        shuAdjacencyAtkBonus: 0,
-        shuAdjacencyHpBonus: 0,
+        formationAtkBonus: 0,
+        formationHpBonus: 0,
         brotherhoodAtkBonus: 0,
         brotherhoodHpBonus: 0, wuChargeBonus: 0, wuWeaponBonus: 0, wuComboAtkBonus: 0, wuComboHpBonus: 0, qunDebuff: 0,
         lane: Lane.Center, slotIndex: 0,
@@ -1285,8 +1313,8 @@ export const UPGRADED_FACTION_HERO_POWERS: Partial<Record<Faction, HeroPower>> =
         enrageBonus: 0,
         factionAttackBonus: 0,
         factionHealthBonus: 0,
-        shuAdjacencyAtkBonus: 0,
-        shuAdjacencyHpBonus: 0,
+        formationAtkBonus: 0,
+        formationHpBonus: 0,
         brotherhoodAtkBonus: 0,
         brotherhoodHpBonus: 0, wuChargeBonus: 0, wuWeaponBonus: 0, wuComboAtkBonus: 0, wuComboHpBonus: 0, qunDebuff: 0,
         lane: Lane.Center, slotIndex: 0,

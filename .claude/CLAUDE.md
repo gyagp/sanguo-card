@@ -1,12 +1,12 @@
 # Autopo test Session
 
 ## Work Unit
-Update spell targeting for lane awareness — AOE spells affect only one lane (add targetLane to spell context), targeted spells can only hit same/adjacent lane minions, add 'lane_aoe' targetType for lane-scoped AOE
+Implement formation bonus — adjacent same-faction minions in the same lane get +1/+1, update recalculateShuBonuses to work with lane system, add generic formation bonus calculation for all factions
 
 ## Acceptance Criteria
-- AOE spells require lane selection and only hit that lane's minions
-- Targeted spells respect lane adjacency
-- Existing spell cards updated with lane-aware effects
+- Two same-faction minions in same lane get +1/+1 each
+- Bonus recalculates on minion play/death/move
+- Existing Shu adjacency bonus migrated to new system
 - npm run build succeeds
 
 ## Rules

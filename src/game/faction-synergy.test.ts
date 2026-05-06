@@ -4,7 +4,7 @@ import {
   FACTION_SYNERGIES, recalculateFactionSynergies, playCard,
   createDeck, createPlayerState, MAX_BOARD_SIZE, MAX_HAND_SIZE,
   DECK_FACTION_THRESHOLD, FactionPassive, FactionSynergyBonus, EffectContext,
-  getEffectiveCardCost, applyFreeze, drawCard,
+  getEffectiveCardCost, applyFreeze, drawCard, Lane,
 } from './types';
 import {
   countFactionMinions, evaluateFactionSynergy, evaluateBoard,
@@ -21,7 +21,7 @@ function makeMinion(overrides: Partial<BoardMinion> & { faction: Faction }): Boa
     hasDivineShield: false, isStealth: false, isFrozen: false,
     freezeTurnsLeft: 0,
     isImmune: false, windfuryAttacksLeft: 1, enrageActive: false, enrageBonus: 0,
-    factionAttackBonus: 0, factionHealthBonus: 0, shuAdjacencyAtkBonus: 0, shuAdjacencyHpBonus: 0, brotherhoodAtkBonus: 0, brotherhoodHpBonus: 0, wuChargeBonus: 0, wuWeaponBonus: 0, wuComboAtkBonus: 0, wuComboHpBonus: 0, qunDebuff: 0,
+    factionAttackBonus: 0, factionHealthBonus: 0, formationAtkBonus: 0, formationHpBonus: 0, brotherhoodAtkBonus: 0, brotherhoodHpBonus: 0, wuChargeBonus: 0, wuWeaponBonus: 0, wuComboAtkBonus: 0, wuComboHpBonus: 0, qunDebuff: 0,
     ...overrides,
   };
 }
@@ -94,8 +94,8 @@ describe('recalculateFactionSynergies', () => {
   });
 
   it('applies health bonus for wei minions', () => {
-    const m1 = makeMinion({ faction: 'wei', attack: 2, health: 3 });
-    const m2 = makeMinion({ faction: 'wei', attack: 1, health: 2 });
+    const m1 = makeMinion({ faction: 'wei', attack: 2, health: 3, lane: Lane.Left });
+    const m2 = makeMinion({ faction: 'wei', attack: 1, health: 2, lane: Lane.Right });
     const player = createPlayerState(createDeck(makeDummyDeck()));
     player.board = [m1, m2];
 
@@ -107,8 +107,8 @@ describe('recalculateFactionSynergies', () => {
   });
 
   it('applies both attack and health bonus for wu', () => {
-    const m1 = makeMinion({ faction: 'wu', attack: 3, health: 3 });
-    const m2 = makeMinion({ faction: 'wu', attack: 2, health: 2 });
+    const m1 = makeMinion({ faction: 'wu', attack: 3, health: 3, lane: Lane.Left });
+    const m2 = makeMinion({ faction: 'wu', attack: 2, health: 2, lane: Lane.Right });
     const player = createPlayerState(createDeck(makeDummyDeck()));
     player.board = [m1, m2];
 
@@ -121,8 +121,8 @@ describe('recalculateFactionSynergies', () => {
   });
 
   it('applies +2 atk for qun', () => {
-    const m1 = makeMinion({ faction: 'qun', attack: 5, health: 5 });
-    const m2 = makeMinion({ faction: 'qun', attack: 4, health: 2 });
+    const m1 = makeMinion({ faction: 'qun', attack: 5, health: 5, lane: Lane.Left });
+    const m2 = makeMinion({ faction: 'qun', attack: 4, health: 2, lane: Lane.Right });
     const player = createPlayerState(createDeck(makeDummyDeck()));
     player.board = [m1, m2];
 

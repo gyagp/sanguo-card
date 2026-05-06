@@ -15,7 +15,7 @@ function makeMinion(overrides: Partial<BoardMinion> & { faction: Faction }): Boa
     hasDivineShield: false, isStealth: false, isFrozen: false,
     freezeTurnsLeft: 0,
     isImmune: false, windfuryAttacksLeft: 1, enrageActive: false, enrageBonus: 0,
-    factionAttackBonus: 0, factionHealthBonus: 0, shuAdjacencyAtkBonus: 0, shuAdjacencyHpBonus: 0,
+    factionAttackBonus: 0, factionHealthBonus: 0, formationAtkBonus: 0, formationHpBonus: 0,
     brotherhoodAtkBonus: 0, brotherhoodHpBonus: 0, wuChargeBonus: 0, wuWeaponBonus: 0, wuComboAtkBonus: 0, wuComboHpBonus: 0, qunDebuff: 0,
     lane: Lane.Center, slotIndex: 0,
     ...overrides,
@@ -252,10 +252,10 @@ describe('Wu combo counter', () => {
     playCard(state, 0, undefined, undefined, Lane.Right);
     playCard(state, 0, undefined, undefined, Lane.Left); // 4th => combo bonus = 2
     const fourth = state.players[0].board[3];
-    // 1 base + 1 faction atk (4+ wu tier) + 2 combo = 4 atk
-    // 1 base + 2 faction hp (4+ wu tier) + 2 combo = 5 hp
-    expect(fourth.currentAttack).toBe(4);
-    expect(fourth.currentHealth).toBe(5);
+    // 1 base + 1 faction atk (4+ wu tier) + 2 combo + 1 formation (same lane as 1st) = 5 atk
+    // 1 base + 2 faction hp (4+ wu tier) + 2 combo + 1 formation = 6 hp
+    expect(fourth.currentAttack).toBe(5);
+    expect(fourth.currentHealth).toBe(6);
     expect(fourth.wuComboAtkBonus).toBe(2);
     expect(fourth.wuComboHpBonus).toBe(2);
   });
@@ -267,9 +267,9 @@ describe('Wu combo counter', () => {
         makeCard({ faction: 'wu', name: `吴${i}`, cost: 1, attack: 2, health: 2 }),
       );
     }
-    playCard(state, 0);
-    playCard(state, 0);
-    // 2 base + 1 faction synergy (2+ wu minions on board) = 3
+    playCard(state, 0, undefined, undefined, Lane.Left);
+    playCard(state, 0, undefined, undefined, Lane.Right);
+    // 2 base + 1 faction synergy (2+ wu minions on board) = 3 (no formation bonus — different lanes)
     expect(state.players[0].board[0].currentAttack).toBe(3);
     expect(state.players[0].board[0].wuComboAtkBonus).toBe(0);
     expect(state.players[0].board[1].currentAttack).toBe(3);

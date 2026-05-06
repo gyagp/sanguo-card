@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
   GameState, PlayerState, BoardMinion, Card, Faction, Lane,
-  recalculateShuBonuses, recalculateFactionSynergies, playCard,
+  recalculateFormationBonuses, recalculateFactionSynergies, playCard,
   removeDeadMinions, createDeck, createPlayerState,
   gameEventBus,
 } from './types';
@@ -25,7 +25,7 @@ function makeMinion(overrides: Partial<BoardMinion> & { faction: Faction }): Boa
     freezeTurnsLeft: 0,
     isImmune: false, windfuryAttacksLeft: 1, enrageActive: false, enrageBonus: 0,
     factionAttackBonus: 0, factionHealthBonus: 0,
-    shuAdjacencyAtkBonus: 0, shuAdjacencyHpBonus: 0,
+    formationAtkBonus: 0, formationHpBonus: 0,
     brotherhoodAtkBonus: 0, brotherhoodHpBonus: 0, wuChargeBonus: 0, wuWeaponBonus: 0, wuComboAtkBonus: 0, wuComboHpBonus: 0, qunDebuff: 0,
     lane: Lane.Center, slotIndex: 0,
     ...overrides,
@@ -58,54 +58,54 @@ beforeEach(() => {
   gameEventBus.clear();
 });
 
-describe('recalculateShuBonuses — adjacency', () => {
+describe('recalculateFormationBonuses — formation (same-faction same-lane)', () => {
   it('grants +1/+1 to two adjacent Shu minions', () => {
     const m1 = makeMinion({ faction: 'shu', attack: 2, health: 3 });
     const m2 = makeMinion({ faction: 'shu', attack: 3, health: 4 });
     const player = createPlayerState(createDeck(makeDummyDeck()));
     player.board = [m1, m2];
 
-    recalculateShuBonuses(player);
+    recalculateFormationBonuses(player);
 
-    expect(m1.shuAdjacencyAtkBonus).toBe(1);
-    expect(m1.shuAdjacencyHpBonus).toBe(1);
+    expect(m1.formationAtkBonus).toBe(1);
+    expect(m1.formationHpBonus).toBe(1);
     expect(m1.currentAttack).toBe(3); // 2+1
     expect(m1.currentHealth).toBe(4); // 3+1
 
-    expect(m2.shuAdjacencyAtkBonus).toBe(1);
-    expect(m2.shuAdjacencyHpBonus).toBe(1);
+    expect(m2.formationAtkBonus).toBe(1);
+    expect(m2.formationHpBonus).toBe(1);
     expect(m2.currentAttack).toBe(4); // 3+1
     expect(m2.currentHealth).toBe(5); // 4+1
   });
 
-  it('middle Shu minion between two Shu gets +2/+2 (stacks per neighbor)', () => {
-    const m1 = makeMinion({ faction: 'shu', attack: 1, health: 1 });
-    const m2 = makeMinion({ faction: 'shu', attack: 1, health: 1 });
-    const m3 = makeMinion({ faction: 'shu', attack: 1, health: 1 });
+  it('two Shu minions in same lane get +1/+1, third in different lane gets no formation bonus', () => {
+    const m1 = makeMinion({ faction: 'shu', attack: 1, health: 1, lane: Lane.Center, slotIndex: 0 });
+    const m2 = makeMinion({ faction: 'shu', attack: 1, health: 1, lane: Lane.Center, slotIndex: 1 });
+    const m3 = makeMinion({ faction: 'shu', attack: 1, health: 1, lane: Lane.Left, slotIndex: 0 });
     const player = createPlayerState(createDeck(makeDummyDeck()));
     player.board = [m1, m2, m3];
 
-    recalculateShuBonuses(player);
+    recalculateFormationBonuses(player);
 
-    expect(m1.shuAdjacencyAtkBonus).toBe(1);
-    expect(m2.shuAdjacencyAtkBonus).toBe(2);
-    expect(m2.shuAdjacencyHpBonus).toBe(2);
-    expect(m2.currentAttack).toBe(3); // 1+2
-    expect(m2.currentHealth).toBe(3); // 1+2
-    expect(m3.shuAdjacencyAtkBonus).toBe(1);
+    expect(m1.formationAtkBonus).toBe(1);
+    expect(m2.formationAtkBonus).toBe(1);
+    expect(m2.formationHpBonus).toBe(1);
+    expect(m2.currentAttack).toBe(2); // 1+1
+    expect(m2.currentHealth).toBe(2); // 1+1
+    expect(m3.formationAtkBonus).toBe(0);
   });
 
-  it('non-adjacent Shu minions separated by non-Shu get no adjacency bonus', () => {
-    const s1 = makeMinion({ faction: 'shu', name: 's1', attack: 2, health: 2 });
-    const n = makeMinion({ faction: 'wei', name: 'w1', attack: 1, health: 1 });
-    const s2 = makeMinion({ faction: 'shu', name: 's2', attack: 2, health: 2 });
+  it('Shu minions in different lanes get no formation bonus', () => {
+    const s1 = makeMinion({ faction: 'shu', name: 's1', attack: 2, health: 2, lane: Lane.Left, slotIndex: 0 });
+    const n = makeMinion({ faction: 'wei', name: 'w1', attack: 1, health: 1, lane: Lane.Center, slotIndex: 0 });
+    const s2 = makeMinion({ faction: 'shu', name: 's2', attack: 2, health: 2, lane: Lane.Right, slotIndex: 0 });
     const player = createPlayerState(createDeck(makeDummyDeck()));
     player.board = [s1, n, s2];
 
-    recalculateShuBonuses(player);
+    recalculateFormationBonuses(player);
 
-    expect(s1.shuAdjacencyAtkBonus).toBe(0);
-    expect(s2.shuAdjacencyAtkBonus).toBe(0);
+    expect(s1.formationAtkBonus).toBe(0);
+    expect(s2.formationAtkBonus).toBe(0);
   });
 
   it('single Shu minion gets no adjacency bonus', () => {
@@ -113,36 +113,48 @@ describe('recalculateShuBonuses — adjacency', () => {
     const player = createPlayerState(createDeck(makeDummyDeck()));
     player.board = [m];
 
-    recalculateShuBonuses(player);
+    recalculateFormationBonuses(player);
 
-    expect(m.shuAdjacencyAtkBonus).toBe(0);
-    expect(m.shuAdjacencyHpBonus).toBe(0);
+    expect(m.formationAtkBonus).toBe(0);
+    expect(m.formationHpBonus).toBe(0);
     expect(m.currentAttack).toBe(3);
     expect(m.currentHealth).toBe(3);
   });
 
-  it('non-Shu minions never get adjacency bonus', () => {
-    const w1 = makeMinion({ faction: 'wei', attack: 2, health: 2 });
-    const w2 = makeMinion({ faction: 'wei', attack: 2, health: 2 });
+  it('non-Shu same-faction minions in same lane get formation bonus', () => {
+    const w1 = makeMinion({ faction: 'wei', attack: 2, health: 2, lane: Lane.Center, slotIndex: 0 });
+    const w2 = makeMinion({ faction: 'wei', attack: 2, health: 2, lane: Lane.Center, slotIndex: 1 });
     const player = createPlayerState(createDeck(makeDummyDeck()));
     player.board = [w1, w2];
 
-    recalculateShuBonuses(player);
+    recalculateFormationBonuses(player);
 
-    expect(w1.shuAdjacencyAtkBonus).toBe(0);
-    expect(w2.shuAdjacencyAtkBonus).toBe(0);
+    expect(w1.formationAtkBonus).toBe(1);
+    expect(w2.formationAtkBonus).toBe(1);
+  });
+
+  it('different faction minions in same lane get no formation bonus', () => {
+    const w1 = makeMinion({ faction: 'wei', attack: 2, health: 2, lane: Lane.Center, slotIndex: 0 });
+    const s1 = makeMinion({ faction: 'shu', attack: 2, health: 2, lane: Lane.Center, slotIndex: 1 });
+    const player = createPlayerState(createDeck(makeDummyDeck()));
+    player.board = [w1, s1];
+
+    recalculateFormationBonuses(player);
+
+    expect(w1.formationAtkBonus).toBe(0);
+    expect(s1.formationAtkBonus).toBe(0);
   });
 });
 
-describe('recalculateShuBonuses — brotherhood trio', () => {
+describe('recalculateFormationBonuses — brotherhood trio', () => {
   it('grants +2/+2 to 刘备, 关羽, 张飞 when all three on board', () => {
-    const liu = makeMinion({ faction: 'shu', name: '刘备', attack: 2, health: 3 });
-    const guan = makeMinion({ faction: 'shu', name: '关羽', attack: 4, health: 5 });
-    const zhang = makeMinion({ faction: 'shu', name: '张飞', attack: 3, health: 4 });
+    const liu = makeMinion({ faction: 'shu', name: '刘备', attack: 2, health: 3, lane: Lane.Left, slotIndex: 0 });
+    const guan = makeMinion({ faction: 'shu', name: '关羽', attack: 4, health: 5, lane: Lane.Left, slotIndex: 1 });
+    const zhang = makeMinion({ faction: 'shu', name: '张飞', attack: 3, health: 4, lane: Lane.Center, slotIndex: 0 });
     const player = createPlayerState(createDeck(makeDummyDeck()));
     player.board = [liu, guan, zhang];
 
-    recalculateShuBonuses(player);
+    recalculateFormationBonuses(player);
 
     expect(liu.brotherhoodAtkBonus).toBe(2);
     expect(liu.brotherhoodHpBonus).toBe(2);
@@ -163,7 +175,7 @@ describe('recalculateShuBonuses — brotherhood trio', () => {
     const player = createPlayerState(createDeck(makeDummyDeck()));
     player.board = [liu, guan];
 
-    recalculateShuBonuses(player);
+    recalculateFormationBonuses(player);
 
     expect(liu.brotherhoodAtkBonus).toBe(0);
     expect(liu.brotherhoodHpBonus).toBe(0);
@@ -171,19 +183,19 @@ describe('recalculateShuBonuses — brotherhood trio', () => {
   });
 
   it('non-brotherhood Shu minions do not get brotherhood bonus even when trio present', () => {
-    const liu = makeMinion({ faction: 'shu', name: '刘备', attack: 2, health: 2 });
-    const guan = makeMinion({ faction: 'shu', name: '关羽', attack: 2, health: 2 });
-    const zhang = makeMinion({ faction: 'shu', name: '张飞', attack: 2, health: 2 });
-    const other = makeMinion({ faction: 'shu', name: '赵云', attack: 3, health: 3 });
+    const liu = makeMinion({ faction: 'shu', name: '刘备', attack: 2, health: 2, lane: Lane.Left, slotIndex: 0 });
+    const guan = makeMinion({ faction: 'shu', name: '关羽', attack: 2, health: 2, lane: Lane.Center, slotIndex: 0 });
+    const zhang = makeMinion({ faction: 'shu', name: '张飞', attack: 2, health: 2, lane: Lane.Right, slotIndex: 0 });
+    const other = makeMinion({ faction: 'shu', name: '赵云', attack: 3, health: 3, lane: Lane.Right, slotIndex: 1 });
     const player = createPlayerState(createDeck(makeDummyDeck()));
     player.board = [liu, guan, zhang, other];
 
-    recalculateShuBonuses(player);
+    recalculateFormationBonuses(player);
 
     expect(other.brotherhoodAtkBonus).toBe(0);
     expect(other.brotherhoodHpBonus).toBe(0);
     // But other still gets adjacency from adjacent 张飞
-    expect(other.shuAdjacencyAtkBonus).toBe(1);
+    expect(other.formationAtkBonus).toBe(1);
   });
 });
 
@@ -200,10 +212,10 @@ describe('bonuses recalculated on minion play', () => {
     expect(state.players[0].board.length).toBe(2);
     const m1 = state.players[0].board[0];
     const m2 = state.players[0].board[1];
-    expect(m1.shuAdjacencyAtkBonus).toBe(1);
-    expect(m1.shuAdjacencyHpBonus).toBe(1);
-    expect(m2.shuAdjacencyAtkBonus).toBe(1);
-    expect(m2.shuAdjacencyHpBonus).toBe(1);
+    expect(m1.formationAtkBonus).toBe(1);
+    expect(m1.formationHpBonus).toBe(1);
+    expect(m2.formationAtkBonus).toBe(1);
+    expect(m2.formationHpBonus).toBe(1);
   });
 
   it('playing third brotherhood member triggers brotherhood bonus for all three', () => {
@@ -230,9 +242,9 @@ describe('bonuses recalculated on minion death', () => {
     const s2 = makeMinion({ faction: 'shu', name: 's2', attack: 2, health: 5 });
     const state = makeGameState([s1, s2], []);
     const player = state.players[0];
-    recalculateShuBonuses(player);
+    recalculateFormationBonuses(player);
 
-    expect(s1.shuAdjacencyAtkBonus).toBe(1);
+    expect(s1.formationAtkBonus).toBe(1);
 
     // Kill s2
     s2.currentHealth = 0;
@@ -240,16 +252,16 @@ describe('bonuses recalculated on minion death', () => {
 
     expect(player.board.length).toBe(1);
     expect(player.board[0].name).toBe('s1');
-    expect(player.board[0].shuAdjacencyAtkBonus).toBe(0);
-    expect(player.board[0].shuAdjacencyHpBonus).toBe(0);
+    expect(player.board[0].formationAtkBonus).toBe(0);
+    expect(player.board[0].formationHpBonus).toBe(0);
   });
 
   it('brotherhood bonus removed when one of three dies', () => {
-    const liu = makeMinion({ faction: 'shu', name: '刘备', attack: 2, health: 5 });
-    const guan = makeMinion({ faction: 'shu', name: '关羽', attack: 4, health: 5 });
-    const zhang = makeMinion({ faction: 'shu', name: '张飞', attack: 3, health: 5 });
+    const liu = makeMinion({ faction: 'shu', name: '刘备', attack: 2, health: 5, lane: Lane.Left, slotIndex: 0 });
+    const guan = makeMinion({ faction: 'shu', name: '关羽', attack: 4, health: 5, lane: Lane.Left, slotIndex: 1 });
+    const zhang = makeMinion({ faction: 'shu', name: '张飞', attack: 3, health: 5, lane: Lane.Center, slotIndex: 0 });
     const state = makeGameState([liu, guan, zhang], []);
-    recalculateShuBonuses(state.players[0]);
+    recalculateFormationBonuses(state.players[0]);
 
     expect(liu.brotherhoodAtkBonus).toBe(2);
 
@@ -272,9 +284,9 @@ describe('bonuses recalculated on minion death', () => {
     state.players[0] = player;
 
     // Apply adjacency: s2 gets +1/+1 -> currentHealth = 2
-    recalculateShuBonuses(player);
+    recalculateFormationBonuses(player);
     expect(s2.currentHealth).toBe(2);
-    expect(s2.shuAdjacencyHpBonus).toBe(1);
+    expect(s2.formationHpBonus).toBe(1);
 
     // Damage s2 to 1 HP (it's alive because of the +1 adjacency HP)
     s2.currentHealth = 1;
@@ -288,18 +300,18 @@ describe('bonuses recalculated on minion death', () => {
   });
 });
 
-describe('recalculateShuBonuses is idempotent', () => {
+describe('recalculateFormationBonuses is idempotent', () => {
   it('calling twice does not double the bonus', () => {
     const m1 = makeMinion({ faction: 'shu', attack: 2, health: 3 });
     const m2 = makeMinion({ faction: 'shu', attack: 3, health: 4 });
     const player = createPlayerState(createDeck(makeDummyDeck()));
     player.board = [m1, m2];
 
-    recalculateShuBonuses(player);
-    recalculateShuBonuses(player);
+    recalculateFormationBonuses(player);
+    recalculateFormationBonuses(player);
 
     expect(m1.currentAttack).toBe(3); // 2+1, not 2+1+1
     expect(m1.currentHealth).toBe(4); // 3+1
-    expect(m1.shuAdjacencyAtkBonus).toBe(1);
+    expect(m1.formationAtkBonus).toBe(1);
   });
 });

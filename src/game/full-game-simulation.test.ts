@@ -304,7 +304,7 @@ describe('Full game simulation — faction integration', () => {
         freezeTurnsLeft: 0, isImmune: false, windfuryAttacksLeft: 1,
         enrageActive: false, enrageBonus: 0,
         factionAttackBonus: 0, factionHealthBonus: 0,
-        shuAdjacencyAtkBonus: 0, shuAdjacencyHpBonus: 0,
+        formationAtkBonus: 0, formationHpBonus: 0,
         brotherhoodAtkBonus: 0, brotherhoodHpBonus: 0,
         wuChargeBonus: 0, wuWeaponBonus: 0, wuComboAtkBonus: 0, wuComboHpBonus: 0, qunDebuff: 0,
       };
@@ -314,7 +314,7 @@ describe('Full game simulation — faction integration', () => {
       recalculateFactionSynergies(state.players[0]);
 
       expect(shuMinion1.factionAttackBonus).toBe(1);
-      expect(shuMinion1.shuAdjacencyAtkBonus).toBe(1);
+      expect(shuMinion1.formationAtkBonus).toBe(1);
     });
   });
 
@@ -416,7 +416,7 @@ describe('Full game simulation — faction integration', () => {
         freezeTurnsLeft: 0, isImmune: false, windfuryAttacksLeft: 1,
         enrageActive: false, enrageBonus: 0,
         factionAttackBonus: 0, factionHealthBonus: 0,
-        shuAdjacencyAtkBonus: 0, shuAdjacencyHpBonus: 0,
+        formationAtkBonus: 0, formationHpBonus: 0,
         brotherhoodAtkBonus: 0, brotherhoodHpBonus: 0,
         wuChargeBonus: 0, wuWeaponBonus: 0, wuComboAtkBonus: 0, wuComboHpBonus: 0, qunDebuff: 0,
       });
