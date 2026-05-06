@@ -43,9 +43,17 @@ export interface PhaseTransitionEvent {
   voiceLine: string;
 }
 
+export interface BossSpecialMechanics {
+  shouldUseHeroPower?: (state: GameState, bossPlayer: 0 | 1) => boolean;
+  getAttackOverride?: (state: GameState, bossPlayer: 0 | 1, defaultDecisions: AttackDecision[]) => AttackDecision[];
+  getPlayOverride?: (state: GameState, bossPlayer: 0 | 1, defaultDecisions: PlayCardDecision[]) => PlayCardDecision[];
+  onTurnStart?: (state: GameState, bossPlayer: 0 | 1) => GameState;
+}
+
 export interface BossDefinition {
   name: string;
   phases: BossPhase[];
+  specialMechanics?: BossSpecialMechanics;
 }
 
 export function getCurrentPhase(boss: BossDefinition, currentHp: number, maxHp: number): BossPhase {
@@ -59,6 +67,14 @@ export function getCurrentPhase(boss: BossDefinition, currentHp: number, maxHp: 
   return activePhase;
 }
 
+
+function countPlayerMinions(state: GameState, playerIndex: 0 | 1): number {
+  return state.players[playerIndex].board.length;
+}
+
+function getOpponent(bossPlayer: 0 | 1): 0 | 1 {
+  return bossPlayer === 0 ? 1 : 0;
+}
 
 export const BOSS_DONGZHUO: BossDefinition = {
   name: '董卓',
@@ -103,6 +119,20 @@ export const BOSS_DONGZHUO: BossDefinition = {
       },
     },
   ],
+  specialMechanics: {
+    shouldUseHeroPower: (state, bossPlayer) => {
+      const opponent = getOpponent(bossPlayer);
+      return countPlayerMinions(state, opponent) >= 4;
+    },
+    getAttackOverride: (state, bossPlayer, defaults) => {
+      const opponent = getOpponent(bossPlayer);
+      if (countPlayerMinions(state, opponent) >= 4) {
+        return defaults;
+      }
+      const faceDecisions = defaults.filter(d => d.targetIndex === 'hero');
+      return faceDecisions.length > 0 ? faceDecisions : defaults;
+    },
+  },
 };
 
 export const BOSS_ZHANGJIAO: BossDefinition = {
@@ -137,6 +167,12 @@ export const BOSS_ZHANGJIAO: BossDefinition = {
       },
     },
   ],
+  specialMechanics: {
+    shouldUseHeroPower: (state, bossPlayer) => {
+      const hp = state.players[bossPlayer].hero.health;
+      return hp <= 20;
+    },
+  },
 };
 
 export const BOSS_LVBU: BossDefinition = {
@@ -176,6 +212,27 @@ export const BOSS_LVBU: BossDefinition = {
       },
     },
   ],
+  specialMechanics: {
+    shouldUseHeroPower: (state, bossPlayer) => {
+      const board = state.players[bossPlayer].board;
+      return board.some(m => m.currentAttack >= 4);
+    },
+    onTurnStart: (state, bossPlayer) => {
+      const hpPercent = state.players[bossPlayer].hero.health / 30;
+      if (hpPercent <= 0.3) {
+        for (const minion of state.players[bossPlayer].board) {
+          if (minion.name === '吕布') {
+            minion.isImmune = true;
+          }
+        }
+      }
+      return state;
+    },
+    getAttackOverride: (_state, _bossPlayer, defaults) => {
+      const faceDecisions = defaults.filter(d => d.targetIndex === 'hero');
+      return faceDecisions.length > 0 ? faceDecisions : defaults;
+    },
+  },
 };
 
 export const BOSS_YUANSHAO: BossDefinition = {
@@ -214,6 +271,20 @@ export const BOSS_YUANSHAO: BossDefinition = {
       },
     },
   ],
+  specialMechanics: {
+    shouldUseHeroPower: (state, bossPlayer) => {
+      return countPlayerMinions(state, bossPlayer) < 3;
+    },
+    getAttackOverride: (state, bossPlayer, defaults) => {
+      const opponent = getOpponent(bossPlayer);
+      if (countPlayerMinions(state, opponent) >= 4) {
+        return defaults.filter(d => d.targetIndex !== 'hero').length > 0
+          ? defaults.filter(d => d.targetIndex !== 'hero')
+          : defaults;
+      }
+      return defaults;
+    },
+  },
 };
 
 export const BOSS_CAOCAO: BossDefinition = {
@@ -275,6 +346,27 @@ export const BOSS_CAOCAO: BossDefinition = {
       },
     },
   ],
+  specialMechanics: {
+    shouldUseHeroPower: (state, bossPlayer) => {
+      const opponent = getOpponent(bossPlayer);
+      return countPlayerMinions(state, opponent) >= 3;
+    },
+    getPlayOverride: (state, bossPlayer, defaults) => {
+      const player = state.players[bossPlayer];
+      const spellIndices = defaults.filter(d => {
+        const card = player.hand[d.cardIndex];
+        return card && card.type === 'spell';
+      });
+      if (spellIndices.length > 0) {
+        const minionDecisions = defaults.filter(d => {
+          const card = player.hand[d.cardIndex];
+          return card && card.type !== 'spell';
+        });
+        return [...spellIndices, ...minionDecisions];
+      }
+      return defaults;
+    },
+  },
 };
 
 const HERB_CARD: Card = {
@@ -338,6 +430,38 @@ export const BOSS_SIMAYI: BossDefinition = {
       },
     },
   ],
+  specialMechanics: {
+    shouldUseHeroPower: (state, bossPlayer) => {
+      const opponent = getOpponent(bossPlayer);
+      const oppHand = state.players[opponent].hand;
+      return oppHand.some(c => c.type === 'spell' && c.name !== '草药');
+    },
+    onTurnStart: (state, bossPlayer) => {
+      const hpPercent = state.players[bossPlayer].hero.health / 40;
+      if (hpPercent <= 0.25) {
+        state.players[bossPlayer].hero.isImmune = true;
+      }
+      return state;
+    },
+    getPlayOverride: (state, bossPlayer, defaults) => {
+      const opponent = getOpponent(bossPlayer);
+      if (countPlayerMinions(state, opponent) >= 4) {
+        const player = state.players[bossPlayer];
+        const aoeSpells = defaults.filter(d => {
+          const card = player.hand[d.cardIndex];
+          return card && card.type === 'spell';
+        });
+        if (aoeSpells.length > 0) {
+          const rest = defaults.filter(d => {
+            const card = player.hand[d.cardIndex];
+            return !card || card.type !== 'spell';
+          });
+          return [...aoeSpells, ...rest];
+        }
+      }
+      return defaults;
+    },
+  },
 };
 
 export function createBossAIFromRule(bossName: string, bossPlayer: 0 | 1 = 1, maxHp: number = 30, extraMana?: number): { bossAI: BossAI; extraMana: number } {
@@ -410,35 +534,56 @@ export class BossAI implements AIStrategy {
   getPlayDecisions(state: GameState): PlayCardDecision[] {
     const phase = this.getPhase(state);
     const style = phase.strategyOverride?.playStyle ?? 'curve';
+    let decisions: PlayCardDecision[];
     switch (style) {
       case 'optimal':
       case 'aggressive':
-        return getOptimalPlayDecisions(state);
+        decisions = getOptimalPlayDecisions(state);
+        break;
       case 'curve':
       default:
-        return getOnCurvePlayDecisions(state);
+        decisions = getOnCurvePlayDecisions(state);
+        break;
     }
+    if (this.boss.specialMechanics?.getPlayOverride) {
+      decisions = this.boss.specialMechanics.getPlayOverride(state, this.bossPlayer, decisions);
+    }
+    return decisions;
   }
 
   getAttackDecisions(state: GameState): AttackDecision[] {
     const phase = this.getPhase(state);
     const priority = phase.strategyOverride?.attackPriority ?? 'smart';
+    let decisions: AttackDecision[];
     switch (priority) {
       case 'face':
-        return getFaceAttackDecisions(state);
+        decisions = getFaceAttackDecisions(state);
+        break;
       case 'trade':
       case 'smart':
       default:
-        return getAIAttackDecisions(state);
+        decisions = getAIAttackDecisions(state);
+        break;
     }
+    if (this.boss.specialMechanics?.getAttackOverride) {
+      decisions = this.boss.specialMechanics.getAttackOverride(state, this.bossPlayer, decisions);
+    }
+    return decisions;
   }
 
   shouldUseHeroPower(state: GameState): boolean {
     const player = state.players[state.activePlayer];
-    return !player.heroPowerUsed && player.hero.mana >= player.hero.heroPower.cost;
+    if (player.heroPowerUsed || player.hero.mana < player.hero.heroPower.cost) return false;
+    if (this.boss.specialMechanics?.shouldUseHeroPower) {
+      return this.boss.specialMechanics.shouldUseHeroPower(state, this.bossPlayer);
+    }
+    return true;
   }
 
   applyTurnStartEffect(state: GameState): GameState {
+    if (this.boss.specialMechanics?.onTurnStart) {
+      state = this.boss.specialMechanics.onTurnStart(state, this.bossPlayer);
+    }
     const phase = this.getPhase(state);
     if (phase.turnStartEffect) {
       return phase.turnStartEffect(state, this.bossPlayer);

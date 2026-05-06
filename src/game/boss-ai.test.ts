@@ -197,13 +197,37 @@ describe('BossAI decision methods', () => {
     expect(Array.isArray(decisions)).toBe(true);
   });
 
-  it('shouldUseHeroPower returns true when mana available and not used', () => {
+  it('shouldUseHeroPower returns true when mana available and opponent has 4+ minions', () => {
+    const state = makeGameState();
+    state.activePlayer = 1;
+    state.players[1].hero.mana = 5;
+    state.players[1].heroPowerUsed = false;
+    for (let i = 0; i < 4; i++) {
+      state.players[0].board.push({
+        name: '兵', cost: 1, attack: 1, health: 1, description: '', type: 'minion',
+        rarity: 'common', faction: 'neutral',
+        currentAttack: 1, currentHealth: 1,
+        summoningSickness: false, hasAttacked: false, hasDivineShield: false,
+        isStealth: false, isFrozen: false, freezeTurnsLeft: 0, isImmune: false,
+        windfuryAttacksLeft: 1, enrageActive: false, enrageBonus: 0,
+        factionAttackBonus: 0, factionHealthBonus: 0,
+        formationAtkBonus: 0, formationHpBonus: 0,
+        brotherhoodAtkBonus: 0, brotherhoodHpBonus: 0,
+        wuChargeBonus: 0, wuWeaponBonus: 0, wuComboAtkBonus: 0, wuComboHpBonus: 0,
+        qunDebuff: 0, lane: Lane.Center, slotIndex: 0,
+      });
+    }
+    const bossAI = new BossAI(BOSS_DONGZHUO, 1, 30);
+    expect(bossAI.shouldUseHeroPower(state)).toBe(true);
+  });
+
+  it('shouldUseHeroPower returns false for DongZhuo when opponent has few minions', () => {
     const state = makeGameState();
     state.activePlayer = 1;
     state.players[1].hero.mana = 5;
     state.players[1].heroPowerUsed = false;
     const bossAI = new BossAI(BOSS_DONGZHUO, 1, 30);
-    expect(bossAI.shouldUseHeroPower(state)).toBe(true);
+    expect(bossAI.shouldUseHeroPower(state)).toBe(false);
   });
 
   it('shouldUseHeroPower returns false when already used', () => {
@@ -392,5 +416,128 @@ describe('getCurrentPhaseName', () => {
 
     state.players[1].hero.health = 7;
     expect(bossAI.getCurrentPhaseName(state)).toBe('困兽犹斗');
+  });
+});
+
+describe('Boss special mechanics', () => {
+  function makeBoardMinion(name: string, atk: number, hp: number) {
+    return {
+      name, cost: 1, attack: atk, health: hp, description: '', type: 'minion' as const,
+      rarity: 'common' as const, faction: 'neutral' as const,
+      currentAttack: atk, currentHealth: hp,
+      summoningSickness: false, hasAttacked: false, hasDivineShield: false,
+      isStealth: false, isFrozen: false, freezeTurnsLeft: 0, isImmune: false,
+      windfuryAttacksLeft: 1, enrageActive: false, enrageBonus: 0,
+      factionAttackBonus: 0, factionHealthBonus: 0,
+      formationAtkBonus: 0, formationHpBonus: 0,
+      brotherhoodAtkBonus: 0, brotherhoodHpBonus: 0,
+      wuChargeBonus: 0, wuWeaponBonus: 0, wuComboAtkBonus: 0, wuComboHpBonus: 0,
+      qunDebuff: 0, lane: Lane.Center, slotIndex: 0,
+    };
+  }
+
+  it('LvBu grants immunity to 吕布 minion at low HP', () => {
+    const state = makeGameState();
+    state.players[1].hero.health = 8;
+    const lvbuMinion = makeBoardMinion('吕布', 8, 8);
+    state.players[1].board.push(lvbuMinion);
+    const bossAI = new BossAI(BOSS_LVBU, 1, 30);
+    bossAI.applyTurnStartEffect(state);
+    expect(state.players[1].board[0].isImmune).toBe(true);
+  });
+
+  it('LvBu does not grant immunity at high HP', () => {
+    const state = makeGameState();
+    state.players[1].hero.health = 20;
+    const lvbuMinion = makeBoardMinion('吕布', 8, 8);
+    state.players[1].board.push(lvbuMinion);
+    const bossAI = new BossAI(BOSS_LVBU, 1, 30);
+    bossAI.applyTurnStartEffect(state);
+    expect(state.players[1].board[0].isImmune).toBe(false);
+  });
+
+  it('SimaYi grants hero immunity at <=25% HP', () => {
+    const state = makeGameState();
+    state.players[1].hero.health = 10;
+    const bossAI = new BossAI(BOSS_SIMAYI, 1, 40);
+    bossAI.applyTurnStartEffect(state);
+    expect(state.players[1].hero.isImmune).toBe(true);
+  });
+
+  it('SimaYi does not grant hero immunity at high HP', () => {
+    const state = makeGameState();
+    state.players[1].hero.health = 30;
+    const bossAI = new BossAI(BOSS_SIMAYI, 1, 40);
+    bossAI.applyTurnStartEffect(state);
+    expect(state.players[1].hero.isImmune).toBeFalsy();
+  });
+
+  it('DongZhuo attack override filters to face decisions when available', () => {
+    const state = makeGameState();
+    state.activePlayer = 1;
+    state.players[1].hero.health = 15; // phase 2: face priority
+    state.players[1].board.push(makeBoardMinion('兵', 2, 1));
+    const bossAI = new BossAI(BOSS_DONGZHUO, 1, 30);
+    const attacks = bossAI.getAttackDecisions(state);
+    expect(attacks.every(a => a.targetIndex === 'hero')).toBe(true);
+  });
+
+  it('ZhangJiao uses hero power only when HP <= 20', () => {
+    const state = makeGameState();
+    state.activePlayer = 1;
+    state.players[1].hero.mana = 5;
+    state.players[1].heroPowerUsed = false;
+    const bossAI = new BossAI(BOSS_ZHANGJIAO, 1, 30);
+
+    state.players[1].hero.health = 25;
+    expect(bossAI.shouldUseHeroPower(state)).toBe(false);
+
+    state.players[1].hero.health = 18;
+    expect(bossAI.shouldUseHeroPower(state)).toBe(true);
+  });
+
+  it('YuanShao prefers trading when opponent has 4+ minions', () => {
+    const state = makeGameState();
+    state.activePlayer = 1;
+    state.players[1].board.push(makeBoardMinion('兵', 3, 3));
+    for (let i = 0; i < 4; i++) {
+      state.players[0].board.push(makeBoardMinion('敌兵', 1, 1));
+    }
+    const bossAI = new BossAI(BOSS_YUANSHAO, 1, 30);
+    const attacks = bossAI.getAttackDecisions(state);
+    expect(attacks.length).toBeGreaterThan(0);
+    expect(attacks.every(a => a.targetIndex !== 'hero')).toBe(true);
+  });
+
+  it('CaoCao uses hero power when opponent has 3+ minions', () => {
+    const state = makeGameState();
+    state.activePlayer = 1;
+    state.players[1].hero.mana = 5;
+    state.players[1].heroPowerUsed = false;
+    for (let i = 0; i < 3; i++) {
+      state.players[0].board.push(makeBoardMinion('敌兵', 1, 1));
+    }
+    const bossAI = new BossAI(BOSS_CAOCAO, 1, 30);
+    expect(bossAI.shouldUseHeroPower(state)).toBe(true);
+  });
+
+  it('SimaYi uses hero power when opponent has non-herb spells', () => {
+    const state = makeGameState();
+    state.activePlayer = 1;
+    state.players[1].hero.mana = 5;
+    state.players[1].heroPowerUsed = false;
+    state.players[0].hand = [makeCard({ name: '火攻', type: 'spell' })];
+    const bossAI = new BossAI(BOSS_SIMAYI, 1, 40);
+    expect(bossAI.shouldUseHeroPower(state)).toBe(true);
+  });
+
+  it('SimaYi does not use hero power when opponent has only herbs', () => {
+    const state = makeGameState();
+    state.activePlayer = 1;
+    state.players[1].hero.mana = 5;
+    state.players[1].heroPowerUsed = false;
+    state.players[0].hand = [makeCard({ name: '草药', type: 'spell' })];
+    const bossAI = new BossAI(BOSS_SIMAYI, 1, 40);
+    expect(bossAI.shouldUseHeroPower(state)).toBe(false);
   });
 });

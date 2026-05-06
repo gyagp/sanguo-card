@@ -1,13 +1,13 @@
 # Autopo test Session
 
 ## Work Unit
-Boss AI scripted phases enhancement — add unique phase transition effects, voice lines/announcements, and phase-specific card generation for all 6 bosses
+Boss AI special mechanics — bosses use unique hero powers strategically, have immunity windows, and react to player board state
 
 ## Acceptance Criteria
-- Each boss has at least 2 distinct phases with different behaviors
-- Phase transitions trigger visual/text announcements
-- Bosses generate phase-specific cards or tokens
-- Boss phase effects are clearly differentiated from normal AI
+- Bosses use hero powers at optimal times
+- At least 2 bosses have conditional immunity or damage reduction
+- Bosses react to player board (e.g., AoE when player has 4+ minions)
+- Boss AI overrides default attack/play logic with boss-specific strategies
 
 ## Rules
 # Rules
