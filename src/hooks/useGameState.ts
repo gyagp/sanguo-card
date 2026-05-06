@@ -55,7 +55,7 @@ function collectAIDecisions(state: GameState, difficulty: AIDifficulty, bossAI?:
   const sortedPlays = [...playDecisions].sort((a, b) => b.cardIndex - a.cardIndex);
   for (const play of sortedPlays) {
     decisions.push(play);
-    enginePlayCard(sim, play.cardIndex, play.spellTarget);
+    enginePlayCard(sim, play.cardIndex, play.spellTarget, undefined, play.lane, play.slotIndex, play.targetLane);
   }
 
   const attackDecisions = ai.getAttackDecisions(sim);
@@ -69,7 +69,7 @@ function executeAIDecision(state: GameState, decision: AIDecision): GameState {
   const next = cloneState(state);
   switch (decision.type) {
     case 'playCard':
-      enginePlayCard(next, decision.cardIndex, decision.spellTarget, undefined, decision.lane, decision.slotIndex);
+      enginePlayCard(next, decision.cardIndex, decision.spellTarget, undefined, decision.lane, decision.slotIndex, decision.targetLane);
       break;
     case 'attack':
       if (decision.targetIndex === 'hero') {
@@ -148,9 +148,9 @@ export function useGameState(deck1: Deck, deck2: Deck, aiDifficulty?: AIDifficul
     return () => clearAITimers();
   }, [clearAITimers]);
 
-  const playCard = useCallback((handIndex: number, targetIndex?: number, lane?: Lane): PlayCardResult => {
+  const playCard = useCallback((handIndex: number, targetIndex?: number, lane?: Lane, targetLane?: Lane): PlayCardResult => {
     const next = cloneState(gameState);
-    const result = enginePlayCard(next, handIndex, targetIndex, undefined, lane);
+    const result = enginePlayCard(next, handIndex, targetIndex, undefined, lane, undefined, targetLane);
     if (result.success) setGameState(next);
     return result;
   }, [gameState]);

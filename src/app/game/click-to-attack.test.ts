@@ -75,7 +75,7 @@ describe("Click-to-attack: clicking enemy minion triggers attack", () => {
   });
 
   it("marks enemy minions as targetable when attacker is selected", () => {
-    expect(pageContent).toMatch(/hasAttackerSelected=\{selectedAttacker\s*!==\s*null\s*\|\|\s*pendingSpell\s*!==\s*null\}/);
+    expect(pageContent).toMatch(/hasAttackerSelected=\{selectedAttacker\s*!==\s*null\s*\|\|\s*pendingSpell\s*!==\s*null\s*\|\|\s*pendingLaneAoe\s*!==\s*null\}/);
   });
 
   it("BoardMinionCard shows targetable visual when enemy and attacker selected", () => {

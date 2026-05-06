@@ -1,12 +1,12 @@
 # Autopo test Session
 
 ## Work Unit
-Update attack logic — minions can only attack targets in same lane or adjacent lanes, update taunt check to be lane-scoped (taunt only blocks in reachable lanes), update attackMinion and attackHero validation
+Update spell targeting for lane awareness — AOE spells affect only one lane (add targetLane to spell context), targeted spells can only hit same/adjacent lane minions, add 'lane_aoe' targetType for lane-scoped AOE
 
 ## Acceptance Criteria
-- attackMinion rejects targets in non-adjacent lanes
-- Taunt check only considers minions in reachable lanes
-- attackHero still works (hero is reachable from any lane)
+- AOE spells require lane selection and only hit that lane's minions
+- Targeted spells respect lane adjacency
+- Existing spell cards updated with lane-aware effects
 - npm run build succeeds
 
 ## Rules

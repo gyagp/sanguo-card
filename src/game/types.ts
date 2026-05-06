@@ -66,7 +66,7 @@ export interface GameEvent {
   state?: GameState;
 }
 
-export type SpellTargetType = "enemy_minion";
+export type SpellTargetType = "enemy_minion" | "lane_aoe";
 
 export interface EffectContext {
   event: GameEvent;
@@ -74,6 +74,7 @@ export interface EffectContext {
   player: 0 | 1;
   spellDamage?: number;
   targetIndex?: number;
+  targetLane?: Lane;
 }
 
 export type Effect = (state: GameState, context: EffectContext) => GameState;
@@ -305,6 +306,17 @@ export function getReachableLanes(lane: Lane): Lane[] {
   return ADJACENT_LANES[lane];
 }
 
+export function getSpellReachableLanes(player: PlayerState): Lane[] {
+  if (player.board.length === 0) return [...ALL_LANES];
+  const reachable = new Set<Lane>();
+  for (const minion of player.board) {
+    for (const l of ADJACENT_LANES[minion.lane]) {
+      reachable.add(l);
+    }
+  }
+  return [...reachable];
+}
+
 export type LaneBoard = Record<Lane, BoardMinion[]>;
 
 export function getBoardMinions(player: PlayerState): BoardMinion[] {
@@ -531,6 +543,7 @@ export function playCard(
   rng: () => number = Math.random,
   lane: Lane = Lane.Center,
   slotIndex?: number,
+  targetLane?: Lane,
 ): PlayCardResult {
   const player = state.players[state.activePlayer];
 
@@ -655,6 +668,7 @@ export function playCard(
         player: state.activePlayer,
         spellDamage,
         targetIndex,
+        targetLane,
       };
       state = card.effect(state, context);
       checkEnrage(state);

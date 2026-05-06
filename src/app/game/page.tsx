@@ -7,7 +7,7 @@ import { AudioManager } from "./audio-manager";
 import { cards } from "../../game/cards";
 import { AIDifficulty } from "../../game/ai";
 import { addGold, addXP } from "../../game/player-store";
-import { createDeck, BoardMinion, PlayerState, Card as CardType, MAX_BOARD_SIZE, MAX_DECK_SIZE, Deck, Faction, FACTION_SYNERGIES, DECK_FACTION_THRESHOLD } from "../../game/types";
+import { createDeck, BoardMinion, PlayerState, Card as CardType, MAX_BOARD_SIZE, MAX_DECK_SIZE, Deck, Faction, FACTION_SYNERGIES, DECK_FACTION_THRESHOLD, Lane, ALL_LANES, getSpellReachableLanes } from "../../game/types";
 import { useMemo, useState, useEffect, useRef, useCallback, forwardRef } from "react";
 
 const STORAGE_KEY = 'sanguo-card-decks';
@@ -799,6 +799,7 @@ function GameInner({ playerDeck, difficulty }: { playerDeck: Deck; difficulty: A
 
   const [selectedAttacker, setSelectedAttacker] = useState<number | null>(null);
   const [pendingSpell, setPendingSpell] = useState<{ handIndex: number; cardEl?: HTMLElement | null } | null>(null);
+  const [pendingLaneAoe, setPendingLaneAoe] = useState<{ handIndex: number; cardEl?: HTMLElement | null } | null>(null);
 
   const audioRef = useRef(AudioManager.getInstance());
 
@@ -922,21 +923,30 @@ function GameInner({ playerDeck, difficulty }: { playerDeck: Deck; difficulty: A
   const player = gameState.players[0];
   const opponent = gameState.players[1];
 
-  const handlePlayCard = useCallback((handIndex: number, cardEl?: HTMLElement | null, spellTargetIndex?: number) => {
+  const handlePlayCard = useCallback((handIndex: number, cardEl?: HTMLElement | null, spellTargetIndex?: number, targetLane?: Lane) => {
     const card = player.hand[handIndex];
     if (!card) return;
 
+    if (card.targetType === "lane_aoe" && targetLane === undefined) {
+      setPendingLaneAoe({ handIndex, cardEl });
+      setSelectedAttacker(null);
+      setPendingSpell(null);
+      return;
+    }
+
     if (card.targetType === "enemy_minion" && spellTargetIndex === undefined) {
       const enemy = gameState.players[1];
-      if (enemy.board.length === 0 || enemy.board.every(m => m.spellImmune)) return;
+      const reachableLanes = getSpellReachableLanes(player);
+      if (enemy.board.length === 0 || enemy.board.filter(m => !m.spellImmune && reachableLanes.includes(m.lane)).length === 0) return;
       setPendingSpell({ handIndex, cardEl });
       setSelectedAttacker(null);
+      setPendingLaneAoe(null);
       return;
     }
 
     const el = cardEl ?? handCardRefs.current.get(handIndex);
     const startRect = el?.getBoundingClientRect();
-    const result = playCard(handIndex, spellTargetIndex);
+    const result = playCard(handIndex, spellTargetIndex, undefined, targetLane);
     if (result.success && startRect) {
       audioRef.current.playCardPlay();
       const key = flyKeyRef.current++;
@@ -1014,7 +1024,10 @@ function GameInner({ playerDeck, difficulty }: { playerDeck: Deck; difficulty: A
 
   const handleEnemyMinionClick = (index: number) => {
     if (pendingSpell !== null) {
-      if (opponent.board[index]?.spellImmune) return;
+      const targetMinion = opponent.board[index];
+      if (targetMinion?.spellImmune) return;
+      const reachableLanes = getSpellReachableLanes(player);
+      if (targetMinion && !reachableLanes.includes(targetMinion.lane)) return;
       const { handIndex, cardEl } = pendingSpell;
       setPendingSpell(null);
       handlePlayCard(handIndex, cardEl, index);
@@ -1174,7 +1187,7 @@ function GameInner({ playerDeck, difficulty }: { playerDeck: Deck; difficulty: A
       </div>
 
       {/* Opponent board */}
-      <BoardZone minions={opponent.board} label="对方战场" isEnemy hasAttackerSelected={selectedAttacker !== null || pendingSpell !== null} onMinionClick={handleEnemyMinionClick} animations={enemyAnims} damageNumbers={enemyDmg} dyingMinions={enemyDying} impactParticles={enemyImpacts} legendaryParticles={enemyLegendaryParticles} legendaryShimmer={enemyLegendaryShimmer} animMultiplier={animMultiplier} showDamageNumbers={showDamageNumbers} />
+      <BoardZone minions={opponent.board} label="对方战场" isEnemy hasAttackerSelected={selectedAttacker !== null || pendingSpell !== null || pendingLaneAoe !== null} onMinionClick={handleEnemyMinionClick} animations={enemyAnims} damageNumbers={enemyDmg} dyingMinions={enemyDying} impactParticles={enemyImpacts} legendaryParticles={enemyLegendaryParticles} legendaryShimmer={enemyLegendaryShimmer} animMultiplier={animMultiplier} showDamageNumbers={showDamageNumbers} />
 
       {/* Turn banner overlay */}
       {turnBanner && (
@@ -1201,6 +1214,34 @@ function GameInner({ playerDeck, difficulty }: { playerDeck: Deck; difficulty: A
         </div>
       )}
 
+      {/* Lane AOE targeting prompt */}
+      {pendingLaneAoe !== null && (
+        <div className="flex items-center justify-center py-1 gap-2 shrink-0">
+          <span className="px-3 py-1 bg-orange-600 text-white text-xs sm:text-sm font-bold rounded-full animate-pulse">
+            选择目标战线
+          </span>
+          {ALL_LANES.map(lane => (
+            <button
+              key={lane}
+              onClick={() => {
+                const { handIndex, cardEl } = pendingLaneAoe;
+                setPendingLaneAoe(null);
+                handlePlayCard(handIndex, cardEl, undefined, lane);
+              }}
+              className="px-3 py-1 bg-red-700 hover:bg-red-600 text-white text-xs sm:text-sm font-bold rounded transition-all"
+            >
+              {lane === Lane.Left ? "左" : lane === Lane.Center ? "中" : "右"}
+            </button>
+          ))}
+          <button
+            onClick={() => setPendingLaneAoe(null)}
+            className="px-2 py-1 bg-gray-600 hover:bg-gray-500 text-white text-xs rounded"
+          >
+            取消
+          </button>
+        </div>
+      )}
+
       {/* Turn indicator + End Turn */}
       <div className="flex items-center justify-center py-0.5 sm:py-1 md:py-1 gap-1.5 sm:gap-2 px-2 sm:px-3 shrink-0">
         <div className="h-px flex-1 bg-amber-700/50" />
@@ -1208,7 +1249,7 @@ function GameInner({ playerDeck, difficulty }: { playerDeck: Deck; difficulty: A
           {isOpponentTurn ? "对手回合" : "你的回合"}
         </span>
         <button
-          onClick={() => { endTurn(); setSelectedAttacker(null); setPendingSpell(null); }}
+          onClick={() => { endTurn(); setSelectedAttacker(null); setPendingSpell(null); setPendingLaneAoe(null); }}
           disabled={isOpponentTurn || winner !== null}
           className={`px-3 sm:px-4 md:px-6 py-1 sm:py-1.5 md:py-2 font-bold text-xs sm:text-sm md:text-base rounded-lg shadow-lg transition-all duration-200 whitespace-nowrap ${
             isOpponentTurn || winner !== null
@@ -1240,7 +1281,7 @@ function GameInner({ playerDeck, difficulty }: { playerDeck: Deck; difficulty: A
               onClick={(e) => handlePlayCard(i, (e.currentTarget as HTMLElement))}
               draggable
               handIndex={i}
-              insufficientMana={card.cost > player.hero.mana || (card.type !== 'spell' && player.board.length >= MAX_BOARD_SIZE) || (card.targetType === 'enemy_minion' && (opponent.board.length === 0 || opponent.board.every(m => m.spellImmune)))}
+              insufficientMana={card.cost > player.hero.mana || (card.type !== 'spell' && player.board.length >= MAX_BOARD_SIZE) || (card.targetType === 'enemy_minion' && (opponent.board.length === 0 || opponent.board.filter(m => !m.spellImmune && getSpellReachableLanes(player).includes(m.lane)).length === 0))}
             />
           </div>
         ))}

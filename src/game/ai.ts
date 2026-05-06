@@ -1,8 +1,10 @@
-import { GameState, PlayerState, Card, BoardMinion, Faction, FACTION_SYNERGIES, getEffectiveCardCost, Lane, ALL_LANES, getLaneCount, MAX_LANE_SIZE, getReachableLanes } from './types';
+import { GameState, PlayerState, Card, BoardMinion, Faction, FACTION_SYNERGIES, getEffectiveCardCost, Lane, ALL_LANES, getLaneCount, MAX_LANE_SIZE, getReachableLanes, getSpellReachableLanes } from './types';
 
 
 function pickSpellTarget(card: Card, state: GameState): number | undefined {
-  if (!card.targetType) return undefined;
+  if (card.targetType !== 'enemy_minion') return undefined;
+  const player = state.players[state.activePlayer];
+  const reachableLanes = getSpellReachableLanes(player);
   const opponentIndex = state.activePlayer === 0 ? 1 : 0;
   const enemyBoard = state.players[opponentIndex].board;
   if (enemyBoard.length === 0) return undefined;
@@ -11,10 +13,29 @@ function pickSpellTarget(card: Card, state: GameState): number | undefined {
   for (let i = 0; i < enemyBoard.length; i++) {
     const m = enemyBoard[i];
     if (m.spellImmune) continue;
+    if (!reachableLanes.includes(m.lane)) continue;
     const score = m.currentAttack * 2 + (m.taunt ? 10 : 0);
     if (score > bestScore) { bestScore = score; bestIdx = i; }
   }
   return bestIdx === -1 ? undefined : bestIdx;
+}
+
+function pickSpellTargetLane(card: Card, state: GameState): Lane | undefined {
+  if (card.targetType !== 'lane_aoe') return undefined;
+  const opponentIndex = state.activePlayer === 0 ? 1 : 0;
+  const enemyBoard = state.players[opponentIndex].board;
+  let bestLane: Lane | undefined;
+  let bestScore = -Infinity;
+  for (const lane of ALL_LANES) {
+    let score = 0;
+    for (const m of enemyBoard) {
+      if (m.lane === lane) {
+        score += m.currentAttack + m.currentHealth + (m.taunt ? 5 : 0);
+      }
+    }
+    if (score > bestScore) { bestScore = score; bestLane = lane; }
+  }
+  return bestLane;
 }
 
 export type AIDifficulty = 'easy' | 'normal' | 'hard' | 'boss';
@@ -25,6 +46,7 @@ export interface PlayCardDecision {
   type: 'playCard';
   cardIndex: number;
   spellTarget?: number;
+  targetLane?: Lane;
   lane?: Lane;
   slotIndex?: number;
 }
@@ -327,7 +349,7 @@ function getRandomPlayDecisions(state: GameState): PlayCardDecision[] {
   for (const idx of shuffled) {
     const cost = getEffectiveCardCost(player.hand[idx], player);
     if (cost <= mana) {
-      decisions.push({ type: 'playCard', cardIndex: idx, spellTarget: pickSpellTarget(player.hand[idx], state), lane: pickLaneForMinion(player) });
+      decisions.push({ type: 'playCard', cardIndex: idx, spellTarget: pickSpellTarget(player.hand[idx], state), targetLane: pickSpellTargetLane(player.hand[idx], state), lane: pickLaneForMinion(player) });
       mana -= cost;
     }
   }
@@ -375,7 +397,7 @@ export function getOnCurvePlayDecisions(state: GameState): PlayCardDecision[] {
   for (const idx of sorted) {
     const cost = getEffectiveCardCost(player.hand[idx], player);
     if (cost <= mana) {
-      decisions.push({ type: 'playCard', cardIndex: idx, spellTarget: pickSpellTarget(player.hand[idx], state), lane: pickLaneForMinion(player) });
+      decisions.push({ type: 'playCard', cardIndex: idx, spellTarget: pickSpellTarget(player.hand[idx], state), targetLane: pickSpellTargetLane(player.hand[idx], state), lane: pickLaneForMinion(player) });
       mana -= cost;
     }
   }
@@ -387,7 +409,7 @@ export function getOnCurvePlayDecisions(state: GameState): PlayCardDecision[] {
 export function getOptimalPlayDecisions(state: GameState): PlayCardDecision[] {
   const player = state.players[state.activePlayer];
   const bestCombo = getBestManaUsage(player.hand, player.hero.mana, player.board, player);
-  let decisions: PlayCardDecision[] = bestCombo.map(idx => ({ type: 'playCard' as const, cardIndex: idx, spellTarget: pickSpellTarget(player.hand[idx], state) }));
+  let decisions: PlayCardDecision[] = bestCombo.map(idx => ({ type: 'playCard' as const, cardIndex: idx, spellTarget: pickSpellTarget(player.hand[idx], state), targetLane: pickSpellTargetLane(player.hand[idx], state) }));
   decisions = applyFactionPlayOrder(decisions, player, state);
   decisions = applyFactionBoardPositions(decisions, player);
   return decisions;

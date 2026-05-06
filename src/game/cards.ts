@@ -184,12 +184,14 @@ export const cards: Card[] = [
     },
   },
   {
-    name: "伏兵", cost: 3, attack: 0, health: 0, description: "对所有敌方随从造成3点伤害",
+    name: "伏兵", cost: 3, attack: 0, health: 0, description: "对一条战线的所有敌方随从造成3点伤害",
     rarity: "rare", type: "spell", faction: "neutral",
+    targetType: "lane_aoe",
     effect: (state: GameState, context: EffectContext) => {
       const damage = 3 + (context.spellDamage ?? 0);
       const enemy = state.players[context.player === 0 ? 1 : 0];
       for (const minion of enemy.board) {
+        if (context.targetLane !== undefined && minion.lane !== context.targetLane) continue;
         minion.currentHealth -= damage;
       }
       return state;
@@ -278,13 +280,15 @@ export const cards: Card[] = [
     },
   },
   {
-    name: "连环计", cost: 6, attack: 0, health: 0, description: "冻结所有敌方随从。对每个被冻结的随从造成2点伤害",
+    name: "连环计", cost: 6, attack: 0, health: 0, description: "冻结一条战线的所有敌方随从。对每个被冻结的随从造成2点伤害",
     rarity: "epic", type: "spell", faction: "wu",
+    targetType: "lane_aoe",
     effect: (state: GameState, context: EffectContext) => {
       const damage = 2 + (context.spellDamage ?? 0);
       const enemy = state.players[context.player === 0 ? 1 : 0];
       const casterPlayer = state.players[context.player];
       for (const minion of enemy.board) {
+        if (context.targetLane !== undefined && minion.lane !== context.targetLane) continue;
         applyFreeze(minion, casterPlayer);
         minion.currentHealth -= damage;
       }
@@ -423,13 +427,15 @@ export const cards: Card[] = [
     },
   },
   {
-    name: "火烧赤壁", cost: 10, attack: 0, health: 0, description: "对所有敌方随从造成8点伤害。对敌方英雄造成4点伤害",
+    name: "火烧赤壁", cost: 10, attack: 0, health: 0, description: "对一条战线的所有敌方随从造成8点伤害。对敌方英雄造成4点伤害",
     rarity: "legendary", type: "spell", faction: "wu",
+    targetType: "lane_aoe",
     effect: (state: GameState, context: EffectContext) => {
       const minionDamage = 8 + (context.spellDamage ?? 0);
       const heroDamage = 4 + (context.spellDamage ?? 0);
       const enemy = state.players[context.player === 0 ? 1 : 0];
       for (const minion of enemy.board) {
+        if (context.targetLane !== undefined && minion.lane !== context.targetLane) continue;
         minion.currentHealth -= minionDamage;
       }
       enemy.hero.health -= heroDamage;
