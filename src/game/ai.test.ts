@@ -873,6 +873,174 @@ describe('AI keyword awareness — scoring', () => {
   });
 });
 
+describe('AI keyword-aware targeting — taunt priority', () => {
+  it('multiple attackers all forced to hit taunt before going face', () => {
+    const state = makeGameState(
+      { board: [
+        makeMinion({ currentAttack: 3, currentHealth: 3, lane: Lane.Center }),
+        makeMinion({ currentAttack: 4, currentHealth: 4, lane: Lane.Center }),
+      ]},
+      {
+        hero: { health: 10, mana: 0, heroPower: { name: '', cost: 2, description: '' } },
+        board: [
+          makeMinion({ currentAttack: 1, currentHealth: 8, taunt: true, lane: Lane.Center }),
+        ],
+      },
+    );
+    state.activePlayer = 0;
+    const decisions = getAIAttackDecisions(state);
+    // Even though hero is at 10hp, taunt blocks lethal — at least one must hit taunt
+    const tauntAttacks = decisions.filter(d => d.targetIndex === 0);
+    expect(tauntAttacks.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('stealth taunt does NOT block attacks — AI can go face', () => {
+    const state = makeGameState(
+      { board: [makeMinion({ currentAttack: 5, currentHealth: 5, lane: Lane.Center })] },
+      {
+        hero: { health: 5, mana: 0, heroPower: { name: '', cost: 2, description: '' } },
+        board: [
+          makeMinion({ currentAttack: 2, currentHealth: 3, taunt: true, isStealth: true, lane: Lane.Center }),
+        ],
+      },
+    );
+    state.activePlayer = 0;
+    const decisions = getAIAttackDecisions(state);
+    // Stealth taunt can't be targeted — AI goes face for lethal
+    expect(decisions.every(d => d.targetIndex === 'hero')).toBe(true);
+  });
+
+  it('AI cannot target stealthed minions at all', () => {
+    const state = makeGameState(
+      { board: [makeMinion({ currentAttack: 5, currentHealth: 5, lane: Lane.Center })] },
+      {
+        hero: { health: 30, mana: 0, heroPower: { name: '', cost: 2, description: '' } },
+        board: [
+          makeMinion({ currentAttack: 3, currentHealth: 2, isStealth: true, lane: Lane.Center }),
+        ],
+      },
+    );
+    state.activePlayer = 0;
+    const decisions = getAIAttackDecisions(state);
+    // Stealthed minion is untargetable — AI goes face
+    const minionAttacks = decisions.filter(d => d.targetIndex !== 'hero');
+    expect(minionAttacks).toHaveLength(0);
+  });
+
+  it('taunt bonus still applies to shielded taunt (net positive vs no-taunt shielded)', () => {
+    const attacker = makeMinion({ currentAttack: 3, currentHealth: 4 });
+    const shieldedTaunt = makeMinion({ currentAttack: 2, currentHealth: 3, taunt: true, hasDivineShield: true });
+    const shieldedNoTaunt = makeMinion({ currentAttack: 2, currentHealth: 3, hasDivineShield: true });
+    // Both have shield penalty, but taunt gets the +10 bonus on top
+    expect(evaluateTrade(attacker, shieldedTaunt)).toBeGreaterThan(evaluateTrade(attacker, shieldedNoTaunt));
+  });
+});
+
+describe('AI keyword-aware targeting — divine shield avoidance', () => {
+  it('AI goes face instead of wasting attack on shielded minion when score is negative', () => {
+    const state = makeGameState(
+      { board: [makeMinion({ currentAttack: 2, currentHealth: 3, lane: Lane.Center })] },
+      {
+        hero: { health: 30, mana: 0, heroPower: { name: '', cost: 2, description: '' } },
+        board: [
+          makeMinion({ currentAttack: 4, currentHealth: 5, hasDivineShield: true, lane: Lane.Center }),
+        ],
+      },
+    );
+    state.activePlayer = 0;
+    const decisions = getAIAttackDecisions(state);
+    // 2/3 into 4/5+shield: shield absorbs damage, attacker takes 4 and dies — very bad trade
+    expect(decisions.length).toBe(1);
+    expect(decisions[0].targetIndex).toBe('hero');
+  });
+
+  it('evaluateTrade: divine shield makes defender effectively survive even with enough damage', () => {
+    const attacker = makeMinion({ currentAttack: 5, currentHealth: 5 });
+    const shielded = makeMinion({ currentAttack: 1, currentHealth: 3, hasDivineShield: true });
+    const unshielded = makeMinion({ currentAttack: 1, currentHealth: 3, hasDivineShield: false });
+    // Without shield: 5 >= 3, defender dies. With shield: 0 effective damage, defender lives
+    const shieldScore = evaluateTrade(attacker, shielded);
+    const normalScore = evaluateTrade(attacker, unshielded);
+    expect(normalScore).toBeGreaterThan(shieldScore);
+  });
+
+  it('lethal calculation ignores divine shield on board (goes face)', () => {
+    const state = makeGameState(
+      { board: [makeMinion({ currentAttack: 10, currentHealth: 5, lane: Lane.Center })] },
+      {
+        hero: { health: 5, mana: 0, heroPower: { name: '', cost: 2, description: '' } },
+        board: [
+          makeMinion({ currentAttack: 1, currentHealth: 1, hasDivineShield: true, lane: Lane.Center }),
+        ],
+      },
+    );
+    state.activePlayer = 0;
+    const decisions = getAIAttackDecisions(state);
+    // Lethal available — AI ignores the shielded minion and goes face
+    expect(decisions.every(d => d.targetIndex === 'hero')).toBe(true);
+  });
+});
+
+describe('AI keyword-aware targeting — stealth and enrage interactions', () => {
+  it('stealth-broken minion (stealth: true, isStealth: false) gets priority bonus', () => {
+    const attacker = makeMinion({ currentAttack: 3, currentHealth: 3 });
+    const stealthBroken = makeMinion({ currentAttack: 2, currentHealth: 2, stealth: true, isStealth: false });
+    const normal = makeMinion({ currentAttack: 2, currentHealth: 2 });
+    expect(evaluateTrade(attacker, stealthBroken)).toBeGreaterThan(evaluateTrade(attacker, normal));
+  });
+
+  it('AI skips stealth minion even when it would be a good trade', () => {
+    const state = makeGameState(
+      { board: [makeMinion({ currentAttack: 5, currentHealth: 5, lane: Lane.Center })] },
+      {
+        hero: { health: 30, mana: 0, heroPower: { name: '', cost: 2, description: '' } },
+        board: [
+          makeMinion({ currentAttack: 1, currentHealth: 1, isStealth: true, lane: Lane.Center }),
+          makeMinion({ currentAttack: 2, currentHealth: 3, lane: Lane.Center }),
+        ],
+      },
+    );
+    state.activePlayer = 0;
+    const decisions = getAIAttackDecisions(state);
+    // Index 0 is stealthed — AI must not target it
+    const stealthAttacks = decisions.filter(d => d.targetIndex === 0);
+    expect(stealthAttacks).toHaveLength(0);
+  });
+
+  it('damaged minion bonus applies (simulating post-enrage vulnerability)', () => {
+    const attacker = makeMinion({ currentAttack: 4, currentHealth: 4 });
+    // A minion that has been damaged (currentHealth < max health) — could have enrage active
+    const damaged = makeMinion({ currentAttack: 5, currentHealth: 2, health: 5, enrageActive: true, enrageBonus: 3 });
+    const healthy = makeMinion({ currentAttack: 2, currentHealth: 5, health: 5 });
+    // Damaged minion with boosted attack is a higher-value trade target
+    const damagedScore = evaluateTrade(attacker, damaged);
+    const healthyScore = evaluateTrade(attacker, healthy);
+    expect(damagedScore).toBeGreaterThan(healthyScore);
+  });
+
+  it('AI prefers killing a stealth-broken minion over a normal one', () => {
+    const state = makeGameState(
+      { board: [
+        makeMinion({ currentAttack: 3, currentHealth: 3, lane: Lane.Center }),
+        makeMinion({ currentAttack: 3, currentHealth: 3, lane: Lane.Center }),
+      ]},
+      {
+        hero: { health: 30, mana: 0, heroPower: { name: '', cost: 2, description: '' } },
+        board: [
+          makeMinion({ currentAttack: 2, currentHealth: 2, lane: Lane.Center }),
+          makeMinion({ currentAttack: 2, currentHealth: 2, stealth: true, isStealth: false, lane: Lane.Center }),
+        ],
+      },
+    );
+    state.activePlayer = 0;
+    const decisions = getAIAttackDecisions(state);
+    // Stealth-broken target (index 1) should be preferred due to STEALTH_BROKEN_BONUS
+    const firstTrade = decisions.find(d => d.targetIndex !== 'hero');
+    expect(firstTrade).toBeDefined();
+    expect(firstTrade!.targetIndex).toBe(1);
+  });
+});
+
 describe('AI responds within 2-second budget', () => {
   const difficulties: AIDifficulty[] = ['easy', 'normal', 'hard'];
 

@@ -1,13 +1,13 @@
-# Autopo test Session
+# Autopo execute Session
 
 ## Work Unit
-AI keyword awareness — prioritize attacking taunt minions, avoid wasting attacks on divine shield, prefer removing stealth-broken targets
+Test AI keyword-aware targeting — verify taunt priority, divine shield avoidance, stealth/enrage awareness in attack decisions
 
 ## Acceptance Criteria
-- AI targets taunt minions before non-taunt
-- AI avoids attacking divine shield minions when better targets exist
-- AI prioritizes killing damaged/stealth-broken minions
-- getAIAttackDecisions scoring reflects keyword awareness
+- Tests for taunt targeting priority
+- Tests for divine shield avoidance
+- Tests for stealth/enrage interaction
+- vitest run passes
 
 ## Rules
 # Rules
