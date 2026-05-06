@@ -1,11 +1,11 @@
 # Autopo test Session
 
 ## Work Unit
-Add 10 new Wu minion cards (common/rare/epic) — design balanced stats fitting Wu identity (balanced/naval theme)
+Add 5 Wu spells and 2 Wu weapons — design faction-themed spells (fire/water/combo) and weapons
 
 ## Acceptance Criteria
-- 10 new Wu minion cards added
-- Stats balanced
+- 5 new Wu spells added
+- 2 new Wu weapons added
 - npm run build succeeds
 
 ## Rules

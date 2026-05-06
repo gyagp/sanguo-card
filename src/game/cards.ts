@@ -1205,6 +1205,109 @@ export const cards: Card[] = [
       return state;
     },
   },
+
+  // === 吴国法术 (5) ===
+  {
+    name: "火攻", cost: 2, attack: 0, health: 0, description: "对一个敌方随从造成3点伤害",
+    rarity: "common", type: "spell", faction: "wu",
+    targetType: "enemy_minion",
+    effect: (state: GameState, context: EffectContext) => {
+      const damage = 3 + (context.spellDamage ?? 0);
+      const enemy = state.players[context.player === 0 ? 1 : 0];
+      if (context.targetIndex !== undefined && enemy.board[context.targetIndex]) {
+        enemy.board[context.targetIndex].currentHealth -= damage;
+      }
+      return state;
+    },
+  },
+  {
+    name: "水淹七军", cost: 5, attack: 0, health: 0, description: "对一条战线的所有敌方随从造成4点伤害",
+    rarity: "rare", type: "spell", faction: "wu",
+    targetType: "lane_aoe",
+    effect: (state: GameState, context: EffectContext) => {
+      const damage = 4 + (context.spellDamage ?? 0);
+      const enemy = state.players[context.player === 0 ? 1 : 0];
+      const targetLane = context.targetLane;
+      for (const minion of enemy.board) {
+        if (targetLane === undefined || minion.lane === targetLane) {
+          minion.currentHealth -= damage;
+        }
+      }
+      return state;
+    },
+  },
+  {
+    name: "苦肉计", cost: 1, attack: 0, health: 0, description: "对自己英雄造成3点伤害，抽2张牌",
+    rarity: "common", type: "spell", faction: "wu",
+    effect: (state: GameState, context: EffectContext) => {
+      const player = state.players[context.player];
+      player.hero.health -= 3;
+      for (let i = 0; i < 2; i++) {
+        drawCard(player);
+      }
+      return state;
+    },
+  },
+  {
+    name: "反间计", cost: 3, attack: 0, health: 0, description: "对一个敌方随从造成2点伤害并使其冻结。抽1张牌",
+    rarity: "rare", type: "spell", faction: "wu",
+    targetType: "enemy_minion",
+    effect: (state: GameState, context: EffectContext) => {
+      const damage = 2 + (context.spellDamage ?? 0);
+      const enemy = state.players[context.player === 0 ? 1 : 0];
+      const player = state.players[context.player];
+      if (context.targetIndex !== undefined && enemy.board[context.targetIndex]) {
+        const target = enemy.board[context.targetIndex];
+        target.currentHealth -= damage;
+        if (target.currentHealth > 0) {
+          applyFreeze(target, player);
+        }
+      }
+      drawCard(player);
+      return state;
+    },
+  },
+  {
+    name: "东风破", cost: 6, attack: 0, health: 0, description: "对所有敌方随从造成3点伤害，使所有友方随从获得+2攻击力",
+    rarity: "epic", type: "spell", faction: "wu",
+    effect: (state: GameState, context: EffectContext) => {
+      const damage = 3 + (context.spellDamage ?? 0);
+      const player = state.players[context.player];
+      const enemy = state.players[context.player === 0 ? 1 : 0];
+      for (const minion of enemy.board) {
+        minion.currentHealth -= damage;
+      }
+      for (const minion of player.board) {
+        minion.currentAttack += 2;
+      }
+      return state;
+    },
+  },
+
+  // === 吴国武器 (2) ===
+  {
+    name: "古锭刀", cost: 2, attack: 3, health: 2, description: "3攻击力，2耐久度。战吼：对一个敌方随从造成2点伤害",
+    rarity: "common", type: "weapon", faction: "wu",
+    targetType: "enemy_minion",
+    battlecry: (state: GameState, context) => {
+      const enemy = state.players[context.player === 0 ? 1 : 0];
+      if (context.targetIndex !== undefined && enemy.board[context.targetIndex]) {
+        enemy.board[context.targetIndex].currentHealth -= 2;
+      }
+      return state;
+    },
+  },
+  {
+    name: "碧血剑", cost: 4, attack: 4, health: 2, description: "4攻击力，2耐久度。战吼：抽2张牌",
+    rarity: "epic", type: "weapon", faction: "wu",
+    battlecry: (state: GameState, context) => {
+      const player = state.players[context.player];
+      for (let i = 0; i < 2; i++) {
+        drawCard(player);
+      }
+      return state;
+    },
+  },
 ];
 
 const spellCardPool = cards.filter(c => c.type === "spell");
