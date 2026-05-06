@@ -10,6 +10,7 @@ import {
   BOSS_SIMAYI,
   BOSSES,
   createBossAIFromRule,
+  PhaseTransitionEvent,
 } from './boss-ai';
 import { GameState, initializeGame, createDeck, Card, startTurn, Lane } from './types';
 
@@ -113,8 +114,17 @@ describe('DongZhuo turn start effects', () => {
   });
 });
 
-describe('SimaYi herb card fix', () => {
-  it('replaced spell has attack and health fields (no unsafe cast)', () => {
+describe('SimaYi turn start effects', () => {
+  it('phase 1 draws a card for boss', () => {
+    const state = makeGameState();
+    state.players[1].hero.health = 30;
+    const handBefore = state.players[1].hand.length;
+    const bossAI = new BossAI(BOSS_SIMAYI, 1, 30);
+    bossAI.applyTurnStartEffect(state);
+    expect(state.players[1].hand.length).toBe(handBefore + 1);
+  });
+
+  it('phase 2 replaces opponent spell with 草药', () => {
     const state = makeGameState();
     state.players[1].hero.health = 15;
     const spellCard: Card = makeCard({ name: '火攻', type: 'spell', cost: 2 });
@@ -166,6 +176,7 @@ describe('SimaYi herb card fix', () => {
     const bossAI = new BossAI(BOSS_SIMAYI, 1, 30);
     bossAI.applyTurnStartEffect(state);
     expect(state.players[1].board[0].currentAttack).toBe(3);
+    expect(state.players[1].board.some(m => m.name === '细作')).toBe(true);
   });
 });
 
@@ -214,13 +225,14 @@ describe('ZhangJiao turn start effects', () => {
     expect(state.players[1].board[0].name).toBe('乡勇');
   });
 
-  it('phase 2 heals boss and draws a card', () => {
+  it('phase 2 spawns 黄巾力士, heals boss and draws a card', () => {
     const state = makeGameState();
     state.players[1].hero.health = 10;
     const deckBefore = state.players[1].deck.length;
     const handBefore = state.players[1].hand.length;
     const bossAI = new BossAI(BOSS_ZHANGJIAO, 1, 30);
     bossAI.applyTurnStartEffect(state);
+    expect(state.players[1].board.some(m => m.name === '黄巾力士')).toBe(true);
     expect(state.players[1].hero.health).toBe(13);
     expect(state.players[1].hand.length).toBe(handBefore + 1);
   });
@@ -271,6 +283,7 @@ describe('CaoCao turn start effects', () => {
     bossAI.applyTurnStartEffect(state);
     expect(state.players[0].board.length).toBe(0);
     expect(state.players[1].board.some(m => m.name === '弱兵')).toBe(true);
+    expect(state.players[1].board.some(m => m.name === '细作')).toBe(true);
   });
 });
 
@@ -295,5 +308,89 @@ describe('difficulty scaling', () => {
     const bossAI = new BossAI(BOSS_DONGZHUO, 1, 30);
     const attacks = bossAI.getAttackDecisions(state);
     expect(attacks.some(a => a.targetIndex === 'hero')).toBe(true);
+  });
+});
+
+describe('Phase transition detection', () => {
+  it('detects phase transition when boss HP drops', () => {
+    const state = makeGameState();
+    state.players[1].hero.health = 30;
+    const bossAI = new BossAI(BOSS_DONGZHUO, 1, 30);
+    expect(bossAI.checkPhaseTransition(state)).toBeNull();
+
+    state.players[1].hero.health = 15;
+    const transition = bossAI.checkPhaseTransition(state);
+    expect(transition).not.toBeNull();
+    expect(transition!.bossName).toBe('董卓');
+    expect(transition!.fromPhase).toBe('暴政');
+    expect(transition!.toPhase).toBe('暴怒');
+    expect(transition!.announcement).toBe('董卓进入暴怒状态！');
+    expect(transition!.voiceLine).toBe('尔等蝼蚁，竟敢伤我！');
+  });
+
+  it('does not fire again for the same phase', () => {
+    const state = makeGameState();
+    state.players[1].hero.health = 15;
+    const bossAI = new BossAI(BOSS_DONGZHUO, 1, 30);
+    const first = bossAI.checkPhaseTransition(state);
+    expect(first).not.toBeNull();
+    const second = bossAI.checkPhaseTransition(state);
+    expect(second).toBeNull();
+  });
+
+  it('all bosses have announcements on every phase', () => {
+    for (const [, boss] of Object.entries(BOSSES)) {
+      for (const phase of boss.phases) {
+        expect(phase.announcement).toBeTruthy();
+        expect(phase.voiceLine).toBeTruthy();
+      }
+    }
+  });
+});
+
+describe('LvBu enhanced phase 2', () => {
+  it('phase 2 buffs 吕布 and spawns 西凉兵', () => {
+    const state = makeGameState();
+    state.players[1].hero.health = 8;
+    state.players[1].board.push({
+      name: '吕布', cost: 8, attack: 8, health: 8, description: '', type: 'minion',
+      rarity: 'legendary', faction: 'qun',
+      currentAttack: 8, currentHealth: 8,
+      summoningSickness: false, hasAttacked: false, hasDivineShield: false,
+      isStealth: false, isFrozen: false, freezeTurnsLeft: 0, isImmune: false,
+      windfuryAttacksLeft: 1, enrageActive: false, enrageBonus: 0,
+      factionAttackBonus: 0, factionHealthBonus: 0,
+      formationAtkBonus: 0, formationHpBonus: 0,
+      brotherhoodAtkBonus: 0, brotherhoodHpBonus: 0,
+      wuChargeBonus: 0, wuWeaponBonus: 0, wuComboAtkBonus: 0, wuComboHpBonus: 0,
+      qunDebuff: 0, lane: Lane.Center, slotIndex: 0,
+    });
+    const bossAI = new BossAI(BOSS_LVBU, 1, 30);
+    bossAI.applyTurnStartEffect(state);
+    expect(state.players[1].board[0].currentAttack).toBe(10);
+    expect(state.players[1].board.some(m => m.name === '西凉兵')).toBe(true);
+  });
+});
+
+describe('YuanShao enhanced phase 2', () => {
+  it('phase 2 spawns 袁军弓手 and 袁军精锐', () => {
+    const state = makeGameState();
+    state.players[1].hero.health = 10;
+    const bossAI = new BossAI(BOSS_YUANSHAO, 1, 30);
+    bossAI.applyTurnStartEffect(state);
+    expect(state.players[1].board.some(m => m.name === '袁军弓手')).toBe(true);
+    expect(state.players[1].board.some(m => m.name === '袁军精锐')).toBe(true);
+  });
+});
+
+describe('getCurrentPhaseName', () => {
+  it('returns current phase name', () => {
+    const state = makeGameState();
+    state.players[1].hero.health = 30;
+    const bossAI = new BossAI(BOSS_DONGZHUO, 1, 30);
+    expect(bossAI.getCurrentPhaseName(state)).toBe('暴政');
+
+    state.players[1].hero.health = 7;
+    expect(bossAI.getCurrentPhaseName(state)).toBe('困兽犹斗');
   });
 });

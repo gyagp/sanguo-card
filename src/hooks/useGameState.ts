@@ -19,7 +19,7 @@ import {
   TerrainEffect,
 } from "../game/types";
 import { AIDifficulty, createAI, AIDecision, AIStrategy } from "../game/ai";
-import { BossAI } from "../game/boss-ai";
+import { BossAI, PhaseTransitionEvent } from "../game/boss-ai";
 import { getHeroPowerForPlayer, FACTION_HERO_POWERS, UPGRADED_FACTION_HERO_POWERS } from "../game/hero-powers";
 
 export interface BossHeroPowerOverride {
@@ -141,6 +141,7 @@ export function useGameState(deck1: Deck, deck2: Deck, aiDifficulty?: AIDifficul
     return state;
   });
   const [isOpponentTurn, setIsOpponentTurn] = useState(false);
+  const [phaseTransition, setPhaseTransition] = useState<PhaseTransitionEvent | null>(null);
   const aiTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   const winner = checkWinCondition(gameState);
@@ -159,28 +160,46 @@ export function useGameState(deck1: Deck, deck2: Deck, aiDifficulty?: AIDifficul
   const playCard = useCallback((handIndex: number, targetIndex?: number, lane?: Lane, targetLane?: Lane): PlayCardResult => {
     const next = cloneState(gameState);
     const result = enginePlayCard(next, handIndex, targetIndex, undefined, lane, undefined, targetLane);
-    if (result.success) setGameState(next);
+    if (result.success) {
+      if (bossAI) {
+        const transition = bossAI.checkPhaseTransition(next);
+        if (transition) setPhaseTransition(transition);
+      }
+      setGameState(next);
+    }
     return result;
-  }, [gameState]);
+  }, [gameState, bossAI]);
 
   const attackMinionAction = useCallback(
     (attackerIndex: number, defenderIndex: number): AttackResult => {
       const next = cloneState(gameState);
       const result = engineAttackMinion(next, attackerIndex, defenderIndex);
-      if (result.success) setGameState(next);
+      if (result.success) {
+        if (bossAI) {
+          const transition = bossAI.checkPhaseTransition(next);
+          if (transition) setPhaseTransition(transition);
+        }
+        setGameState(next);
+      }
       return result;
     },
-    [gameState],
+    [gameState, bossAI],
   );
 
   const attackHeroAction = useCallback(
     (attackerIndex: number): AttackResult => {
       const next = cloneState(gameState);
       const result = engineAttackHero(next, attackerIndex);
-      if (result.success) setGameState(next);
+      if (result.success) {
+        if (bossAI) {
+          const transition = bossAI.checkPhaseTransition(next);
+          if (transition) setPhaseTransition(transition);
+        }
+        setGameState(next);
+      }
       return result;
     },
-    [gameState],
+    [gameState, bossAI],
   );
 
   const endTurn = useCallback((): void => {
@@ -190,6 +209,10 @@ export function useGameState(deck1: Deck, deck2: Deck, aiDifficulty?: AIDifficul
 
     if (bossAI) {
       bossAI.applyTurnStartEffect(next);
+      const transition = bossAI.checkPhaseTransition(next);
+      if (transition) {
+        setPhaseTransition(transition);
+      }
     }
 
     if (extraMana && extraMana > 0) {
@@ -263,10 +286,14 @@ export function useGameState(deck1: Deck, deck2: Deck, aiDifficulty?: AIDifficul
     setIsOpponentTurn(false);
   }, [deck1, deck2, clearAITimers]);
 
+  const clearPhaseTransition = useCallback(() => setPhaseTransition(null), []);
+
   return {
     gameState,
     winner,
     isOpponentTurn,
+    phaseTransition,
+    clearPhaseTransition,
     playCard,
     attack: attackMinionAction,
     attackHero: attackHeroAction,

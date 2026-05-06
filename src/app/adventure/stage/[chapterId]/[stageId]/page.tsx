@@ -346,7 +346,7 @@ function AdventureBattle({ stage, playerDeck, chapterId }: { stage: AdventureSta
     return undefined;
   }, [stage.isBoss, stage.bossRules, stage.terrain]);
 
-  const { gameState, winner, isOpponentTurn, playCard, attack, attackHero, endTurn, useHeroPower } = useGameState(
+  const { gameState, winner, isOpponentTurn, phaseTransition, clearPhaseTransition, playCard, attack, attackHero, endTurn, useHeroPower } = useGameState(
     playerDeck,
     paddedEnemy,
     aiDifficulty,
@@ -387,6 +387,20 @@ function AdventureBattle({ stage, playerDeck, chapterId }: { stage: AdventureSta
   }, [winner, gameState, stage]);
 
   const enemyMaxHp = stage.bossRules?.bossHp ?? 30;
+
+  const phaseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (phaseTransition) {
+      if (phaseTimerRef.current) clearTimeout(phaseTimerRef.current);
+      phaseTimerRef.current = setTimeout(() => {
+        clearPhaseTransition();
+        phaseTimerRef.current = null;
+      }, 3000);
+    }
+    return () => {
+      if (phaseTimerRef.current) clearTimeout(phaseTimerRef.current);
+    };
+  }, [phaseTransition, clearPhaseTransition]);
 
   if (!gameState) return null;
 
@@ -482,6 +496,17 @@ function AdventureBattle({ stage, playerDeck, chapterId }: { stage: AdventureSta
       </div>
 
       {stage.tutorialHints && <TutorialHints hints={stage.tutorialHints} />}
+
+      {phaseTransition && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
+          <div className="bg-black/80 border-2 border-red-500 rounded-xl px-8 py-6 text-center animate-pulse max-w-sm mx-4">
+            <p className="text-red-400 text-2xl font-black mb-2">{phaseTransition.announcement}</p>
+            {phaseTransition.voiceLine && (
+              <p className="text-yellow-200/80 text-sm italic">&ldquo;{phaseTransition.voiceLine}&rdquo;</p>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="flex-1 flex flex-col px-2 py-2 gap-2 overflow-y-auto">
         <div className="text-center text-sm text-red-300">

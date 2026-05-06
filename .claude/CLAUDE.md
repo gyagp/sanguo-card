@@ -1,13 +1,13 @@
-# Autopo execute Session
+# Autopo test Session
 
 ## Work Unit
-Test AI board state evaluation — verify aggro/control mode switching based on board advantage and life totals
+Boss AI scripted phases enhancement — add unique phase transition effects, voice lines/announcements, and phase-specific card generation for all 6 bosses
 
 ## Acceptance Criteria
-- Tests for board advantage calculation
-- Tests for aggro mode when winning
-- Tests for control mode when losing
-- vitest run passes
+- Each boss has at least 2 distinct phases with different behaviors
+- Phase transitions trigger visual/text announcements
+- Bosses generate phase-specific cards or tokens
+- Boss phase effects are clearly differentiated from normal AI
 
 ## Rules
 # Rules
