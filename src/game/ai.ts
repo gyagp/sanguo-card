@@ -1,4 +1,4 @@
-import { GameState, PlayerState, Card, BoardMinion, Faction, FACTION_SYNERGIES, getEffectiveCardCost, Lane, ALL_LANES, getLaneCount, MAX_LANE_SIZE, getReachableLanes, getSpellReachableLanes, TerrainType } from './types';
+import { GameState, PlayerState, Card, BoardMinion, Faction, FACTION_SYNERGIES, getEffectiveCardCost, Lane, ALL_LANES, getLaneCount, MAX_LANE_SIZE, getReachableLanes, getSpellReachableLanes, TerrainType, MAX_DECK_SIZE, DECK_FACTION_THRESHOLD } from './types';
 
 
 type SpellCategory = 'freeze' | 'destroy' | 'damage' | 'buff' | 'generic';
@@ -568,6 +568,24 @@ function applyFactionPlayOrder(decisions: PlayCardDecision[], player: PlayerStat
     return [...nonSpells, ...spells];
   }
 
+  if (player.deckFaction === "shu") {
+    const shuMinions = decisions.filter(d => {
+      const c = player.hand[d.cardIndex];
+      return c.type === "minion" && c.faction === "shu";
+    });
+    const rest = decisions.filter(d => {
+      const c = player.hand[d.cardIndex];
+      return !(c.type === "minion" && c.faction === "shu");
+    });
+    return [...shuMinions, ...rest];
+  }
+
+  if (player.deckFaction === "qun") {
+    const battlecries = decisions.filter(d => player.hand[d.cardIndex].battlecry);
+    const nonBattlecries = decisions.filter(d => !player.hand[d.cardIndex].battlecry);
+    return [...battlecries, ...nonBattlecries];
+  }
+
   return decisions;
 }
 
@@ -730,4 +748,47 @@ export function createAI(difficulty: AIDifficulty): AIStrategy {
     case 'hard': return new HardAI();
     case 'boss': return new HardAI();
   }
+}
+
+const FACTION_CHOICES: Exclude<Faction, 'neutral'>[] = ['shu', 'wei', 'wu', 'qun'];
+
+export function buildFactionDeck(cardPool: Card[], difficulty?: AIDifficulty): Card[] {
+  let pool = cardPool;
+  if (difficulty === 'easy') {
+    pool = cardPool.filter(c => c.rarity === 'common');
+  } else if (difficulty === 'normal') {
+    pool = cardPool.filter(c => c.rarity === 'common' || c.rarity === 'rare');
+  }
+
+  const faction = FACTION_CHOICES[Math.floor(Math.random() * FACTION_CHOICES.length)];
+  const factionCards = pool.filter(c => c.faction === faction);
+  const neutralCards = pool.filter(c => c.faction === 'neutral');
+
+  if (factionCards.length === 0) {
+    const deck: Card[] = [];
+    while (deck.length < MAX_DECK_SIZE) {
+      deck.push({ ...pool[deck.length % pool.length] });
+    }
+    return deck;
+  }
+
+  const deck: Card[] = [];
+  const targetFactionCount = Math.max(DECK_FACTION_THRESHOLD, Math.min(factionCards.length * 2, MAX_DECK_SIZE - 4));
+
+  while (deck.length < targetFactionCount && deck.length < MAX_DECK_SIZE) {
+    deck.push({ ...factionCards[deck.length % factionCards.length] });
+  }
+
+  const fillers = neutralCards.length > 0 ? neutralCards : pool.filter(c => c.faction !== faction);
+  while (deck.length < MAX_DECK_SIZE) {
+    const idx = (deck.length - targetFactionCount) % Math.max(fillers.length, 1);
+    deck.push({ ...fillers[idx] });
+  }
+
+  for (let i = deck.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [deck[i], deck[j]] = [deck[j], deck[i]];
+  }
+
+  return deck;
 }

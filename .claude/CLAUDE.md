@@ -1,13 +1,12 @@
-# Autopo execute Session
+# Autopo test Session
 
 ## Work Unit
-Test AI keyword-aware card play — verify spell targeting, freeze usage, buff prioritization
+AI faction synergy deck building — when AI builds/selects decks, prefer faction-concentrated decks to activate deck bonuses and board synergies
 
 ## Acceptance Criteria
-- Tests for spell target evaluation
-- Tests for freeze targeting
-- Tests for buff target selection
-- vitest run passes
+- AI deck selection prefers faction concentration
+- Adventure stage AI decks are faction-coherent
+- Hard AI values faction synergy in card play order
 
 ## Rules
 # Rules

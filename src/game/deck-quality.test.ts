@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { cards } from "./cards";
-import { AIDifficulty } from "./ai";
-import { Rarity, MAX_DECK_SIZE } from "./types";
+import { AIDifficulty, buildFactionDeck } from "./ai";
+import { Rarity, MAX_DECK_SIZE, DECK_FACTION_THRESHOLD, getDeckFaction } from "./types";
 
 function buildRandomDeck(difficulty?: AIDifficulty) {
   let pool = cards;
@@ -79,5 +79,44 @@ describe("Difficulty-based deck quality", () => {
     expect(() => buildRandomDeck("easy")).not.toThrow();
     expect(() => buildRandomDeck("normal")).not.toThrow();
     expect(() => buildRandomDeck("hard")).not.toThrow();
+  });
+});
+
+describe("AI faction-concentrated deck building", () => {
+  it("buildFactionDeck produces a deck of exactly MAX_DECK_SIZE cards", () => {
+    const deck = buildFactionDeck(cards);
+    expect(deck).toHaveLength(MAX_DECK_SIZE);
+  });
+
+  it("buildFactionDeck produces faction-concentrated decks", () => {
+    for (let i = 0; i < 10; i++) {
+      const deck = buildFactionDeck(cards);
+      const faction = getDeckFaction(deck);
+      expect(faction).not.toBe("neutral");
+      const factionCount = deck.filter(c => c.faction === faction).length;
+      expect(factionCount).toBeGreaterThanOrEqual(DECK_FACTION_THRESHOLD);
+    }
+  });
+
+  it("buildFactionDeck respects easy difficulty rarity filter", () => {
+    const deck = buildFactionDeck(cards, "easy");
+    expect(deck).toHaveLength(MAX_DECK_SIZE);
+    for (const card of deck) {
+      expect(card.rarity).toBe("common");
+    }
+  });
+
+  it("buildFactionDeck respects normal difficulty rarity filter", () => {
+    const deck = buildFactionDeck(cards, "normal");
+    expect(deck).toHaveLength(MAX_DECK_SIZE);
+    for (const card of deck) {
+      expect(["common", "rare"]).toContain(card.rarity);
+    }
+  });
+
+  it("buildFactionDeck hard difficulty can include epics and legendaries", () => {
+    const decks = Array.from({ length: 20 }, () => buildFactionDeck(cards, "hard"));
+    const allRarities = new Set(decks.flat().map(c => c.rarity));
+    expect(allRarities.size).toBeGreaterThanOrEqual(2);
   });
 });

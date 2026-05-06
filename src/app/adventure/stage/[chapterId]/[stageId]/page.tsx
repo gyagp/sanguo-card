@@ -7,7 +7,7 @@ import { adventureChapters, AdventureStage, AdventureChapter } from "../../../..
 import { cards } from "../../../../../game/cards";
 import { Card, createDeck, Deck } from "../../../../../game/types";
 import { useGameState, BossInitConfig } from "../../../../../hooks/useGameState";
-import { AIDifficulty } from "../../../../../game/ai";
+import { AIDifficulty, buildFactionDeck } from "../../../../../game/ai";
 import { createBossAIFromRule } from "../../../../../game/boss-ai";
 import { loadAdventureProgress, isStageUnlocked, completeStage, addGold, addXP, addCards } from "../../../../../game/player-store";
 
@@ -231,12 +231,7 @@ function DeckPicker({ stage, onSelect, onBack }: { stage: AdventureStage; onSele
   }, []);
 
   function buildRandomDeck(): Card[] {
-    const pool = cards.filter((c) => c.rarity !== "legendary");
-    const deck: Card[] = [];
-    for (let i = 0; i < 30; i++) {
-      deck.push({ ...pool[Math.floor(Math.random() * pool.length)] });
-    }
-    return deck;
+    return buildFactionDeck(cards);
   }
 
   return (
@@ -302,8 +297,22 @@ function AdventureBattle({ stage, playerDeck, chapterId }: { stage: AdventureSta
 
   const paddedEnemy = useMemo(() => {
     const deck = [...enemyCards];
+    const factionCounts = new Map<string, number>();
+    for (const c of deck) {
+      if (c.faction !== 'neutral') {
+        factionCounts.set(c.faction, (factionCounts.get(c.faction) ?? 0) + 1);
+      }
+    }
+    let dominantFaction: string | null = null;
+    let maxCount = 0;
+    for (const [f, count] of factionCounts) {
+      if (count > maxCount) { maxCount = count; dominantFaction = f; }
+    }
+    const fillPool = dominantFaction
+      ? enemyCards.filter(c => c.faction === dominantFaction || c.faction === 'neutral')
+      : enemyCards;
     while (deck.length < 30) {
-      deck.push({ ...enemyCards[Math.floor(Math.random() * enemyCards.length)] });
+      deck.push({ ...fillPool[Math.floor(Math.random() * fillPool.length)] });
     }
     return createDeck(deck);
   }, [enemyCards]);

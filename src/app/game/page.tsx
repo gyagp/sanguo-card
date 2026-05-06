@@ -5,7 +5,7 @@ import Card from "../../components/Card";
 import VolumeControl from "../../components/VolumeControl";
 import { AudioManager } from "./audio-manager";
 import { cards } from "../../game/cards";
-import { AIDifficulty } from "../../game/ai";
+import { AIDifficulty, buildFactionDeck } from "../../game/ai";
 import { addGold, addXP } from "../../game/player-store";
 import { createDeck, BoardMinion, PlayerState, Card as CardType, MAX_BOARD_SIZE, MAX_DECK_SIZE, Deck, Faction, FACTION_SYNERGIES, DECK_FACTION_THRESHOLD, Lane, ALL_LANES, getReachableLanes, getSpellReachableLanes, TerrainEffect, TerrainType, MAX_LANE_SIZE, ActiveTrap } from "../../game/types";
 import { useMemo, useState, useEffect, useRef, useCallback, forwardRef } from "react";
@@ -163,19 +163,7 @@ interface DyingMinion {
 }
 
 function buildRandomDeck(difficulty?: AIDifficulty): CardType[] {
-  let pool: CardType[];
-  if (difficulty === 'easy') {
-    pool = cards.filter(c => c.rarity === 'common');
-  } else if (difficulty === 'normal') {
-    pool = cards.filter(c => c.rarity === 'common' || c.rarity === 'rare');
-  } else {
-    pool = [...cards];
-  }
-  const deck: CardType[] = [];
-  while (deck.length < MAX_DECK_SIZE) {
-    deck.push(pool[deck.length % pool.length]);
-  }
-  return deck;
+  return buildFactionDeck(cards, difficulty);
 }
 
 function loadSavedDecks(): SavedDeck[] {

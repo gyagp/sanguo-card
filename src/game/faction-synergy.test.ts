@@ -8,7 +8,7 @@ import {
 } from './types';
 import {
   countFactionMinions, evaluateFactionSynergy, evaluateBoard,
-  getBestManaUsage, createAI, getPlayableCards,
+  getBestManaUsage, createAI, getPlayableCards, buildFactionDeck,
 } from './ai';
 
 function makeMinion(overrides: Partial<BoardMinion> & { faction: Faction }): BoardMinion {
@@ -508,5 +508,75 @@ describe('Wei control mechanics', () => {
       const playable = getPlayableCards(hand, 2);
       expect(playable).toEqual([]);
     });
+  });
+});
+
+describe('HardAI faction play order for shu', () => {
+  it('shu deck plays shu minions before other cards', () => {
+    const ai = createAI('hard');
+    const state = makeGameState([], []);
+    const shuMinion = makeCard({ faction: 'shu', name: 'shuMinion', cost: 1, type: 'minion' });
+    const neutralMinion = makeCard({ faction: 'neutral', name: 'neutralMinion', cost: 1, type: 'minion' });
+    state.players[0].hand = [neutralMinion, shuMinion];
+    state.players[0].hero.mana = 2;
+    state.players[0].deckFaction = 'shu';
+    state.players[0].hasDeckFactionBonus = true;
+
+    const decisions = ai.getPlayDecisions(state);
+    expect(decisions.length).toBe(2);
+    expect(decisions[0].cardIndex).toBe(1); // shu minion first
+  });
+});
+
+describe('HardAI faction play order for wei', () => {
+  it('wei deck plays minions before spells', () => {
+    const ai = createAI('hard');
+    const state = makeGameState([], []);
+    const spell = makeCard({ faction: 'wei', name: 'weiSpell', cost: 1, type: 'spell' });
+    const minion = makeCard({ faction: 'wei', name: 'weiMinion', cost: 1, type: 'minion' });
+    state.players[0].hand = [spell, minion];
+    state.players[0].hero.mana = 2;
+    state.players[0].deckFaction = 'wei';
+    state.players[0].hasDeckFactionBonus = true;
+
+    const decisions = ai.getPlayDecisions(state);
+    expect(decisions.length).toBe(2);
+    expect(decisions[0].cardIndex).toBe(1); // minion first
+    expect(decisions[1].cardIndex).toBe(0); // spell after
+  });
+});
+
+describe('HardAI faction play order for wu', () => {
+  it('wu deck plays cheaper cards first', () => {
+    const ai = createAI('hard');
+    const state = makeGameState([], []);
+    const expensive = makeCard({ faction: 'wu', name: 'wuExpensive', cost: 3, type: 'minion' });
+    const cheap = makeCard({ faction: 'wu', name: 'wuCheap', cost: 1, type: 'minion' });
+    state.players[0].hand = [expensive, cheap];
+    state.players[0].hero.mana = 4;
+    state.players[0].deckFaction = 'wu';
+    state.players[0].hasDeckFactionBonus = true;
+
+    const decisions = ai.getPlayDecisions(state);
+    expect(decisions.length).toBe(2);
+    expect(decisions[0].cardIndex).toBe(1); // cheap first
+    expect(decisions[1].cardIndex).toBe(0); // expensive after
+  });
+});
+
+describe('HardAI faction play order for qun', () => {
+  it('qun deck plays battlecry cards first', () => {
+    const ai = createAI('hard');
+    const state = makeGameState([], []);
+    const noBattlecry = makeCard({ faction: 'qun', name: 'noBc', cost: 1, type: 'minion' });
+    const hasBattlecry = makeCard({ faction: 'qun', name: 'hasBc', cost: 1, type: 'minion', battlecry: true });
+    state.players[0].hand = [noBattlecry, hasBattlecry];
+    state.players[0].hero.mana = 2;
+    state.players[0].deckFaction = 'qun';
+    state.players[0].hasDeckFactionBonus = true;
+
+    const decisions = ai.getPlayDecisions(state);
+    expect(decisions.length).toBe(2);
+    expect(decisions[0].cardIndex).toBe(1); // battlecry first
   });
 });
