@@ -1,15 +1,15 @@
-# Autopo test Session
+# Autopo execute Session
 
 ## Work Unit
-Chapters 2-5 enemy deck balancing and boss special rules — ensure faction-themed decks, unique boss mechanics per chapter, and escalating difficulty
+Adventure mode tests — test progress persistence, star rating calculation, stage unlocking logic, reward distribution, and boss rule application
 
 ## Acceptance Criteria
-- Chapter 2 群雄逐鹿: mixed faction decks, boss has +1 mana per turn
-- Chapter 3 三足鼎立: faction-focused decks (wei/shu/wu), boss starts with a minion on board
-- Chapter 4 赤壁之战: strategy puzzle decks with synergies, boss has field effect (e.g. all spells cost 1 less)
-- Chapter 5 天下归一: legendary-heavy decks, final boss has 40 HP + 3 phases
-- All 30 stages playable
-- npm run build succeeds
+- Verify trivial test passes first (test infra check)
+- Tests for star rating: 3 stars at high HP + low turns, 1 star at low HP + high turns
+- Tests for progress: stages unlock sequentially, chapter unlocks after boss
+- Tests for rewards: gold/xp/cards granted correctly
+- Tests for boss rules: extra mana applied, field effects active
+- vitest run passes all adventure tests
 
 ## Rules
 # Rules
