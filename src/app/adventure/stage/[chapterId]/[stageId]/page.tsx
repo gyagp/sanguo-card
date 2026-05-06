@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { adventureChapters, AdventureStage, AdventureChapter } from "../../../../../game/adventure-data";
@@ -9,7 +9,7 @@ import { Card, createDeck, Deck } from "../../../../../game/types";
 import { useGameState } from "../../../../../hooks/useGameState";
 import { AIDifficulty } from "../../../../../game/ai";
 import { createBossAIFromRule } from "../../../../../game/boss-ai";
-import { loadAdventureProgress, isStageUnlocked, completeStage } from "../../../../../game/player-store";
+import { loadAdventureProgress, isStageUnlocked, completeStage, addGold, addXP, addCards } from "../../../../../game/player-store";
 
 function findStage(chapterId: string, stageId: string): { chapter: AdventureChapter; stage: AdventureStage } | null {
   const chapter = adventureChapters.find((ch) => ch.id === chapterId);
@@ -206,7 +206,7 @@ function BattleWrapper({ stage, chapterId }: { stage: AdventureStage; chapterId:
     return <DeckPicker stage={stage} onSelect={setPlayerDeck} onBack={() => router.replace(`/adventure/stage/${chapterId}/${stage.id}`)} />;
   }
 
-  return <AdventureBattle stage={stage} playerDeck={playerDeck} />;
+  return <AdventureBattle stage={stage} playerDeck={playerDeck} chapterId={chapterId} />;
 }
 
 function DeckPicker({ stage, onSelect, onBack }: { stage: AdventureStage; onSelect: (deck: Deck) => void; onBack: () => void }) {
@@ -265,7 +265,7 @@ function DeckPicker({ stage, onSelect, onBack }: { stage: AdventureStage; onSele
   );
 }
 
-function AdventureBattle({ stage, playerDeck }: { stage: AdventureStage; playerDeck: Deck }) {
+function AdventureBattle({ stage, playerDeck, chapterId }: { stage: AdventureStage; playerDeck: Deck; chapterId: string }) {
   const router = useRouter();
   const [selectedAttacker, setSelectedAttacker] = useState<number | null>(null);
   const enemyCards = useMemo(() => resolveEnemyDeck(stage.enemyDeck), [stage.enemyDeck]);
@@ -299,14 +299,33 @@ function AdventureBattle({ stage, playerDeck }: { stage: AdventureStage; playerD
     bossHeroPower,
   );
 
+  const [earnedStars, setEarnedStars] = useState(0);
+  const [isFirstClear, setIsFirstClear] = useState(false);
+  const rewardsGrantedRef = useRef(false);
+
   useEffect(() => {
-    if (winner === 0 && gameState) {
-      const hpPercent = (gameState.players[0].hero.health / 30) * 100;
-      const turns = gameState.turn;
-      let stars = 1;
-      if (hpPercent >= stage.starThresholds.twoStarMinHpPercent && turns <= stage.starThresholds.twoStarMaxTurns) stars = 2;
-      if (hpPercent >= stage.starThresholds.threeStarMinHpPercent && turns <= stage.starThresholds.threeStarMaxTurns) stars = 3;
-      completeStage(stage.id, stars);
+    if (winner !== 0 || !gameState || rewardsGrantedRef.current) return;
+    rewardsGrantedRef.current = true;
+
+    const hpPercent = (gameState.players[0].hero.health / 30) * 100;
+    const turns = gameState.turn;
+    let stars = 1;
+    if (hpPercent >= stage.starThresholds.twoStarMinHpPercent && turns <= stage.starThresholds.twoStarMaxTurns) stars = 2;
+    if (hpPercent >= stage.starThresholds.threeStarMinHpPercent && turns <= stage.starThresholds.threeStarMaxTurns) stars = 3;
+    setEarnedStars(stars);
+
+    const prevProgress = loadAdventureProgress();
+    const wasCompleted = !!prevProgress.stages[stage.id]?.completed;
+    setIsFirstClear(!wasCompleted);
+
+    completeStage(stage.id, stars);
+
+    if (!wasCompleted) {
+      if (stage.rewards.gold) addGold(stage.rewards.gold);
+      if (stage.rewards.xp) addXP(stage.rewards.xp);
+      if (stage.rewards.cards && stage.rewards.cards.length > 0) {
+        addCards(stage.rewards.cards);
+      }
     }
   }, [winner, gameState, stage]);
 
@@ -315,21 +334,74 @@ function AdventureBattle({ stage, playerDeck }: { stage: AdventureStage; playerD
   if (winner !== null) {
     const playerWon = winner === 0;
     const isDraw = winner === "draw";
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-red-950 via-red-900 to-yellow-900">
-        <div className="text-center space-y-6">
-          <h1 className={`text-4xl font-bold ${playerWon ? "text-yellow-400" : isDraw ? "text-yellow-200/60" : "text-red-400"}`}>
-            {playerWon ? "🎉 胜利!" : isDraw ? "握手言和" : "💀 战败"}
-          </h1>
-          {playerWon && (
-            <div className="text-yellow-200/70 space-y-1">
-              {stage.rewards.gold && <p>💰 +{stage.rewards.gold} 金币</p>}
-              {stage.rewards.xp && <p>✨ +{stage.rewards.xp} 经验</p>}
+
+    if (!playerWon) {
+      return (
+        <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-red-950 via-red-900 to-yellow-900">
+          <div className="text-center space-y-6">
+            <h1 className={`text-5xl font-black ${isDraw ? "text-yellow-200/60" : "text-red-400"}`}
+              style={{ textShadow: isDraw ? "0 0 20px rgba(200,200,100,0.4)" : "0 0 20px rgba(255,0,0,0.4)" }}
+            >
+              {isDraw ? "握手言和" : "💀 战败"}
+            </h1>
+            {!isDraw && <p className="text-red-200/60 text-lg">卷土重来！</p>}
+            <div className="flex gap-4">
+              <button
+                onClick={() => {
+                  rewardsGrantedRef.current = false;
+                  router.replace(`/adventure/stage/${chapterId}/${stage.id}`);
+                }}
+                className="rounded-lg border-2 border-yellow-500/60 bg-gradient-to-r from-red-800 to-red-700 px-8 py-3 text-yellow-300 font-bold hover:from-red-700 hover:to-red-600 transition-all hover:scale-105"
+              >
+                ⚔️ 再试一次
+              </button>
+              <button
+                onClick={() => router.push("/adventure")}
+                className="rounded-lg border border-yellow-600/40 bg-red-950/60 px-8 py-3 text-yellow-200/70 font-semibold hover:border-yellow-500/60 transition-colors"
+              >
+                返回地图
+              </button>
             </div>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-yellow-950 via-red-950 to-yellow-900">
+        <div className="text-center space-y-6">
+          <h1 className="text-5xl font-black text-yellow-400"
+            style={{ textShadow: "0 0 30px rgba(255,215,0,0.6)" }}
+          >
+            🎉 胜利!
+          </h1>
+
+          <div className="flex justify-center gap-2 text-4xl">
+            {[1, 2, 3].map((i) => (
+              <span key={i} className={i <= earnedStars ? "drop-shadow-[0_0_8px_rgba(255,215,0,0.8)]" : "opacity-30"}>
+                {i <= earnedStars ? "⭐" : "☆"}
+              </span>
+            ))}
+          </div>
+
+          {isFirstClear ? (
+            <div className="space-y-2">
+              <p className="text-yellow-300/80 text-sm font-semibold">首次通关奖励</p>
+              <div className="flex flex-col items-center gap-1 text-lg text-yellow-200/80">
+                {stage.rewards.gold && <p>💰 +{stage.rewards.gold} 金币</p>}
+                {stage.rewards.xp && <p>✨ +{stage.rewards.xp} 经验</p>}
+                {stage.rewards.cards && stage.rewards.cards.map((r, i) => (
+                  <p key={i}>🃏 +{r.cardName} x{r.count}</p>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <p className="text-yellow-200/50 text-sm">已领取过通关奖励</p>
           )}
+
           <button
             onClick={() => router.push("/adventure")}
-            className="rounded-lg border border-yellow-500/60 bg-red-800 px-8 py-3 text-yellow-300 font-semibold hover:bg-red-700 transition-colors"
+            className="rounded-lg border-2 border-yellow-500/60 bg-gradient-to-r from-red-800 to-red-700 px-8 py-3 text-yellow-300 font-bold hover:from-red-700 hover:to-red-600 transition-all hover:scale-105"
           >
             返回冒险地图
           </button>

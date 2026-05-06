@@ -1,13 +1,14 @@
 # Autopo test Session
 
 ## Work Unit
-PVE battle integration — wire adventure stages into the game engine with enemy preset decks and boss special rules (extra mana, field effects, unique hero powers)
+Post-battle results — star rating calculation, reward distribution, and progress update after PVE victory/defeat
 
 ## Acceptance Criteria
-- Game page accepts adventure stage params and loads preset enemy deck
-- Boss stages apply extra mana, field effects, and unique hero powers
-- AI difficulty scales with chapter progression (easy→normal→hard→boss)
-- Existing PvP game mode still works unchanged
+- Victory screen shows 1-3 stars based on remaining HP% and turn count
+- Rewards (gold, XP, specific cards) granted on first clear and displayed
+- Adventure progress updated in localStorage with star count
+- Defeat shows retry option
+- Next stage unlocked on victory
 - npm run build succeeds
 
 ## Rules
