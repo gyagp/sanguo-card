@@ -1,13 +1,13 @@
-# Autopo test Session
+# Autopo execute Session
 
 ## Work Unit
-AI faction-aware play order and lane placement — Wu plays cheapest first for combo, Wei plays minions before spells, place same-faction minions in same lane for formation bonus
+Test AI faction synergy — verify faction-aware deck preference, play order, lane placement for formation bonus
 
 ## Acceptance Criteria
-- Wu AI plays cheapest cards first to build combo count
-- Wei AI plays minions before spells for spell damage on board
-- Lane placement clusters same-faction minions for formation bonus
-- Existing faction play order logic enhanced with synergy tier awareness
+- Tests for faction deck concentration
+- Tests for Wu combo play order
+- Tests for formation bonus lane placement
+- vitest run passes
 
 ## Rules
 # Rules
