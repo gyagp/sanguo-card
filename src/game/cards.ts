@@ -1,4 +1,4 @@
-import { Card, GameState, BoardMinion, MAX_BOARD_SIZE, MAX_HAND_SIZE, EffectContext, drawCard, STARTING_HP, gameEventBus, EventListener, GameEvent, applyFreeze, Lane, addMinionToLane, getReachableLanes } from "./types";
+import { Card, GameState, BoardMinion, MAX_BOARD_SIZE, MAX_HAND_SIZE, EffectContext, drawCard, STARTING_HP, gameEventBus, EventListener, GameEvent, applyFreeze, Lane, addMinionToLane, getReachableLanes, removeDeadMinions } from "./types";
 import { createTokenMinion } from "./tokens";
 
 export const cards: Card[] = [
@@ -1680,6 +1680,89 @@ export const cards: Card[] = [
         if (target) {
           target.currentHealth -= 3;
         }
+      }
+      return state;
+    },
+  },
+
+  // === 中立法术 (5) ===
+  {
+    name: "急救术", cost: 2, attack: 0, health: 0, description: "为你的英雄恢复4点生命值，抽一张牌",
+    rarity: "common", type: "spell", faction: "neutral",
+    effect: (state: GameState, context: EffectContext) => {
+      const player = state.players[context.player];
+      player.hero.health = Math.min(player.hero.health + 4, STARTING_HP);
+      drawCard(player);
+      return state;
+    },
+  },
+  {
+    name: "搜罗贤才", cost: 3, attack: 0, health: 0, description: "抽2张牌",
+    rarity: "common", type: "spell", faction: "neutral",
+    effect: (state: GameState, context: EffectContext) => {
+      const player = state.players[context.player];
+      drawCard(player);
+      drawCard(player);
+      return state;
+    },
+  },
+  {
+    name: "天降流火", cost: 4, attack: 0, health: 0, description: "对所有敌方随从造成2点伤害",
+    rarity: "rare", type: "spell", faction: "neutral",
+    effect: (state: GameState, context: EffectContext) => {
+      const enemy = context.player === 0 ? 1 : 0;
+      for (const minion of state.players[enemy].board) {
+        minion.currentHealth -= 2;
+      }
+      removeDeadMinions(state);
+      return state;
+    },
+  },
+  {
+    name: "战鼓号令", cost: 3, attack: 0, health: 0, description: "擂鼓助威，使所有友方随从获得+1/+1",
+    rarity: "rare", type: "spell", faction: "neutral",
+    effect: (state: GameState, context: EffectContext) => {
+      for (const minion of state.players[context.player].board) {
+        minion.currentAttack += 1;
+        minion.currentHealth += 1;
+      }
+      return state;
+    },
+  },
+  {
+    name: "天命裁决", cost: 6, attack: 0, health: 0, description: "消灭一个敌方随从",
+    rarity: "epic", type: "spell", faction: "neutral",
+    targetType: "enemy_minion",
+    effect: (state: GameState, context: EffectContext) => {
+      const enemy = context.player === 0 ? 1 : 0;
+      if (context.targetIndex !== undefined && state.players[enemy].board[context.targetIndex]) {
+        state.players[enemy].board[context.targetIndex].currentHealth = 0;
+        removeDeadMinions(state);
+      }
+      return state;
+    },
+  },
+
+  // === 中立陷阱 (2) ===
+  {
+    name: "绊马索", cost: 2, attack: 0, health: 0, description: "陷阱：当对手的随从攻击时，使攻击者冻结",
+    rarity: "rare", type: "trap", faction: "neutral",
+    trapTrigger: "on_attack",
+    trapEffect: (state: GameState, context) => {
+      if (context.triggeringMinion) {
+        const owner = state.players[context.player];
+        applyFreeze(context.triggeringMinion, owner);
+      }
+      return state;
+    },
+  },
+  {
+    name: "落石阵", cost: 3, attack: 0, health: 0, description: "陷阱：当对手召唤随从时，对其造成3点伤害",
+    rarity: "rare", type: "trap", faction: "neutral",
+    trapTrigger: "on_play",
+    trapEffect: (state: GameState, context) => {
+      if (context.triggeringMinion) {
+        context.triggeringMinion.currentHealth -= 3;
       }
       return state;
     },

@@ -1,10 +1,11 @@
 # Autopo test Session
 
 ## Work Unit
-Add 2 Qun trap cards — design traps fitting Qun chaotic identity (e.g., betrayal trap, chaos trap)
+Add 5 Neutral spells and 2 Neutral trap cards — design faction-neutral utility spells and traps
 
 ## Acceptance Criteria
-- 2 Qun trap cards added
+- 5 Neutral spells added
+- 2 Neutral traps added
 - npm run build succeeds
 
 ## Rules
