@@ -820,6 +820,9 @@ export function playCard(
       windfury: card.windfury,
     };
     player.heroWindfuryAttacksLeft = card.windfury ? 2 : 1;
+    if (card.battlecry) {
+      card.battlecry(state, { event: { type: "minion_played", player: state.activePlayer, source: card as unknown as BoardMinion }, player: state.activePlayer, sourceCard: card });
+    }
     if (card.faction === "wu") {
       state.wuComboCount[state.activePlayer]++;
     }

@@ -650,6 +650,96 @@ export const cards: Card[] = [
       return state;
     },
   },
+
+  // === 魏国法术 (5) ===
+  {
+    name: "令行禁止", cost: 2, attack: 0, health: 0, description: "使一个敌方随从冻结，并恢复3点生命值",
+    rarity: "common", type: "spell", faction: "wei",
+    targetType: "enemy_minion",
+    effect: (state: GameState, context: EffectContext) => {
+      const enemy = state.players[context.player === 0 ? 1 : 0];
+      const casterPlayer = state.players[context.player];
+      if (context.targetIndex !== undefined && enemy.board[context.targetIndex]) {
+        applyFreeze(enemy.board[context.targetIndex], casterPlayer);
+      }
+      casterPlayer.hero.health = Math.min(casterPlayer.hero.health + 3, STARTING_HP);
+      return state;
+    },
+  },
+  {
+    name: "屯田令", cost: 3, attack: 0, health: 0, description: "使所有友方随从获得+0/+2",
+    rarity: "common", type: "spell", faction: "wei",
+    effect: (state: GameState, context: EffectContext) => {
+      const player = state.players[context.player];
+      for (const minion of player.board) {
+        minion.currentHealth += 2;
+      }
+      return state;
+    },
+  },
+  {
+    name: "挟天子以令诸侯", cost: 5, attack: 0, health: 0, description: "抽2张牌，恢复5点生命值",
+    rarity: "rare", type: "spell", faction: "wei",
+    effect: (state: GameState, context: EffectContext) => {
+      const player = state.players[context.player];
+      for (let i = 0; i < 2; i++) {
+        drawCard(player);
+      }
+      player.hero.health = Math.min(player.hero.health + 5, STARTING_HP);
+      return state;
+    },
+  },
+  {
+    name: "离间计", cost: 4, attack: 0, health: 0, description: "对一个敌方随从造成3点伤害，若其存活则使其冻结",
+    rarity: "rare", type: "spell", faction: "wei",
+    targetType: "enemy_minion",
+    effect: (state: GameState, context: EffectContext) => {
+      const damage = 3 + (context.spellDamage ?? 0);
+      const enemy = state.players[context.player === 0 ? 1 : 0];
+      const casterPlayer = state.players[context.player];
+      if (context.targetIndex !== undefined && enemy.board[context.targetIndex]) {
+        const target = enemy.board[context.targetIndex];
+        target.currentHealth -= damage;
+        if (target.currentHealth > 0) {
+          applyFreeze(target, casterPlayer);
+        }
+      }
+      return state;
+    },
+  },
+  {
+    name: "九品中正", cost: 7, attack: 0, health: 0, description: "使所有友方随从获得+2/+3，并恢复5点生命值",
+    rarity: "epic", type: "spell", faction: "wei",
+    effect: (state: GameState, context: EffectContext) => {
+      const player = state.players[context.player];
+      for (const minion of player.board) {
+        minion.currentAttack += 2;
+        minion.currentHealth += 3;
+      }
+      player.hero.health = Math.min(player.hero.health + 5, STARTING_HP);
+      return state;
+    },
+  },
+
+  // === 魏国武器 (2) ===
+  {
+    name: "倚天剑", cost: 3, attack: 4, health: 2, description: "4攻击力，2耐久度。战吼：恢复4点生命值",
+    rarity: "rare", type: "weapon", faction: "wei",
+    battlecry: (state: GameState, context) => {
+      const player = state.players[context.player];
+      player.hero.health = Math.min(player.hero.health + 4, STARTING_HP);
+      return state;
+    },
+  },
+  {
+    name: "青釭剑", cost: 2, attack: 2, health: 3, description: "2攻击力，3耐久度。战吼：抽1张牌",
+    rarity: "epic", type: "weapon", faction: "wei",
+    battlecry: (state: GameState, context) => {
+      const player = state.players[context.player];
+      drawCard(player);
+      return state;
+    },
+  },
 ];
 
 const spellCardPool = cards.filter(c => c.type === "spell");

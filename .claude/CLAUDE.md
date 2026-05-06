@@ -1,12 +1,12 @@
 # Autopo test Session
 
 ## Work Unit
-Add 10 new Wei minion cards (common/rare/epic) — design balanced stats, battlecries, deathrattles fitting Wei identity (health/defense focus), add to cards.ts
+Add 5 Wei spells and 2 Wei weapons — design faction-themed spells (control/armor/draw) and weapons
 
 ## Acceptance Criteria
-- 10 new Wei minion cards added
-- Stats are balanced for their cost
-- Effects fit Wei faction identity
+- 5 new Wei spells added
+- 2 new Wei weapons added
+- Effects fit Wei identity
 - npm run build succeeds
 
 ## Rules
