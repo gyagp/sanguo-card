@@ -1,4 +1,4 @@
-import { GameState, PlayerState, Card, BoardMinion, Faction, Rarity, FACTION_SYNERGIES, getEffectiveCardCost, Lane, ALL_LANES, getLaneCount, MAX_LANE_SIZE, getReachableLanes, getSpellReachableLanes, TerrainType, MAX_DECK_SIZE, DECK_FACTION_THRESHOLD, TrapTrigger } from './types';
+import { GameState, PlayerState, Card, BoardMinion, Faction, Rarity, FACTION_SYNERGIES, getEffectiveCardCost, Lane, ALL_LANES, getLaneCount, MAX_LANE_SIZE, getReachableLanes, getSpellReachableLanes, TerrainType, MAX_DECK_SIZE, DECK_FACTION_THRESHOLD, TrapTrigger, MAX_COPIES_PER_CARD, MAX_COPIES_LEGENDARY } from './types';
 
 
 type SpellCategory = 'freeze' | 'destroy' | 'damage' | 'buff' | 'generic';
@@ -1006,13 +1006,46 @@ function filterPoolByDifficulty(cardPool: Card[], difficulty?: AIDifficulty, num
   return cardPool;
 }
 
-function weightedPickCards(candidates: Card[], count: number, numericDifficulty?: number): Card[] {
+function canAddCopy(counts: Map<string, number>, card: Card): boolean {
+  const current = counts.get(card.name) || 0;
+  const max = card.rarity === 'legendary' ? MAX_COPIES_LEGENDARY : MAX_COPIES_PER_CARD;
+  return current < max;
+}
+
+function recordCopy(counts: Map<string, number>, card: Card): void {
+  counts.set(card.name, (counts.get(card.name) || 0) + 1);
+}
+
+function weightedPickCards(candidates: Card[], count: number, numericDifficulty?: number, sharedCounts?: Map<string, number>): Card[] {
   if (candidates.length === 0) return [];
+  const counts = sharedCounts || new Map<string, number>();
+
+  function fillRemaining(result: Card[]): void {
+    let idx = 0;
+    while (result.length < count) {
+      const card = candidates[idx % candidates.length];
+      if (canAddCopy(counts, card)) {
+        result.push({ ...card });
+        recordCopy(counts, card);
+      }
+      idx++;
+      if (idx >= candidates.length * MAX_COPIES_PER_CARD) break;
+    }
+    // If pool is too small to fill with copy limits, pad with copies that still respect limits via shared counts
+    let overflowIdx = 0;
+    while (result.length < count && overflowIdx < candidates.length * 10) {
+      const card = candidates[overflowIdx % candidates.length];
+      if (canAddCopy(counts, card)) {
+        result.push({ ...card });
+        recordCopy(counts, card);
+      }
+      overflowIdx++;
+    }
+  }
+
   if (numericDifficulty == null) {
     const result: Card[] = [];
-    while (result.length < count) {
-      result.push({ ...candidates[result.length % candidates.length] });
-    }
+    fillRemaining(result);
     return result;
   }
 
@@ -1020,27 +1053,27 @@ function weightedPickCards(candidates: Card[], count: number, numericDifficulty?
   const totalWeight = candidates.reduce((sum, c) => sum + weights[c.rarity], 0);
   if (totalWeight === 0) {
     const result: Card[] = [];
-    while (result.length < count) {
-      result.push({ ...candidates[result.length % candidates.length] });
-    }
+    fillRemaining(result);
     return result;
   }
 
   const result: Card[] = [];
-  while (result.length < count) {
-    const prevLen = result.length;
+  let safetyLimit = count * 10;
+  while (result.length < count && safetyLimit > 0) {
+    safetyLimit--;
     let roll = Math.random() * totalWeight;
     for (const card of candidates) {
       roll -= weights[card.rarity];
       if (roll <= 0) {
-        result.push({ ...card });
+        if (canAddCopy(counts, card)) {
+          result.push({ ...card });
+          recordCopy(counts, card);
+        }
         break;
       }
     }
-    if (result.length === prevLen) {
-      result.push({ ...candidates[candidates.length - 1] });
-    }
   }
+  fillRemaining(result);
   return result;
 }
 
@@ -1062,16 +1095,32 @@ export function buildFactionDeck(cardPool: Card[], difficulty?: AIDifficulty, nu
     DECK_FACTION_THRESHOLD + synergyBonus
   );
 
-  const deck = weightedPickCards(factionCards, Math.min(targetFactionCount, MAX_DECK_SIZE), numericDifficulty);
+  const sharedCounts = new Map<string, number>();
+  const deck = weightedPickCards(factionCards, Math.min(targetFactionCount, MAX_DECK_SIZE), numericDifficulty, sharedCounts);
 
   const fillers = neutralCards.length > 0 ? neutralCards : pool.filter(c => c.faction !== faction);
   if (deck.length < MAX_DECK_SIZE && fillers.length > 0) {
-    const fillerCards = weightedPickCards(fillers, MAX_DECK_SIZE - deck.length, numericDifficulty);
+    const fillerCards = weightedPickCards(fillers, MAX_DECK_SIZE - deck.length, numericDifficulty, sharedCounts);
     deck.push(...fillerCards);
   }
 
-  while (deck.length < MAX_DECK_SIZE) {
-    deck.push({ ...pool[deck.length % pool.length] });
+  while (deck.length < MAX_DECK_SIZE && pool.length > 0) {
+    const candidate = pool[deck.length % pool.length];
+    if (canAddCopy(sharedCounts, candidate)) {
+      sharedCounts.set(candidate.name, (sharedCounts.get(candidate.name) || 0) + 1);
+      deck.push({ ...candidate });
+    } else {
+      let found = false;
+      for (const c of pool) {
+        if (canAddCopy(sharedCounts, c)) {
+          sharedCounts.set(c.name, (sharedCounts.get(c.name) || 0) + 1);
+          deck.push({ ...c });
+          found = true;
+          break;
+        }
+      }
+      if (!found) break;
+    }
   }
 
   for (let i = deck.length - 1; i > 0; i--) {

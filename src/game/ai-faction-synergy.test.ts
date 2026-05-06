@@ -6,7 +6,7 @@ import {
 } from './ai';
 import {
   Card, BoardMinion, PlayerState, GameState, Faction, Lane,
-  DECK_FACTION_THRESHOLD, MAX_DECK_SIZE, Deck,
+  DECK_FACTION_THRESHOLD, MAX_DECK_SIZE, MAX_COPIES_PER_CARD, Deck,
   createDeck, createPlayerState, getDeckFaction,
 } from './types';
 import { cards } from './cards';
@@ -108,14 +108,15 @@ describe('Faction deck concentration', () => {
     }
   });
 
-  it('buildFactionDeck with limited card pool still produces full deck', () => {
+  it('buildFactionDeck with limited card pool respects copy limits', () => {
     const smallPool = [
       makeCard({ faction: 'wu', name: 'wu1', cost: 1 }),
       makeCard({ faction: 'wu', name: 'wu2', cost: 2 }),
       makeCard({ faction: 'neutral', name: 'n1', cost: 1 }),
     ];
     const deck = buildFactionDeck(smallPool);
-    expect(deck).toHaveLength(MAX_DECK_SIZE);
+    expect(deck.length).toBeLessThanOrEqual(3 * MAX_COPIES_PER_CARD);
+    expect(deck.length).toBeGreaterThan(0);
   });
 
   it('buildFactionDeck with no faction cards falls back gracefully', () => {
@@ -123,7 +124,8 @@ describe('Faction deck concentration', () => {
       makeCard({ faction: 'neutral', name: `n${i}`, cost: i % 5 + 1 })
     );
     const deck = buildFactionDeck(neutralOnly);
-    expect(deck).toHaveLength(MAX_DECK_SIZE);
+    expect(deck.length).toBeLessThanOrEqual(10 * MAX_COPIES_PER_CARD);
+    expect(deck.length).toBeGreaterThan(0);
   });
 });
 

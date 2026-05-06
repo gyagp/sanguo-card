@@ -1,13 +1,34 @@
-# Autopo execute Session
+# Autopo test Session
 
 ## Work Unit
-Integration test — play full AI vs AI games at each difficulty, verify no crashes, reasonable game length, and hard AI wins more often than easy AI
+Fix test failures after completing goal "enhanced-ai". Failures:
+Microtask node_modules/react-dom/cjs/react-dom-client.development.js:[2m18853:9[22m[39m
+[90m [2m❯[22m node_modules/react-dom/cjs/react-dom-client.development.js:[2m18982:11[22m[39m
+[90m [2m❯[22m flushActQueue node_modules/react/cjs/react.development.js:[2m590:34[22m[39m
+[90m [2m❯[22m process.env.NODE_ENV.exports.act node_modules/react/cjs/react.development.js:[2m884:10[22m[39m
+
+[31mThis error originated in "[1msrc/app/game/victory-defeat.test.tsx[22m" test file. It doesn't mean the error was thrown inside the file itself, but while it was running.[39m
+[31mThe latest test that might've caused the error is "[1mdraw has Play Again button[22m". It might mean one of the following:
+- The error was thrown, while Vitest was running this test.
+- If the error occurred after the test had been completed, this was the last documented test before it was thrown.[39m
+[31m[1mCaused by: Error[22m: Card "令行禁止" appears 4 times (max 2 for common)[39m
+[36m [2m❯[22m validateDeckCards src/game/types.ts:[2m177:13[22m[39m
+[90m [2m❯[22m createDeck src/game/types.ts:[2m183:3[22m[39m
+[90m [2m❯[22m src/app/game/page.tsx:[2m863:25[22m[39m
+[90m [2m❯[22m mountMemo node_modules/react-dom/cjs/react-dom-client.development.js:[2m8777:23[22m[39m
+[90m [2m❯[22m Object.useMemo node_modules/react-dom/cjs/react-dom-client.development.js:[2m26216:18[22m[39m
+[90m [2m❯[22m process.env.NODE_ENV.exports.useMemo node_modules/react/cjs/react.development.js:[2m1251:34[22m[39m
+[90m [2m❯[22m GameInner src/app/game/page.tsx:[2m862:26[22m[39m
+[90m [2m❯[22m Object.react_stack_bottom_frame node_modules/react-dom/cjs/react-dom-client.development.js:[2m25904:20[22m[39m
+[90m [2m❯[22m renderWithHooks node_modules/react-dom/cjs/react-dom-client.development.js:[2m7662:22[22m[39m
+[90m [2m❯[22m updateFunctionComponent node_modules/react-dom/cjs/react-dom-client.development.js:[2m10166:19[22m[39m
+
+[31m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[39m
+
+
 
 ## Acceptance Criteria
-- AI vs AI games complete without errors at all difficulties
-- Hard AI wins >60% vs easy AI over 10 simulated games
-- Average game length is 8-20 turns
-- vitest run passes
+- All tests pass (npm test / vitest run exits with 0 failures)
 
 ## Rules
 # Rules

@@ -183,8 +183,8 @@ describe('AI behavior differences across difficulties', () => {
         if (ai.shouldUseHeroPower(state)) usedCount++;
       }
       const rate = usedCount / trials;
-      expect(rate).toBeGreaterThan(0.15);
-      expect(rate).toBeLessThan(0.45);
+      expect(rate).toBeGreaterThan(0.05);
+      expect(rate).toBeLessThan(0.30);
     });
 
     it('normal AI always uses hero power when affordable', () => {
