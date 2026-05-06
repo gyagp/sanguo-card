@@ -1,13 +1,13 @@
 # Autopo test Session
 
 ## Work Unit
-Update AI to use lane system — AI selects lane+slot when playing minions (prefer formation bonus lanes, avoid bad terrain), AI attack selection considers lane restrictions
+Redesign battlefield UI — render 3 lanes (left/center/right) each with 2 slots per player, show lane dividers, display terrain effect icons/overlays per lane, update drag-and-drop to target specific lane+slot
 
 ## Acceptance Criteria
-- AI places minions in valid lane+slot positions
-- AI considers formation bonus when choosing lane
-- AI attack selection respects lane adjacency rules
-- AI avoids placing in fire terrain when possible
+- Board renders as 3 distinct vertical lanes with clear dividers
+- Each lane shows 2 slots per player (total 12 slots visible)
+- Terrain effects displayed as visual indicators on lanes
+- Drag-and-drop targets specific lane+slot
 - npm run build succeeds
 
 ## Rules

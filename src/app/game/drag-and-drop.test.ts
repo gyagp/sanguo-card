@@ -37,52 +37,52 @@ describe("Drag-and-drop: cards in hand are draggable", () => {
 });
 
 describe("Drag-and-drop: board zone is a valid drop target", () => {
-  it("BoardZone has onDragOver handler", () => {
-    expect(pageContent).toMatch(/onDragOver=\{/);
+  it("LaneBoardZone has onDragOver handler", () => {
+    expect(pageContent).toMatch(/onDragOver/);
   });
 
-  it("BoardZone calls preventDefault on dragover to allow drops", () => {
+  it("LaneBoardZone calls preventDefault on dragover to allow drops", () => {
     expect(pageContent).toMatch(/e\.preventDefault\(\)/);
   });
 
-  it("BoardZone has onDrop handler", () => {
-    expect(pageContent).toMatch(/onDrop=\{/);
+  it("LaneBoardZone has onDrop handler", () => {
+    expect(pageContent).toMatch(/onDrop/);
   });
 
-  it("BoardZone has onDragLeave handler", () => {
-    expect(pageContent).toMatch(/onDragLeave=\{/);
+  it("LaneBoardZone has onDragLeave handler", () => {
+    expect(pageContent).toMatch(/onDragLeave/);
   });
 
-  it("BoardZone shows visual highlight on dragover", () => {
-    expect(pageContent).toMatch(/dragOver\s*\?/);
+  it("LaneBoardZone shows visual highlight on dragover", () => {
+    expect(pageContent).toMatch(/isDragTarget/);
     expect(pageContent).toMatch(/border-dashed/);
     expect(pageContent).toMatch(/border-green/);
   });
 
-  it("BoardZone tracks dragOver state", () => {
-    expect(pageContent).toMatch(/useState\(false\)/);
-    expect(pageContent).toMatch(/setDragOver\(true\)/);
-    expect(pageContent).toMatch(/setDragOver\(false\)/);
+  it("LaneBoardZone tracks dragOverLane state", () => {
+    expect(pageContent).toMatch(/useState<Lane \| null>\(null\)/);
+    expect(pageContent).toMatch(/setDragOverLane\(lane\)/);
+    expect(pageContent).toMatch(/setDragOverLane\(null\)/);
   });
 });
 
 describe("Drag-and-drop: dropping a card calls playCard", () => {
-  it("BoardZone reads handIndex from dataTransfer on drop", () => {
+  it("LaneBoardZone reads handIndex from dataTransfer on drop", () => {
     expect(pageContent).toMatch(/getData\(["']text\/plain["']\)/);
     expect(pageContent).toMatch(/parseInt\(/);
   });
 
-  it("BoardZone calls onDrop callback with parsed handIndex", () => {
-    expect(pageContent).toMatch(/onDrop\(handIndex\)/);
+  it("LaneBoardZone calls onDrop callback with parsed handIndex and lane", () => {
+    expect(pageContent).toMatch(/onDrop\(handIndex, lane\)/);
   });
 
-  it("player board zone passes playCard as onDrop", () => {
+  it("player board zone passes handlePlayCard as onDrop", () => {
     expect(pageContent).toMatch(/onDrop=\{.*handlePlayCard/);
   });
 
   it("opponent board zone does not accept drops", () => {
     const opponentBoardMatch = pageContent.match(
-      /<BoardZone\s+minions=\{opponent\.board\}[^/]*/
+      /<LaneBoardZone[\s\S]*?minions=\{opponent\.board\}[^/]*/
     );
     expect(opponentBoardMatch).toBeTruthy();
     expect(opponentBoardMatch![0]).not.toMatch(/onDrop/);

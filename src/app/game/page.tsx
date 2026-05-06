@@ -7,7 +7,7 @@ import { AudioManager } from "./audio-manager";
 import { cards } from "../../game/cards";
 import { AIDifficulty } from "../../game/ai";
 import { addGold, addXP } from "../../game/player-store";
-import { createDeck, BoardMinion, PlayerState, Card as CardType, MAX_BOARD_SIZE, MAX_DECK_SIZE, Deck, Faction, FACTION_SYNERGIES, DECK_FACTION_THRESHOLD, Lane, ALL_LANES, getSpellReachableLanes } from "../../game/types";
+import { createDeck, BoardMinion, PlayerState, Card as CardType, MAX_BOARD_SIZE, MAX_DECK_SIZE, Deck, Faction, FACTION_SYNERGIES, DECK_FACTION_THRESHOLD, Lane, ALL_LANES, getSpellReachableLanes, TerrainEffect, TerrainType, MAX_LANE_SIZE } from "../../game/types";
 import { useMemo, useState, useEffect, useRef, useCallback, forwardRef } from "react";
 
 const STORAGE_KEY = 'sanguo-card-decks';
@@ -383,10 +383,76 @@ function BoardMinionCard({ minion, onClick, selected, exhausted, targetable, ani
   );
 }
 
-const BoardZone = forwardRef<HTMLDivElement, {
+const LANE_LABELS: Record<Lane, string> = {
+  [Lane.Left]: "左",
+  [Lane.Center]: "中",
+  [Lane.Right]: "右",
+};
+
+const TERRAIN_ICONS: Record<TerrainType, string> = {
+  [TerrainType.Fire]: "🔥",
+  [TerrainType.HealingAura]: "💚",
+  [TerrainType.Stealth]: "🌫️",
+};
+
+const TERRAIN_COLORS: Record<TerrainType, string> = {
+  [TerrainType.Fire]: "border-red-500/60 bg-red-900/20",
+  [TerrainType.HealingAura]: "border-green-500/60 bg-green-900/20",
+  [TerrainType.Stealth]: "border-purple-500/60 bg-purple-900/20",
+};
+
+function LaneSlot({ minion, flatIndex, onMinionClick, isEnemy, selectedIndex, hasAttackerSelected, animations, damageNumbers, impactParticles, legendaryParticles, legendaryShimmer, animMultiplier, showDamageNumbers, dyingMinion }: {
+  minion?: BoardMinion;
+  flatIndex?: number;
+  onMinionClick?: (index: number) => void;
+  isEnemy?: boolean;
+  selectedIndex?: number | null;
+  hasAttackerSelected?: boolean;
+  animations?: Map<number, AnimKind>;
+  damageNumbers?: Map<number, number>;
+  impactParticles?: Map<number, Particle[]>;
+  legendaryParticles?: Map<number, LegendaryParticle[]>;
+  legendaryShimmer?: Set<number>;
+  animMultiplier?: number;
+  showDamageNumbers?: boolean;
+  dyingMinion?: DyingMinion;
+}) {
+  if (dyingMinion) {
+    return (
+      <div className="flex items-center justify-center min-h-[3rem] sm:min-h-[4rem] md:min-h-[5.5rem]">
+        <BoardMinionCard minion={dyingMinion.minion} dying animMultiplier={animMultiplier} />
+      </div>
+    );
+  }
+  if (!minion || flatIndex === undefined) {
+    return (
+      <div className="flex items-center justify-center min-h-[3rem] sm:min-h-[4rem] md:min-h-[5.5rem] border border-dashed border-gray-700/40 rounded-md" />
+    );
+  }
+  return (
+    <div className="flex items-center justify-center min-h-[3rem] sm:min-h-[4rem] md:min-h-[5.5rem]">
+      <BoardMinionCard
+        minion={minion}
+        onClick={() => onMinionClick?.(flatIndex)}
+        selected={!isEnemy && selectedIndex === flatIndex}
+        exhausted={!isEnemy && ((minion.hasAttacked && minion.windfuryAttacksLeft <= 0) || minion.summoningSickness)}
+        targetable={isEnemy && !!hasAttackerSelected}
+        animation={animations?.get(flatIndex)}
+        damageNumber={damageNumbers?.get(flatIndex) ?? null}
+        impactParticles={impactParticles?.get(flatIndex) ?? null}
+        legendaryParticles={legendaryParticles?.get(flatIndex) ?? null}
+        legendaryShimmer={legendaryShimmer?.has(flatIndex)}
+        animMultiplier={animMultiplier}
+        showDamageNumbers={showDamageNumbers}
+      />
+    </div>
+  );
+}
+
+const LaneBoardZone = forwardRef<HTMLDivElement, {
   minions: BoardMinion[];
   label: string;
-  onDrop?: (handIndex: number) => void;
+  onDrop?: (handIndex: number, lane: Lane) => void;
   onMinionClick?: (index: number) => void;
   selectedIndex?: number | null;
   isEnemy?: boolean;
@@ -399,109 +465,108 @@ const BoardZone = forwardRef<HTMLDivElement, {
   legendaryShimmer?: Set<number>;
   animMultiplier?: number;
   showDamageNumbers?: boolean;
-}>(function BoardZone({ minions, label, onDrop, onMinionClick, selectedIndex, isEnemy, hasAttackerSelected, animations, damageNumbers, dyingMinions, impactParticles, legendaryParticles, legendaryShimmer, animMultiplier, showDamageNumbers }, ref) {
-  const [dragOver, setDragOver] = useState(false);
+  terrain?: Record<Lane, TerrainEffect | null>;
+}>(function LaneBoardZone({ minions, label, onDrop, onMinionClick, selectedIndex, isEnemy, hasAttackerSelected, animations, damageNumbers, dyingMinions, impactParticles, legendaryParticles, legendaryShimmer, animMultiplier, showDamageNumbers, terrain }, ref) {
+  const [dragOverLane, setDragOverLane] = useState<Lane | null>(null);
 
-  const handleDragOver = (e: React.DragEvent) => {
-    if (!onDrop) return;
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
-    setDragOver(true);
-  };
+  const minionsByLane = useMemo(() => {
+    const result: Record<Lane, { minion: BoardMinion; flatIndex: number }[]> = {
+      [Lane.Left]: [], [Lane.Center]: [], [Lane.Right]: [],
+    };
+    minions.forEach((m, i) => {
+      result[m.lane].push({ minion: m, flatIndex: i });
+    });
+    return result;
+  }, [minions]);
 
-  const handleDragLeave = () => setDragOver(false);
+  const dyingByLane = useMemo(() => {
+    const result: Record<Lane, DyingMinion[]> = {
+      [Lane.Left]: [], [Lane.Center]: [], [Lane.Right]: [],
+    };
+    dyingMinions?.forEach(dm => {
+      result[dm.minion.lane]?.push(dm);
+    });
+    return result;
+  }, [dyingMinions]);
 
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setDragOver(false);
-    if (!onDrop) return;
-    const handIndex = parseInt(e.dataTransfer.getData("text/plain"), 10);
-    if (!isNaN(handIndex)) onDrop(handIndex);
-  };
+  const makeLaneHandlers = (lane: Lane) => ({
+    onDragOver: (e: React.DragEvent) => {
+      if (!onDrop) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+      setDragOverLane(lane);
+    },
+    onDragLeave: () => setDragOverLane(null),
+    onDrop: (e: React.DragEvent) => {
+      e.preventDefault();
+      setDragOverLane(null);
+      if (!onDrop) return;
+      const handIndex = parseInt(e.dataTransfer.getData("text/plain"), 10);
+      if (!isNaN(handIndex)) onDrop(handIndex, lane);
+    },
+  });
+
+  const hasAnyContent = minions.length > 0 || (dyingMinions && dyingMinions.length > 0);
 
   return (
-    <div
-      ref={ref}
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
-      className={`flex-1 flex items-center justify-center gap-1 sm:gap-1.5 md:gap-2 min-h-[5rem] sm:min-h-[6.5rem] md:min-h-[9rem] rounded-lg transition-all duration-300 ease-out px-1 sm:px-2 md:px-3 flex-wrap ${
-        dragOver ? "bg-green-800/40 border-2 border-dashed border-green-400 shadow-[inset_0_0_20px_rgba(74,222,128,0.15)]" : "border-2 border-transparent"
-      }`}
-    >
-      {minions.length === 0 && (!dyingMinions || dyingMinions.length === 0) ? (
-        <span className="text-gray-500 text-sm italic">{label}</span>
-      ) : (
-        (() => {
-          const slots: React.ReactNode[] = [];
-          const dyingByIndex = new Map<number, DyingMinion[]>();
-          dyingMinions?.forEach(dm => {
-            const arr = dyingByIndex.get(dm.boardIndex) ?? [];
-            arr.push(dm);
-            dyingByIndex.set(dm.boardIndex, arr);
-          });
-          let liveIdx = 0;
-          const totalSlots = minions.length + (dyingMinions?.length ?? 0);
-          for (let slot = 0; slot < totalSlots; slot++) {
-            const dying = dyingByIndex.get(slot);
-            if (dying) {
-              dying.forEach((dm, di) => {
-                slots.push(
-                  <BoardMinionCard key={`dying-${dm.boardIndex}-${di}`} minion={dm.minion} dying animMultiplier={animMultiplier} />
-                );
-              });
-              dyingByIndex.delete(slot);
-            } else if (liveIdx < minions.length) {
-              const i = liveIdx++;
-              slots.push(
-                <BoardMinionCard
-                  key={`live-${i}`}
-                  minion={minions[i]}
-                  onClick={() => onMinionClick?.(i)}
-                  selected={!isEnemy && selectedIndex === i}
-                  exhausted={!isEnemy && ((minions[i].hasAttacked && minions[i].windfuryAttacksLeft <= 0) || minions[i].summoningSickness)}
-                  targetable={isEnemy && !!hasAttackerSelected}
-                  animation={animations?.get(i)}
-                  damageNumber={damageNumbers?.get(i) ?? null}
-                  impactParticles={impactParticles?.get(i) ?? null}
-                  legendaryParticles={legendaryParticles?.get(i) ?? null}
-                  legendaryShimmer={legendaryShimmer?.has(i)}
-                  animMultiplier={animMultiplier}
-                  showDamageNumbers={showDamageNumbers}
-                />
-              );
-            }
-          }
-          while (liveIdx < minions.length) {
-            const i = liveIdx++;
-            slots.push(
-              <BoardMinionCard
-                key={`live-${i}`}
-                minion={minions[i]}
-                onClick={() => onMinionClick?.(i)}
-                selected={!isEnemy && selectedIndex === i}
-                exhausted={!isEnemy && (minions[i].hasAttacked || minions[i].summoningSickness)}
-                targetable={isEnemy && !!hasAttackerSelected}
-                animation={animations?.get(i)}
-                damageNumber={damageNumbers?.get(i) ?? null}
-                impactParticles={impactParticles?.get(i) ?? null}
-                legendaryParticles={legendaryParticles?.get(i) ?? null}
-                legendaryShimmer={legendaryShimmer?.has(i)}
-                animMultiplier={animMultiplier}
-                showDamageNumbers={showDamageNumbers}
-              />
-            );
-          }
-          dyingByIndex.forEach((dms, idx) => {
-            dms.forEach((dm, di) => {
-              slots.push(
-                <BoardMinionCard key={`dying-${idx}-${di}`} minion={dm.minion} dying animMultiplier={animMultiplier} />
-              );
-            });
-          });
-          return slots;
-        })()
-      )}
+    <div ref={ref} className="flex-1 flex items-stretch gap-0 min-h-[5rem] sm:min-h-[6.5rem] md:min-h-[9rem] rounded-lg px-0.5 sm:px-1 md:px-2">
+      {ALL_LANES.map((lane, laneIdx) => {
+        const laneMinions = minionsByLane[lane];
+        const laneDying = dyingByLane[lane];
+        const isDragTarget = dragOverLane === lane;
+        const laneTerrain = terrain?.[lane] ?? null;
+        const terrainCls = laneTerrain ? TERRAIN_COLORS[laneTerrain.type] : "";
+
+        return (
+          <div key={lane} className="flex flex-col flex-1 relative" {...makeLaneHandlers(lane)}>
+            {laneIdx > 0 && (
+              <div className="absolute left-0 top-1 bottom-1 w-px bg-amber-700/50" />
+            )}
+            <div className={`flex-1 flex flex-col items-center justify-center gap-0.5 rounded-md mx-0.5 transition-all duration-200 ${
+              isDragTarget ? "bg-green-800/40 border border-dashed border-green-400 shadow-[inset_0_0_15px_rgba(74,222,128,0.15)]" : `border border-transparent ${terrainCls}`
+            }`}>
+              {laneTerrain && (
+                <div className="absolute top-0.5 left-1/2 -translate-x-1/2 flex items-center gap-0.5 px-1 py-0.5 rounded text-[8px] sm:text-[10px] bg-black/50 whitespace-nowrap z-10" title={laneTerrain.description}>
+                  <span>{TERRAIN_ICONS[laneTerrain.type]}</span>
+                  <span className="hidden sm:inline text-gray-300">{laneTerrain.name}</span>
+                </div>
+              )}
+              <div className="text-[8px] sm:text-[9px] text-gray-500 font-bold tracking-wider mt-1">{LANE_LABELS[lane]}</div>
+              {!hasAnyContent && laneMinions.length === 0 && laneDying.length === 0 ? (
+                <div className="flex flex-col gap-0.5 flex-1 justify-center w-full px-0.5">
+                  <div className="flex items-center justify-center min-h-[3rem] sm:min-h-[4rem] md:min-h-[5.5rem] border border-dashed border-gray-700/30 rounded-md" />
+                </div>
+              ) : (
+                <div className="flex flex-col gap-0.5 flex-1 justify-center w-full px-0.5">
+                  {Array.from({ length: MAX_LANE_SIZE }).map((_, slotIdx) => {
+                    const entry = laneMinions[slotIdx];
+                    const dying = laneDying.find(dm => dm.minion.slotIndex === slotIdx);
+                    return (
+                      <LaneSlot
+                        key={slotIdx}
+                        minion={entry?.minion}
+                        flatIndex={entry?.flatIndex}
+                        onMinionClick={onMinionClick}
+                        isEnemy={isEnemy}
+                        selectedIndex={selectedIndex}
+                        hasAttackerSelected={hasAttackerSelected}
+                        animations={animations}
+                        damageNumbers={damageNumbers}
+                        impactParticles={impactParticles}
+                        legendaryParticles={legendaryParticles}
+                        legendaryShimmer={legendaryShimmer}
+                        animMultiplier={animMultiplier}
+                        showDamageNumbers={showDamageNumbers}
+                        dyingMinion={dying}
+                      />
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 });
@@ -800,6 +865,7 @@ function GameInner({ playerDeck, difficulty }: { playerDeck: Deck; difficulty: A
   const [selectedAttacker, setSelectedAttacker] = useState<number | null>(null);
   const [pendingSpell, setPendingSpell] = useState<{ handIndex: number; cardEl?: HTMLElement | null } | null>(null);
   const [pendingLaneAoe, setPendingLaneAoe] = useState<{ handIndex: number; cardEl?: HTMLElement | null } | null>(null);
+  const [pendingMinionPlay, setPendingMinionPlay] = useState<{ handIndex: number; cardEl?: HTMLElement | null } | null>(null);
 
   const audioRef = useRef(AudioManager.getInstance());
 
@@ -923,7 +989,7 @@ function GameInner({ playerDeck, difficulty }: { playerDeck: Deck; difficulty: A
   const player = gameState.players[0];
   const opponent = gameState.players[1];
 
-  const handlePlayCard = useCallback((handIndex: number, cardEl?: HTMLElement | null, spellTargetIndex?: number, targetLane?: Lane) => {
+  const handlePlayCard = useCallback((handIndex: number, cardEl?: HTMLElement | null, spellTargetIndex?: number, targetLane?: Lane, placementLane?: Lane) => {
     const card = player.hand[handIndex];
     if (!card) return;
 
@@ -941,12 +1007,21 @@ function GameInner({ playerDeck, difficulty }: { playerDeck: Deck; difficulty: A
       setPendingSpell({ handIndex, cardEl });
       setSelectedAttacker(null);
       setPendingLaneAoe(null);
+      setPendingMinionPlay(null);
+      return;
+    }
+
+    if (card.type === "minion" && placementLane === undefined) {
+      setPendingMinionPlay({ handIndex, cardEl });
+      setSelectedAttacker(null);
+      setPendingSpell(null);
+      setPendingLaneAoe(null);
       return;
     }
 
     const el = cardEl ?? handCardRefs.current.get(handIndex);
     const startRect = el?.getBoundingClientRect();
-    const result = playCard(handIndex, spellTargetIndex, undefined, targetLane);
+    const result = playCard(handIndex, spellTargetIndex, placementLane, targetLane);
     if (result.success && startRect) {
       audioRef.current.playCardPlay();
       const key = flyKeyRef.current++;
@@ -1096,7 +1171,7 @@ function GameInner({ playerDeck, difficulty }: { playerDeck: Deck; difficulty: A
   };
 
   const handleBoardClick = (e: React.MouseEvent) => {
-    if (e.target === e.currentTarget) { setSelectedAttacker(null); setPendingSpell(null); }
+    if (e.target === e.currentTarget) { setSelectedAttacker(null); setPendingSpell(null); setPendingMinionPlay(null); }
   };
 
   const autoEndTurnTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1187,7 +1262,7 @@ function GameInner({ playerDeck, difficulty }: { playerDeck: Deck; difficulty: A
       </div>
 
       {/* Opponent board */}
-      <BoardZone minions={opponent.board} label="对方战场" isEnemy hasAttackerSelected={selectedAttacker !== null || pendingSpell !== null || pendingLaneAoe !== null} onMinionClick={handleEnemyMinionClick} animations={enemyAnims} damageNumbers={enemyDmg} dyingMinions={enemyDying} impactParticles={enemyImpacts} legendaryParticles={enemyLegendaryParticles} legendaryShimmer={enemyLegendaryShimmer} animMultiplier={animMultiplier} showDamageNumbers={showDamageNumbers} />
+      <LaneBoardZone minions={opponent.board} label="对方战场" isEnemy hasAttackerSelected={selectedAttacker !== null || pendingSpell !== null || pendingLaneAoe !== null} onMinionClick={handleEnemyMinionClick} animations={enemyAnims} damageNumbers={enemyDmg} dyingMinions={enemyDying} impactParticles={enemyImpacts} legendaryParticles={enemyLegendaryParticles} legendaryShimmer={enemyLegendaryShimmer} animMultiplier={animMultiplier} showDamageNumbers={showDamageNumbers} terrain={gameState.terrain} />
 
       {/* Turn banner overlay */}
       {turnBanner && (
@@ -1242,6 +1317,41 @@ function GameInner({ playerDeck, difficulty }: { playerDeck: Deck; difficulty: A
         </div>
       )}
 
+      {/* Minion lane selection prompt */}
+      {pendingMinionPlay !== null && (
+        <div className="flex items-center justify-center py-1 gap-2 shrink-0">
+          <span className="px-3 py-1 bg-blue-600 text-white text-xs sm:text-sm font-bold rounded-full animate-pulse">
+            选择部署战线
+          </span>
+          {ALL_LANES.map(lane => {
+            const laneCount = player.board.filter(m => m.lane === lane).length;
+            const isFull = laneCount >= MAX_LANE_SIZE;
+            return (
+              <button
+                key={lane}
+                disabled={isFull}
+                onClick={() => {
+                  const { handIndex, cardEl } = pendingMinionPlay;
+                  setPendingMinionPlay(null);
+                  handlePlayCard(handIndex, cardEl, undefined, undefined, lane);
+                }}
+                className={`px-3 py-1 text-xs sm:text-sm font-bold rounded transition-all ${
+                  isFull ? "bg-gray-700 text-gray-500 cursor-not-allowed" : "bg-blue-700 hover:bg-blue-600 text-white"
+                }`}
+              >
+                {LANE_LABELS[lane]}({laneCount}/{MAX_LANE_SIZE})
+              </button>
+            );
+          })}
+          <button
+            onClick={() => setPendingMinionPlay(null)}
+            className="px-2 py-1 bg-gray-600 hover:bg-gray-500 text-white text-xs rounded"
+          >
+            取消
+          </button>
+        </div>
+      )}
+
       {/* Turn indicator + End Turn */}
       <div className="flex items-center justify-center py-0.5 sm:py-1 md:py-1 gap-1.5 sm:gap-2 px-2 sm:px-3 shrink-0">
         <div className="h-px flex-1 bg-amber-700/50" />
@@ -1249,7 +1359,7 @@ function GameInner({ playerDeck, difficulty }: { playerDeck: Deck; difficulty: A
           {isOpponentTurn ? "对手回合" : "你的回合"}
         </span>
         <button
-          onClick={() => { endTurn(); setSelectedAttacker(null); setPendingSpell(null); setPendingLaneAoe(null); }}
+          onClick={() => { endTurn(); setSelectedAttacker(null); setPendingSpell(null); setPendingLaneAoe(null); setPendingMinionPlay(null); }}
           disabled={isOpponentTurn || winner !== null}
           className={`px-3 sm:px-4 md:px-6 py-1 sm:py-1.5 md:py-2 font-bold text-xs sm:text-sm md:text-base rounded-lg shadow-lg transition-all duration-200 whitespace-nowrap ${
             isOpponentTurn || winner !== null
@@ -1270,7 +1380,7 @@ function GameInner({ playerDeck, difficulty }: { playerDeck: Deck; difficulty: A
       )}
 
       {/* Player board */}
-      <BoardZone ref={boardZoneRef} minions={player.board} label="我方战场" onDrop={(i) => handlePlayCard(i)} onMinionClick={handleFriendlyMinionClick} selectedIndex={selectedAttacker} animations={playerAnims} damageNumbers={playerDmg} dyingMinions={playerDying} legendaryParticles={playerLegendaryParticles} legendaryShimmer={playerLegendaryShimmer} animMultiplier={animMultiplier} showDamageNumbers={showDamageNumbers} />
+      <LaneBoardZone ref={boardZoneRef} minions={player.board} label="我方战场" onDrop={(i, lane) => handlePlayCard(i, undefined, undefined, undefined, lane)} onMinionClick={handleFriendlyMinionClick} selectedIndex={selectedAttacker} animations={playerAnims} damageNumbers={playerDmg} dyingMinions={playerDying} legendaryParticles={playerLegendaryParticles} legendaryShimmer={playerLegendaryShimmer} animMultiplier={animMultiplier} showDamageNumbers={showDamageNumbers} terrain={gameState.terrain} />
 
       {/* Player hand */}
       <div className="flex items-center justify-center gap-0.5 sm:gap-1 md:gap-2 py-0.5 sm:py-1.5 md:py-2 min-h-[4rem] sm:min-h-[5.5rem] md:min-h-[8rem] px-2 sm:px-3 shrink-0 flex-wrap">

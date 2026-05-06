@@ -213,3 +213,79 @@ describe("Game page acceptance criteria", () => {
     });
   });
 });
+
+describe("Lane UI acceptance criteria", () => {
+  it("renders 3 lanes (left/center/right) using ALL_LANES", () => {
+    expect(pageContent).toMatch(/ALL_LANES\.map/);
+    expect(pageContent).toMatch(/ALL_LANES/);
+  });
+
+  it("defines lane labels for left/center/right as 左/中/右", () => {
+    expect(pageContent).toMatch(/LANE_LABELS/);
+    expect(pageContent).toMatch(/\[Lane\.Left\]:\s*"左"/);
+    expect(pageContent).toMatch(/\[Lane\.Center\]:\s*"中"/);
+    expect(pageContent).toMatch(/\[Lane\.Right\]:\s*"右"/);
+  });
+
+  it("renders lane dividers between lanes", () => {
+    expect(pageContent).toMatch(/bg-amber-700\/50/);
+    expect(pageContent).toMatch(/laneIdx > 0/);
+  });
+
+  it("each lane renders MAX_LANE_SIZE slots", () => {
+    expect(pageContent).toMatch(/MAX_LANE_SIZE/);
+    expect(pageContent).toMatch(/Array\.from\(\{ length: MAX_LANE_SIZE \}\)/);
+  });
+
+  it("renders LaneSlot component for each slot", () => {
+    expect(pageContent).toMatch(/<LaneSlot/);
+    expect(pageContent).toMatch(/function LaneSlot/);
+  });
+
+  it("LaneBoardZone component exists as a forwardRef", () => {
+    expect(pageContent).toMatch(/const LaneBoardZone = forwardRef/);
+    expect(pageContent).toMatch(/function LaneBoardZone\(/);
+  });
+
+  it("displays terrain effect icons when terrain is present", () => {
+    expect(pageContent).toMatch(/TERRAIN_ICONS/);
+    expect(pageContent).toMatch(/laneTerrain\.type/);
+    expect(pageContent).toMatch(/laneTerrain\.name/);
+  });
+
+  it("defines terrain colors for fire, healing, and stealth", () => {
+    expect(pageContent).toMatch(/TERRAIN_COLORS/);
+    expect(pageContent).toMatch(/TerrainType\.Fire/);
+    expect(pageContent).toMatch(/TerrainType\.HealingAura/);
+    expect(pageContent).toMatch(/TerrainType\.Stealth/);
+  });
+
+  it("applies terrain-specific border and background colors to lanes", () => {
+    expect(pageContent).toMatch(/border-red-500/);
+    expect(pageContent).toMatch(/bg-red-900/);
+    expect(pageContent).toMatch(/border-green-500/);
+    expect(pageContent).toMatch(/bg-green-900/);
+    expect(pageContent).toMatch(/border-purple-500/);
+    expect(pageContent).toMatch(/bg-purple-900/);
+  });
+
+  it("LaneBoardZone accepts terrain prop", () => {
+    expect(pageContent).toMatch(/terrain\??\s*:\s*Record<Lane,\s*TerrainEffect/);
+  });
+
+  it("drag-and-drop targets specific lane via dragOverLane state", () => {
+    expect(pageContent).toMatch(/dragOverLane/);
+    expect(pageContent).toMatch(/setDragOverLane/);
+    expect(pageContent).toMatch(/makeLaneHandlers\(lane\)/);
+  });
+
+  it("drop handler passes lane to onDrop callback", () => {
+    expect(pageContent).toMatch(/onDrop\(handIndex, lane\)/);
+  });
+
+  it("lane selection prompt shows lane capacity", () => {
+    expect(pageContent).toMatch(/LANE_LABELS\[lane\]/);
+    expect(pageContent).toMatch(/MAX_LANE_SIZE/);
+    expect(pageContent).toMatch(/laneCount/);
+  });
+});

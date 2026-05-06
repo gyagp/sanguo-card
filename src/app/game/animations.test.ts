@@ -135,9 +135,9 @@ describe("Animation acceptance criteria", () => {
       expect(pageContent).toMatch(/shatterFragment \$\{0\.6 \* animMultiplier\}s/);
     });
 
-    it("dying minions are interleaved at their original board position", () => {
-      expect(pageContent).toMatch(/dyingByIndex/);
-      expect(pageContent).toMatch(/dyingByIndex\.get\(dm\.boardIndex\)/);
+    it("dying minions are matched by slotIndex in their lane", () => {
+      expect(pageContent).toMatch(/dyingByLane/);
+      expect(pageContent).toMatch(/dm\.minion\.slotIndex === slotIdx/);
     });
 
     it("dying minions auto-remove after 600ms via safeTimeout", () => {

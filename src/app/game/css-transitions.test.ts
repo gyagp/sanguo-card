@@ -93,35 +93,29 @@ describe("AC: Health/mana number changes animate (color flash on damage)", () =>
 });
 
 describe("AC: Board zone highlights smoothly on drag-over", () => {
-  it("BoardZone has transition-all with duration for smooth highlight", () => {
-    expect(gamePageSrc).toMatch(/transition-all duration-300/);
+  it("LaneBoardZone lanes have transition-all with duration for smooth highlight", () => {
+    expect(gamePageSrc).toMatch(/transition-all duration-200/);
   });
 
-  it("BoardZone has ease-out for smooth animation", () => {
-    expect(gamePageSrc).toMatch(/transition-all duration-300 ease-out/);
-  });
-
-  it("BoardZone changes background on dragOver state", () => {
+  it("LaneBoardZone changes background on dragOverLane state", () => {
     expect(gamePageSrc).toContain("bg-green-800/40");
   });
 
-  it("BoardZone shows dashed border on drag-over", () => {
+  it("LaneBoardZone shows dashed border on drag-over", () => {
     expect(gamePageSrc).toContain("border-dashed border-green-400");
   });
 
-  it("BoardZone has inner glow shadow on drag-over", () => {
-    expect(gamePageSrc).toContain("shadow-[inset_0_0_20px_rgba(74,222,128,0.15)]");
+  it("LaneBoardZone has inner glow shadow on drag-over", () => {
+    expect(gamePageSrc).toMatch(/shadow-\[inset_0_0_15px_rgba\(74,222,128,0\.15\)\]/);
   });
 
-  it("BoardZone reverts to transparent border when not dragging", () => {
+  it("LaneBoardZone reverts to transparent border when not dragging", () => {
     expect(gamePageSrc).toContain("border-transparent");
   });
 
-  it("dragOver state is managed via onDragOver and onDragLeave", () => {
-    expect(gamePageSrc).toContain("handleDragOver");
-    expect(gamePageSrc).toContain("handleDragLeave");
-    expect(gamePageSrc).toContain("setDragOver(true)");
-    expect(gamePageSrc).toContain("setDragOver(false)");
+  it("dragOverLane state is managed via per-lane onDragOver and onDragLeave", () => {
+    expect(gamePageSrc).toContain("setDragOverLane(lane)");
+    expect(gamePageSrc).toContain("setDragOverLane(null)");
   });
 });
 

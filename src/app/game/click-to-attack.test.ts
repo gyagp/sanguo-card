@@ -146,9 +146,9 @@ describe("Click-to-attack: exhausted minions are dimmed and not selectable", () 
     expect(pageContent).toMatch(/exhausted\s*\?\s*"cursor-not-allowed"/);
   });
 
-  it("friendly minions pass exhausted based on hasAttacked or summoningSickness", () => {
+  it("friendly minions pass exhausted based on hasAttacked/windfury or summoningSickness", () => {
     expect(pageContent).toMatch(
-      /exhausted=\{!isEnemy\s*&&\s*\(minions\[i\]\.hasAttacked\s*\|\|\s*minions\[i\]\.summoningSickness\)\}/
+      /exhausted=\{!isEnemy\s*&&\s*\(\(minion\.hasAttacked\s*&&\s*minion\.windfuryAttacksLeft\s*<=\s*0\)\s*\|\|\s*minion\.summoningSickness\)\}/
     );
   });
 

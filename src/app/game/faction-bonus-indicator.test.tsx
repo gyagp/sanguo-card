@@ -83,7 +83,7 @@ function setPlayerFaction(faction: string, hasDeckBonus: boolean, boardMinions: 
   const p = mockState.gameState.players[0];
   p.deckFaction = faction;
   p.hasDeckFactionBonus = hasDeckBonus;
-  p.board = boardMinions.map(m => ({ ...m, maxHealth: m.health, hasAttacked: false, attacksThisTurn: 0 })) as typeof p.board;
+  p.board = boardMinions.map((m, i) => ({ ...m, maxHealth: m.health, hasAttacked: false, attacksThisTurn: 0, lane: ["left", "center", "right"][Math.floor(i / 2)], slotIndex: i % 2 })) as typeof p.board;
 }
 
 describe("FactionBonusIndicator acceptance criteria", () => {
