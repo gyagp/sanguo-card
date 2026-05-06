@@ -1463,3 +1463,263 @@ describe('AI friendly buff scoring', () => {
     );
   });
 });
+
+describe('AI spell target evaluation — card play integration', () => {
+  it('destroy spell targets highest-stat minion over low-stat minion', () => {
+    const destroySpell = makeCard({
+      cost: 3, type: 'spell', faction: 'neutral',
+      targetType: 'enemy_minion',
+      description: '消灭一个敌方随从',
+    });
+    const state = makeGameState(
+      {
+        hand: [destroySpell],
+        board: [makeMinion({ lane: Lane.Center })],
+        hero: { health: 30, mana: 5, heroPower: { name: '', cost: 2, description: '' } },
+      },
+      {
+        board: [
+          makeMinion({ currentAttack: 2, currentHealth: 2, lane: Lane.Center }),
+          makeMinion({ currentAttack: 6, currentHealth: 7, lane: Lane.Center }),
+        ],
+      },
+    );
+    const decisions = getOnCurvePlayDecisions(state);
+    expect(decisions.length).toBe(1);
+    expect(decisions[0].spellTarget).toBe(1);
+  });
+
+  it('destroy spell avoids divine shield targets', () => {
+    const destroySpell = makeCard({
+      cost: 3, type: 'spell', faction: 'neutral',
+      targetType: 'enemy_minion',
+      description: '消灭一个敌方随从',
+    });
+    const state = makeGameState(
+      {
+        hand: [destroySpell],
+        board: [makeMinion({ lane: Lane.Center })],
+        hero: { health: 30, mana: 5, heroPower: { name: '', cost: 2, description: '' } },
+      },
+      {
+        board: [
+          makeMinion({ currentAttack: 5, currentHealth: 5, hasDivineShield: true, lane: Lane.Center }),
+          makeMinion({ currentAttack: 5, currentHealth: 5, hasDivineShield: false, lane: Lane.Center }),
+        ],
+      },
+    );
+    const decisions = getOnCurvePlayDecisions(state);
+    expect(decisions.length).toBe(1);
+    expect(decisions[0].spellTarget).toBe(1);
+  });
+
+  it('destroy spell prefers taunt targets', () => {
+    const destroySpell = makeCard({
+      cost: 3, type: 'spell', faction: 'neutral',
+      targetType: 'enemy_minion',
+      description: '消灭一个敌方随从',
+    });
+    const state = makeGameState(
+      {
+        hand: [destroySpell],
+        board: [makeMinion({ lane: Lane.Center })],
+        hero: { health: 30, mana: 5, heroPower: { name: '', cost: 2, description: '' } },
+      },
+      {
+        board: [
+          makeMinion({ currentAttack: 4, currentHealth: 4, lane: Lane.Center }),
+          makeMinion({ currentAttack: 4, currentHealth: 4, taunt: true, lane: Lane.Center }),
+        ],
+      },
+    );
+    const decisions = getOnCurvePlayDecisions(state);
+    expect(decisions.length).toBe(1);
+    expect(decisions[0].spellTarget).toBe(1);
+  });
+
+  it('spell skips spell-immune minions', () => {
+    const damageSpell = makeCard({
+      cost: 1, type: 'spell', faction: 'neutral',
+      targetType: 'enemy_minion',
+      description: '对一个敌方随从造成2点伤害',
+    });
+    const state = makeGameState(
+      {
+        hand: [damageSpell],
+        board: [makeMinion({ lane: Lane.Center })],
+        hero: { health: 30, mana: 5, heroPower: { name: '', cost: 2, description: '' } },
+      },
+      {
+        board: [
+          makeMinion({ currentAttack: 8, currentHealth: 8, spellImmune: true, lane: Lane.Center }),
+          makeMinion({ currentAttack: 2, currentHealth: 2, lane: Lane.Center }),
+        ],
+      },
+    );
+    const decisions = getOnCurvePlayDecisions(state);
+    expect(decisions.length).toBe(1);
+    expect(decisions[0].spellTarget).toBe(1);
+  });
+});
+
+describe('AI freeze targeting — card play integration', () => {
+  it('freeze spell targets highest-attack minion', () => {
+    const freezeSpell = makeCard({
+      cost: 2, type: 'spell', faction: 'neutral',
+      targetType: 'enemy_minion',
+      description: '使一个敌方随从冻结',
+    });
+    const state = makeGameState(
+      {
+        hand: [freezeSpell],
+        board: [makeMinion({ lane: Lane.Center })],
+        hero: { health: 30, mana: 5, heroPower: { name: '', cost: 2, description: '' } },
+      },
+      {
+        board: [
+          makeMinion({ currentAttack: 3, currentHealth: 5, lane: Lane.Center }),
+          makeMinion({ currentAttack: 8, currentHealth: 2, lane: Lane.Center }),
+        ],
+      },
+    );
+    const decisions = getOnCurvePlayDecisions(state);
+    expect(decisions.length).toBe(1);
+    expect(decisions[0].spellTarget).toBe(1);
+  });
+
+  it('freeze spell skips already-frozen minions', () => {
+    const freezeSpell = makeCard({
+      cost: 2, type: 'spell', faction: 'neutral',
+      targetType: 'enemy_minion',
+      description: '使一个敌方随从冻结',
+    });
+    const state = makeGameState(
+      {
+        hand: [freezeSpell],
+        board: [makeMinion({ lane: Lane.Center })],
+        hero: { health: 30, mana: 5, heroPower: { name: '', cost: 2, description: '' } },
+      },
+      {
+        board: [
+          makeMinion({ currentAttack: 10, currentHealth: 5, isFrozen: true, lane: Lane.Center }),
+          makeMinion({ currentAttack: 4, currentHealth: 3, lane: Lane.Center }),
+        ],
+      },
+    );
+    const decisions = getOnCurvePlayDecisions(state);
+    expect(decisions.length).toBe(1);
+    expect(decisions[0].spellTarget).toBe(1);
+  });
+
+  it('freeze spell prefers windfury over regular high-attack', () => {
+    const freezeSpell = makeCard({
+      cost: 2, type: 'spell', faction: 'neutral',
+      targetType: 'enemy_minion',
+      description: '使一个敌方随从冻结',
+    });
+    const state = makeGameState(
+      {
+        hand: [freezeSpell],
+        board: [makeMinion({ lane: Lane.Center })],
+        hero: { health: 30, mana: 5, heroPower: { name: '', cost: 2, description: '' } },
+      },
+      {
+        board: [
+          makeMinion({ currentAttack: 5, currentHealth: 3, lane: Lane.Center }),
+          makeMinion({ currentAttack: 4, currentHealth: 3, windfury: true, lane: Lane.Center }),
+        ],
+      },
+    );
+    const decisions = getOnCurvePlayDecisions(state);
+    expect(decisions.length).toBe(1);
+    // Windfury 4-attack: effective 8*3 + 8 = 32; Regular 5-attack: 5*3 = 15
+    expect(decisions[0].spellTarget).toBe(1);
+  });
+
+  it('freeze spell considers charge bonus', () => {
+    const freezeSpell = makeCard({
+      cost: 2, type: 'spell', faction: 'neutral',
+      targetType: 'enemy_minion',
+      description: '使一个敌方随从冻结',
+    });
+    const state = makeGameState(
+      {
+        hand: [freezeSpell],
+        board: [makeMinion({ lane: Lane.Center })],
+        hero: { health: 30, mana: 5, heroPower: { name: '', cost: 2, description: '' } },
+      },
+      {
+        board: [
+          makeMinion({ currentAttack: 3, currentHealth: 3, lane: Lane.Center }),
+          makeMinion({ currentAttack: 3, currentHealth: 3, charge: true, lane: Lane.Center }),
+        ],
+      },
+    );
+    const decisions = getOnCurvePlayDecisions(state);
+    expect(decisions.length).toBe(1);
+    expect(decisions[0].spellTarget).toBe(1);
+  });
+});
+
+describe('AI buff target selection — card play integration', () => {
+  it('buff spell scores higher when board has windfury minion vs charge minion', () => {
+    const buffSpell = makeCard({ type: 'spell', attack: 0, health: 0, description: '使所有友方随从获得+2/+2' });
+    const playerWindfury = makePlayer({
+      board: [makeMinion({ currentAttack: 3, currentHealth: 3, windfury: true })],
+    });
+    const playerCharge = makePlayer({
+      board: [makeMinion({ currentAttack: 3, currentHealth: 3, charge: true })],
+    });
+    expect(evaluateCardForFaction(buffSpell, playerWindfury)).toBeGreaterThan(
+      evaluateCardForFaction(buffSpell, playerCharge)
+    );
+  });
+
+  it('buff spell scores lower when best target is frozen', () => {
+    const buffSpell = makeCard({ type: 'spell', attack: 0, health: 0, description: '使一个友方随从获得+3攻击力' });
+    const playerFrozen = makePlayer({
+      board: [makeMinion({ currentAttack: 5, currentHealth: 5, isFrozen: true })],
+    });
+    const playerReady = makePlayer({
+      board: [makeMinion({ currentAttack: 5, currentHealth: 5 })],
+    });
+    expect(evaluateCardForFaction(buffSpell, playerFrozen)).toBeLessThan(
+      evaluateCardForFaction(buffSpell, playerReady)
+    );
+  });
+
+  it('buff spell picks best target among multiple minions', () => {
+    const buffSpell = makeCard({ type: 'spell', attack: 0, health: 0, description: '使一个友方随从获得+2/+2' });
+    const playerMixed = makePlayer({
+      board: [
+        makeMinion({ currentAttack: 2, currentHealth: 2, summoningSickness: true }),
+        makeMinion({ currentAttack: 4, currentHealth: 4, windfury: true }),
+        makeMinion({ currentAttack: 3, currentHealth: 3 }),
+      ],
+    });
+    const playerOnlyWeak = makePlayer({
+      board: [
+        makeMinion({ currentAttack: 2, currentHealth: 2, summoningSickness: true }),
+        makeMinion({ currentAttack: 3, currentHealth: 3 }),
+      ],
+    });
+    expect(evaluateCardForFaction(buffSpell, playerMixed)).toBeGreaterThan(
+      evaluateCardForFaction(buffSpell, playerOnlyWeak)
+    );
+  });
+
+  it('buff spell has no bonus on empty board', () => {
+    const buffSpell = makeCard({ type: 'spell', attack: 0, health: 0, description: '使所有友方随从获得+1/+1' });
+    const damageSpell = makeCard({ type: 'spell', attack: 0, health: 0, description: '对所有敌方随从造成2点伤害' });
+    const emptyPlayer = makePlayer({ board: [] });
+    const buffScore = evaluateCardForFaction(buffSpell, emptyPlayer);
+    const damageScore = evaluateCardForFaction(damageSpell, emptyPlayer);
+    expect(buffScore).toBe(damageScore);
+  });
+
+  it('divine shield minions get modest buff score bonus', () => {
+    const shielded = makeMinion({ currentAttack: 3, currentHealth: 3, hasDivineShield: true });
+    const normal = makeMinion({ currentAttack: 3, currentHealth: 3 });
+    expect(calculateFriendlyBuffScore(shielded)).toBeGreaterThan(calculateFriendlyBuffScore(normal));
+  });
+});

@@ -1,13 +1,13 @@
-# Autopo test Session
+# Autopo execute Session
 
 ## Work Unit
-AI keyword-aware card play — prioritize playing removal spells on high-value targets, use freeze on big threats, use buffs on minions that benefit most
+Test AI keyword-aware card play — verify spell targeting, freeze usage, buff prioritization
 
 ## Acceptance Criteria
-- AI evaluates spell targets by keyword/threat value
-- AI prefers freezing high-attack minions
-- AI buffs minions with windfury/charge preferentially
-- Spell target selection uses threat scoring
+- Tests for spell target evaluation
+- Tests for freeze targeting
+- Tests for buff target selection
+- vitest run passes
 
 ## Rules
 # Rules
