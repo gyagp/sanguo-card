@@ -14,6 +14,7 @@ import {
   gameEventBus,
   EventBus,
   GameEvent,
+  Lane,
 } from "./types";
 
 function makeCard(overrides: Partial<Card> = {}): Card {
@@ -64,6 +65,7 @@ function placeMinion(
     windfuryAttacksLeft: 1,
     enrageActive: false,
     enrageBonus: 0, factionAttackBonus: 0, factionHealthBonus: 0, shuAdjacencyAtkBonus: 0, shuAdjacencyHpBonus: 0, brotherhoodAtkBonus: 0, brotherhoodHpBonus: 0, wuChargeBonus: 0, wuWeaponBonus: 0, wuComboAtkBonus: 0, wuComboHpBonus: 0, qunDebuff: 0,
+    lane: Lane.Center, slotIndex: 0,
     ...overrides,
   };
   state.players[playerIdx].board.push(minion);

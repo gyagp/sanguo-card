@@ -1,4 +1,4 @@
-import { GameState, PlayerState, Card, BoardMinion, Faction, FACTION_SYNERGIES, getEffectiveCardCost, Lane, ALL_LANES, getLaneCount, MAX_LANE_SIZE } from './types';
+import { GameState, PlayerState, Card, BoardMinion, Faction, FACTION_SYNERGIES, getEffectiveCardCost, Lane, ALL_LANES, getLaneCount, MAX_LANE_SIZE, getReachableLanes } from './types';
 
 
 function pickSpellTarget(card: Card, state: GameState): number | undefined {
@@ -257,7 +257,9 @@ export function getAIAttackDecisions(state: GameState): AttackDecision[] {
     for (let a = 0; a < aiBoard.length; a++) {
       const attacker = aiBoard[a];
       if (attacker.summoningSickness || (attacker.hasAttacked && attacker.windfuryAttacksLeft <= 0)) continue;
+      const reachable = getReachableLanes(attacker.lane);
       for (let d = 0; d < opponentBoard.length; d++) {
+        if (!reachable.includes(opponentBoard[d].lane)) continue;
         trades.push({
           attackerIndex: a,
           defenderIndex: d,
@@ -285,6 +287,16 @@ export function getAIAttackDecisions(state: GameState): AttackDecision[] {
   for (let a = 0; a < aiBoard.length; a++) {
     const minion = aiBoard[a];
     if (minion.summoningSickness || (minion.hasAttacked && minion.windfuryAttacksLeft <= 0) || usedAttackers.has(a)) continue;
+    const reachable = getReachableLanes(minion.lane);
+    const reachableTaunts = opponentBoard.filter(m => m.taunt && reachable.includes(m.lane));
+    if (reachableTaunts.length > 0) {
+      const tauntIdx = opponentBoard.indexOf(reachableTaunts[0]);
+      if (!usedDefenders.has(tauntIdx)) {
+        decisions.push({ type: 'attack', attackerIndex: a, targetIndex: tauntIdx });
+        usedDefenders.add(tauntIdx);
+      }
+      continue;
+    }
     const remainingAttacks = Math.max(minion.windfuryAttacksLeft, 0);
     for (let r = 0; r < remainingAttacks; r++) {
       decisions.push({
@@ -332,11 +344,21 @@ function getRandomAttackDecisions(state: GameState): AttackDecision[] {
   for (let a = 0; a < aiBoard.length; a++) {
     const minion = aiBoard[a];
     if (minion.summoningSickness || (minion.hasAttacked && minion.windfuryAttacksLeft <= 0)) continue;
-    if (opponentBoard.length > 0 && Math.random() < 0.5) {
-      const targetIdx = Math.floor(Math.random() * opponentBoard.length);
-      decisions.push({ type: 'attack', attackerIndex: a, targetIndex: targetIdx });
+    const reachable = getReachableLanes(minion.lane);
+    const reachableTargets = opponentBoard
+      .map((m, i) => ({ m, i }))
+      .filter(({ m }) => reachable.includes(m.lane));
+    if (reachableTargets.length > 0 && Math.random() < 0.5) {
+      const pick = reachableTargets[Math.floor(Math.random() * reachableTargets.length)];
+      decisions.push({ type: 'attack', attackerIndex: a, targetIndex: pick.i });
     } else {
-      decisions.push({ type: 'attack', attackerIndex: a, targetIndex: 'hero' });
+      const reachableTaunts = opponentBoard.filter(m => m.taunt && reachable.includes(m.lane));
+      if (reachableTaunts.length > 0) {
+        const tauntIdx = opponentBoard.indexOf(reachableTaunts[Math.floor(Math.random() * reachableTaunts.length)]);
+        decisions.push({ type: 'attack', attackerIndex: a, targetIndex: tauntIdx });
+      } else {
+        decisions.push({ type: 'attack', attackerIndex: a, targetIndex: 'hero' });
+      }
     }
   }
   return decisions;

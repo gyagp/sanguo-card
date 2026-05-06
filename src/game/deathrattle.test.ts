@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import {
   GameState,
   BoardMinion,
+  Lane,
   Card,
   Deck,
   EffectContext,
@@ -45,6 +46,7 @@ function makeBoardMinion(overrides: Partial<BoardMinion> = {}): BoardMinion {
     windfuryAttacksLeft: 1,
     enrageActive: false,
     enrageBonus: 0, factionAttackBonus: 0, factionHealthBonus: 0, shuAdjacencyAtkBonus: 0, shuAdjacencyHpBonus: 0, brotherhoodAtkBonus: 0, brotherhoodHpBonus: 0, wuChargeBonus: 0, wuWeaponBonus: 0, wuComboAtkBonus: 0, wuComboHpBonus: 0, qunDebuff: 0,
+    lane: Lane.Center, slotIndex: 0,
     ...overrides,
   };
 }

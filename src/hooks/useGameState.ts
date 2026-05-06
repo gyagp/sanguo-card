@@ -69,7 +69,7 @@ function executeAIDecision(state: GameState, decision: AIDecision): GameState {
   const next = cloneState(state);
   switch (decision.type) {
     case 'playCard':
-      enginePlayCard(next, decision.cardIndex, decision.spellTarget, undefined, undefined, decision.lane, decision.slotIndex);
+      enginePlayCard(next, decision.cardIndex, decision.spellTarget, undefined, decision.lane, decision.slotIndex);
       break;
     case 'attack':
       if (decision.targetIndex === 'hero') {
@@ -150,7 +150,7 @@ export function useGameState(deck1: Deck, deck2: Deck, aiDifficulty?: AIDifficul
 
   const playCard = useCallback((handIndex: number, targetIndex?: number, lane?: Lane): PlayCardResult => {
     const next = cloneState(gameState);
-    const result = enginePlayCard(next, handIndex, targetIndex, undefined, undefined, lane);
+    const result = enginePlayCard(next, handIndex, targetIndex, undefined, lane);
     if (result.success) setGameState(next);
     return result;
   }, [gameState]);

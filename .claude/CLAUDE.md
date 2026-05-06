@@ -1,13 +1,12 @@
 # Autopo test Session
 
 ## Work Unit
-Migrate board representation — replace flat board array with lane-based structure (3 lanes × 2 slots = 6 positions per player), update playCard to accept lane+slot, update all board iteration helpers (forEach, filter, find) to work with new structure
+Update attack logic — minions can only attack targets in same lane or adjacent lanes, update taunt check to be lane-scoped (taunt only blocks in reachable lanes), update attackMinion and attackHero validation
 
 ## Acceptance Criteria
-- Board is stored as lane-based structure
-- playCard accepts lane and slot parameters
-- Helper functions getBoardMinions(), getMinionsByLane() exist
-- Backward compat: flat iteration still works via helper
+- attackMinion rejects targets in non-adjacent lanes
+- Taunt check only considers minions in reachable lanes
+- attackHero still works (hero is reachable from any lane)
 - npm run build succeeds
 
 ## Rules

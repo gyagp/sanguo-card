@@ -535,6 +535,56 @@ describe("attackMinion", () => {
     const state = setupCombat();
     expect(attackMinion(state, 0, 5).success).toBe(false);
   });
+
+  it("rejects targets in non-adjacent lanes (Left attacker vs Right target)", () => {
+    const state = initializeGame(makeDeck(), makeDeck());
+    state.players[0].board = [makeBoardMinion({ name: "Attacker", currentAttack: 3, currentHealth: 4, lane: Lane.Left })];
+    state.players[1].board = [makeBoardMinion({ name: "Defender", currentAttack: 2, currentHealth: 3, lane: Lane.Right })];
+    const result = attackMinion(state, 0, 0);
+    expect(result.success).toBe(false);
+    expect(result.error).toBe("Target is not in an adjacent lane");
+  });
+
+  it("allows attacks in the same lane", () => {
+    const state = initializeGame(makeDeck(), makeDeck());
+    state.players[0].board = [makeBoardMinion({ name: "Attacker", currentAttack: 3, currentHealth: 4, lane: Lane.Left })];
+    state.players[1].board = [makeBoardMinion({ name: "Defender", currentAttack: 2, currentHealth: 3, lane: Lane.Left })];
+    const result = attackMinion(state, 0, 0);
+    expect(result.success).toBe(true);
+  });
+
+  it("allows attacks in adjacent lanes (Left to Center)", () => {
+    const state = initializeGame(makeDeck(), makeDeck());
+    state.players[0].board = [makeBoardMinion({ name: "Attacker", currentAttack: 3, currentHealth: 4, lane: Lane.Left })];
+    state.players[1].board = [makeBoardMinion({ name: "Defender", currentAttack: 2, currentHealth: 3, lane: Lane.Center })];
+    const result = attackMinion(state, 0, 0);
+    expect(result.success).toBe(true);
+  });
+
+  it("taunt only blocks in reachable lanes — unreachable taunt does not block", () => {
+    const state = initializeGame(makeDeck(), makeDeck());
+    state.players[0].board = [makeBoardMinion({ name: "Attacker", currentAttack: 3, currentHealth: 4, lane: Lane.Left })];
+    state.players[1].board = [
+      makeBoardMinion({ name: "NonTaunt", currentAttack: 1, currentHealth: 2, lane: Lane.Left }),
+      makeBoardMinion({ name: "TauntFar", currentAttack: 2, currentHealth: 5, lane: Lane.Right, taunt: true }),
+    ];
+    // Taunt is in Right lane, attacker is in Left — not reachable, so attacker can hit the non-taunt in Left
+    const result = attackMinion(state, 0, 0);
+    expect(result.success).toBe(true);
+  });
+
+  it("taunt in reachable lane forces targeting it", () => {
+    const state = initializeGame(makeDeck(), makeDeck());
+    state.players[0].board = [makeBoardMinion({ name: "Attacker", currentAttack: 3, currentHealth: 4, lane: Lane.Center })];
+    state.players[1].board = [
+      makeBoardMinion({ name: "NonTaunt", currentAttack: 1, currentHealth: 2, lane: Lane.Center }),
+      makeBoardMinion({ name: "TauntNear", currentAttack: 2, currentHealth: 5, lane: Lane.Left, taunt: true }),
+    ];
+    // Taunt in Left is reachable from Center, so attacking non-taunt should fail
+    const result = attackMinion(state, 0, 0);
+    expect(result.success).toBe(false);
+    expect(result.error).toBe("Must attack a minion with taunt");
+  });
 });
 
 describe("attackHero", () => {
@@ -1144,7 +1194,7 @@ describe("playCard with lane parameters", () => {
   it("playCard accepts lane parameter and places minion in specified lane", () => {
     const card = makeCard({ cost: 1, type: "minion" });
     const state = setupGame(5, [card]);
-    const result = playCard(state, 0, undefined, undefined, undefined, Lane.Right);
+    const result = playCard(state, 0, undefined, undefined, Lane.Right);
     expect(result.success).toBe(true);
     expect(state.players[0].board[0].lane).toBe(Lane.Right);
   });
@@ -1152,7 +1202,7 @@ describe("playCard with lane parameters", () => {
   it("playCard accepts slotIndex parameter", () => {
     const card = makeCard({ cost: 1, type: "minion" });
     const state = setupGame(5, [card]);
-    const result = playCard(state, 0, undefined, undefined, undefined, Lane.Left, 1);
+    const result = playCard(state, 0, undefined, undefined, Lane.Left, 1);
     expect(result.success).toBe(true);
     expect(state.players[0].board[0].lane).toBe(Lane.Left);
     expect(state.players[0].board[0].slotIndex).toBe(1);
@@ -1171,7 +1221,7 @@ describe("playCard with lane parameters", () => {
       makeBoardMinion({ lane: Lane.Left }),
       makeBoardMinion({ lane: Lane.Left }),
     ];
-    const result = playCard(state, 0, undefined, undefined, undefined, Lane.Left);
+    const result = playCard(state, 0, undefined, undefined, Lane.Left);
     expect(result.success).toBe(false);
     expect(result.error).toBe("Lane is full");
   });
@@ -1181,7 +1231,7 @@ describe("playCard with lane parameters", () => {
     for (const lane of ALL_LANES) {
       for (let i = 0; i < MAX_LANE_SIZE; i++) {
         state.players[0].hand.push(makeCard({ cost: 1, type: "minion", name: `${lane}-${i}` }));
-        const result = playCard(state, 0, undefined, undefined, undefined, lane);
+        const result = playCard(state, 0, undefined, undefined, lane);
         expect(result.success).toBe(true);
       }
     }

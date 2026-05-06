@@ -4,6 +4,7 @@ import {
   Deck,
   GameState,
   BoardMinion,
+  Lane,
   createDeck,
   initializeGame,
   startTurn,
@@ -50,6 +51,7 @@ function makeBoardMinion(overrides: Partial<BoardMinion> = {}): BoardMinion {
     enrageBonus: 0,
     factionAttackBonus: 0,
     factionHealthBonus: 0,
+    lane: Lane.Center, slotIndex: 0,
     ...overrides,
   };
 }

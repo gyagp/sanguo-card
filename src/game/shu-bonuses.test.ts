@@ -214,7 +214,7 @@ describe('bonuses recalculated on minion play', () => {
     state.players[0].hand = [zhangCard];
     state.players[0].hero.mana = 10;
 
-    playCard(state, 0, undefined, undefined, undefined, Lane.Left);
+    playCard(state, 0, undefined, undefined, Lane.Left);
 
     expect(state.players[0].board.length).toBe(3);
     for (const m of state.players[0].board) {

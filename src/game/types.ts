@@ -295,6 +295,16 @@ export const MAX_BOARD_SIZE = 6;
 export const MAX_LANE_SIZE = 2;
 export const ALL_LANES: Lane[] = [Lane.Left, Lane.Center, Lane.Right];
 
+const ADJACENT_LANES: Record<Lane, Lane[]> = {
+  [Lane.Left]: [Lane.Left, Lane.Center],
+  [Lane.Center]: [Lane.Left, Lane.Center, Lane.Right],
+  [Lane.Right]: [Lane.Center, Lane.Right],
+};
+
+export function getReachableLanes(lane: Lane): Lane[] {
+  return ADJACENT_LANES[lane];
+}
+
 export type LaneBoard = Record<Lane, BoardMinion[]>;
 
 export function getBoardMinions(player: PlayerState): BoardMinion[] {
@@ -519,7 +529,6 @@ export function playCard(
   handIndex: number,
   targetIndex?: number,
   rng: () => number = Math.random,
-  _boardPosition?: number,
   lane: Lane = Lane.Center,
   slotIndex?: number,
 ): PlayCardResult {
@@ -803,8 +812,13 @@ export function attackMinion(
     return { success: false, error: "Cannot target stealthed minion" };
   }
 
-  const hasTaunt = defender.board.some(m => m.taunt);
-  if (hasTaunt && !defendingMinion.taunt) {
+  const reachable = getReachableLanes(attackingMinion.lane);
+  if (!reachable.includes(defendingMinion.lane)) {
+    return { success: false, error: "Target is not in an adjacent lane" };
+  }
+
+  const hasTauntInReachableLanes = defender.board.some(m => m.taunt && reachable.includes(m.lane));
+  if (hasTauntInReachableLanes && !defendingMinion.taunt) {
     return { success: false, error: "Must attack a minion with taunt" };
   }
 
@@ -868,8 +882,9 @@ export function attackHero(
     return { success: false, error: "Minion is frozen" };
   }
 
-  const hasTaunt = defender.board.some(m => m.taunt);
-  if (hasTaunt) {
+  const reachableFromAttacker = getReachableLanes(attackingMinion.lane);
+  const hasTauntInReachableLanes = defender.board.some(m => m.taunt && reachableFromAttacker.includes(m.lane));
+  if (hasTauntInReachableLanes) {
     return { success: false, error: "Must attack a minion with taunt" };
   }
 

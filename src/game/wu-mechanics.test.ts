@@ -229,9 +229,9 @@ describe('Wu combo counter', () => {
         makeCard({ faction: 'wu', name: `吴${i}`, cost: 1, attack: 2, health: 2 }),
       );
     }
-    playCard(state, 0, undefined, undefined, undefined, Lane.Left); // 1st
-    playCard(state, 0, undefined, undefined, undefined, Lane.Center); // 2nd
-    playCard(state, 0, undefined, undefined, undefined, Lane.Right); // 3rd => combo bonus = 1
+    playCard(state, 0, undefined, undefined, Lane.Left); // 1st
+    playCard(state, 0, undefined, undefined, Lane.Center); // 2nd
+    playCard(state, 0, undefined, undefined, Lane.Right); // 3rd => combo bonus = 1
     const third = state.players[0].board[2];
     // 2 base + 1 faction synergy (2+ wu) + 1 combo = 4
     expect(third.currentAttack).toBe(4);
@@ -247,10 +247,10 @@ describe('Wu combo counter', () => {
         makeCard({ faction: 'wu', name: `吴${i}`, cost: 1, attack: 1, health: 1 }),
       );
     }
-    playCard(state, 0, undefined, undefined, undefined, Lane.Left);
-    playCard(state, 0, undefined, undefined, undefined, Lane.Center);
-    playCard(state, 0, undefined, undefined, undefined, Lane.Right);
-    playCard(state, 0, undefined, undefined, undefined, Lane.Left); // 4th => combo bonus = 2
+    playCard(state, 0, undefined, undefined, Lane.Left);
+    playCard(state, 0, undefined, undefined, Lane.Center);
+    playCard(state, 0, undefined, undefined, Lane.Right);
+    playCard(state, 0, undefined, undefined, Lane.Left); // 4th => combo bonus = 2
     const fourth = state.players[0].board[3];
     // 1 base + 1 faction atk (4+ wu tier) + 2 combo = 4 atk
     // 1 base + 2 faction hp (4+ wu tier) + 2 combo = 5 hp
