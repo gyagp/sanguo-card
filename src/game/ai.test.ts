@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { evaluateBoard, getPlayableCards, getBestManaUsage, AIDecision, findLethal, evaluateTrade, getAIAttackDecisions, createAI, AIDifficulty, AIStrategy, evaluateCardForFaction, getOnCurvePlayDecisions, getOptimalPlayDecisions, calculateMinionThreatScore, calculateFriendlyBuffScore } from './ai';
+import { evaluateBoard, getPlayableCards, getBestManaUsage, AIDecision, findLethal, evaluateTrade, getAIAttackDecisions, createAI, AIDifficulty, AIStrategy, evaluateCardForFaction, getOnCurvePlayDecisions, getOptimalPlayDecisions, calculateMinionThreatScore, calculateFriendlyBuffScore, calculateBoardPower, assessBoardAdvantage, determinePlayStyle } from './ai';
 import { GameState, PlayerState, Card, BoardMinion, Deck, Faction, Lane, TerrainType } from './types';
 
 function makeCard(overrides: Partial<Card> = {}): Card {
@@ -1721,5 +1721,187 @@ describe('AI buff target selection — card play integration', () => {
     const shielded = makeMinion({ currentAttack: 3, currentHealth: 3, hasDivineShield: true });
     const normal = makeMinion({ currentAttack: 3, currentHealth: 3 });
     expect(calculateFriendlyBuffScore(shielded)).toBeGreaterThan(calculateFriendlyBuffScore(normal));
+  });
+});
+
+describe('AI board state evaluation — threat assessment and play style switching', () => {
+  describe('calculateBoardPower', () => {
+    it('returns 0 for empty board', () => {
+      expect(calculateBoardPower([])).toBe(0);
+    });
+
+    it('sums attack + health for basic minions', () => {
+      const board = [makeMinion({ currentAttack: 3, currentHealth: 4 })];
+      expect(calculateBoardPower(board)).toBe(7);
+    });
+
+    it('adds bonus for taunt', () => {
+      const withTaunt = [makeMinion({ currentAttack: 3, currentHealth: 4, taunt: true })];
+      const without = [makeMinion({ currentAttack: 3, currentHealth: 4 })];
+      expect(calculateBoardPower(withTaunt)).toBeGreaterThan(calculateBoardPower(without));
+    });
+
+    it('adds bonus for divine shield', () => {
+      const withShield = [makeMinion({ currentAttack: 3, currentHealth: 4, hasDivineShield: true })];
+      const without = [makeMinion({ currentAttack: 3, currentHealth: 4 })];
+      expect(calculateBoardPower(withShield)).toBeGreaterThan(calculateBoardPower(without));
+    });
+
+    it('adds extra attack value for windfury', () => {
+      const withWindfury = [makeMinion({ currentAttack: 4, currentHealth: 3, windfury: true })];
+      const without = [makeMinion({ currentAttack: 4, currentHealth: 3 })];
+      expect(calculateBoardPower(withWindfury)).toBe(calculateBoardPower(without) + 4);
+    });
+
+    it('reduces power for frozen minions', () => {
+      const frozen = [makeMinion({ currentAttack: 4, currentHealth: 3, isFrozen: true })];
+      const unfrozen = [makeMinion({ currentAttack: 4, currentHealth: 3 })];
+      expect(calculateBoardPower(frozen)).toBeLessThan(calculateBoardPower(unfrozen));
+    });
+  });
+
+  describe('assessBoardAdvantage', () => {
+    it('returns positive when AI has stronger board', () => {
+      const state = makeGameState(
+        { board: [makeMinion({ currentAttack: 5, currentHealth: 5 })] },
+        { board: [makeMinion({ currentAttack: 2, currentHealth: 2 })] },
+      );
+      expect(assessBoardAdvantage(state, 0)).toBeGreaterThan(0);
+    });
+
+    it('returns negative when opponent has stronger board', () => {
+      const state = makeGameState(
+        { board: [makeMinion({ currentAttack: 2, currentHealth: 2 })] },
+        { board: [makeMinion({ currentAttack: 5, currentHealth: 5 })] },
+      );
+      expect(assessBoardAdvantage(state, 0)).toBeLessThan(0);
+    });
+
+    it('factors in life totals', () => {
+      const state = makeGameState(
+        { hero: { health: 30, mana: 0, heroPower: { name: '', cost: 2, description: '' } } },
+        { hero: { health: 10, mana: 0, heroPower: { name: '', cost: 2, description: '' } } },
+      );
+      expect(assessBoardAdvantage(state, 0)).toBeGreaterThan(0);
+    });
+
+    it('factors in card count', () => {
+      const state = makeGameState(
+        { hand: [makeCard(), makeCard(), makeCard()] },
+        { hand: [] },
+      );
+      expect(assessBoardAdvantage(state, 0)).toBeGreaterThan(0);
+    });
+  });
+
+  describe('determinePlayStyle', () => {
+    it('returns control when AI is at low health with enemies on board', () => {
+      const state = makeGameState(
+        { hero: { health: 8, mana: 5, heroPower: { name: '', cost: 2, description: '' } } },
+        { board: [makeMinion({ currentAttack: 3, currentHealth: 3 })] },
+      );
+      expect(determinePlayStyle(state, 0)).toBe('control');
+    });
+
+    it('returns aggro when AI has large board advantage', () => {
+      const state = makeGameState(
+        { board: [
+          makeMinion({ currentAttack: 5, currentHealth: 5 }),
+          makeMinion({ currentAttack: 4, currentHealth: 4 }),
+        ]},
+        { board: [makeMinion({ currentAttack: 1, currentHealth: 1 })] },
+      );
+      expect(determinePlayStyle(state, 0)).toBe('aggro');
+    });
+
+    it('returns control when AI has large board disadvantage', () => {
+      const state = makeGameState(
+        { board: [makeMinion({ currentAttack: 1, currentHealth: 1 })] },
+        { board: [
+          makeMinion({ currentAttack: 5, currentHealth: 5 }),
+          makeMinion({ currentAttack: 4, currentHealth: 4 }),
+        ]},
+      );
+      expect(determinePlayStyle(state, 0)).toBe('control');
+    });
+
+    it('returns control when enemy has high-threat minion (windfury)', () => {
+      const state = makeGameState(
+        { board: [makeMinion({ currentAttack: 3, currentHealth: 3 })] },
+        { board: [makeMinion({ currentAttack: 4, currentHealth: 4, windfury: true })] },
+      );
+      expect(determinePlayStyle(state, 0)).toBe('control');
+    });
+
+    it('returns control when enemy has high-attack minion', () => {
+      const state = makeGameState(
+        { board: [makeMinion({ currentAttack: 3, currentHealth: 3 })] },
+        { board: [makeMinion({ currentAttack: 6, currentHealth: 3 })] },
+      );
+      expect(determinePlayStyle(state, 0)).toBe('control');
+    });
+
+    it('returns aggro when AI has much more life than opponent', () => {
+      const state = makeGameState(
+        { hero: { health: 30, mana: 5, heroPower: { name: '', cost: 2, description: '' } } },
+        { hero: { health: 15, mana: 5, heroPower: { name: '', cost: 2, description: '' } } },
+      );
+      expect(determinePlayStyle(state, 0)).toBe('aggro');
+    });
+  });
+
+  describe('play style affects attack decisions', () => {
+    it('aggro AI sends remaining attackers face', () => {
+      const state = makeGameState(
+        { board: [
+          makeMinion({ currentAttack: 4, currentHealth: 4, lane: Lane.Center }),
+          makeMinion({ currentAttack: 3, currentHealth: 3, lane: Lane.Left }),
+        ]},
+        {
+          hero: { health: 20, mana: 0, heroPower: { name: '', cost: 2, description: '' } },
+          board: [makeMinion({ currentAttack: 1, currentHealth: 1, lane: Lane.Right })],
+        },
+      );
+      state.activePlayer = 0;
+      const decisions = getAIAttackDecisions(state, 'aggro');
+      const faceDecisions = decisions.filter(d => d.targetIndex === 'hero');
+      expect(faceDecisions.length).toBeGreaterThan(0);
+    });
+
+    it('control AI trades into threats instead of going face', () => {
+      const state = makeGameState(
+        { board: [makeMinion({ currentAttack: 5, currentHealth: 5, lane: Lane.Center })] },
+        {
+          hero: { health: 30, mana: 0, heroPower: { name: '', cost: 2, description: '' } },
+          board: [makeMinion({ currentAttack: 4, currentHealth: 3, lane: Lane.Center })],
+        },
+      );
+      state.activePlayer = 0;
+      const decisions = getAIAttackDecisions(state, 'control');
+      expect(decisions.length).toBe(1);
+      expect(decisions[0].targetIndex).toBe(0);
+    });
+
+    it('control AI values windfury and high-attack threats higher for trading', () => {
+      const state = makeGameState(
+        { board: [
+          makeMinion({ currentAttack: 3, currentHealth: 4, lane: Lane.Center }),
+          makeMinion({ currentAttack: 3, currentHealth: 4, lane: Lane.Left }),
+        ]},
+        {
+          hero: { health: 30, mana: 0, heroPower: { name: '', cost: 2, description: '' } },
+          board: [
+            makeMinion({ currentAttack: 2, currentHealth: 2, lane: Lane.Center }),
+            makeMinion({ currentAttack: 3, currentHealth: 2, windfury: true, lane: Lane.Left }),
+          ],
+        },
+      );
+      state.activePlayer = 0;
+      const aggroDecisions = getAIAttackDecisions(state, 'aggro');
+      const controlDecisions = getAIAttackDecisions(state, 'control');
+      const controlTrades = controlDecisions.filter(d => d.targetIndex !== 'hero');
+      const aggroTrades = aggroDecisions.filter(d => d.targetIndex !== 'hero');
+      expect(controlTrades.length).toBeGreaterThanOrEqual(aggroTrades.length);
+    });
   });
 });

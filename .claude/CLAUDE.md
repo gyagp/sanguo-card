@@ -1,13 +1,13 @@
-# Autopo execute Session
+# Autopo test Session
 
 ## Work Unit
-Test AI faction synergy — verify faction-aware deck preference, play order, lane placement for formation bonus
+AI board state evaluation — implement threat assessment and play style switching (aggro vs control) based on board advantage, life totals, and card count
 
 ## Acceptance Criteria
-- Tests for faction deck concentration
-- Tests for Wu combo play order
-- Tests for formation bonus lane placement
-- vitest run passes
+- AI calculates board advantage score (own board power vs enemy)
+- AI switches between aggro (go face) and control (trade) based on board state
+- Losing AI plays more defensively, winning AI pushes damage
+- Board evaluation considers taunt, divine shield, and keyword threats
 
 ## Rules
 # Rules

@@ -147,6 +147,58 @@ const STEALTH_BROKEN_BONUS = 4;
 const DAMAGED_MINION_BONUS = 3;
 const FACTION_SYNERGY_WEIGHT = 2;
 
+export type PlayStyle = 'aggro' | 'control';
+
+export function calculateBoardPower(board: BoardMinion[]): number {
+  let power = 0;
+  for (const m of board) {
+    let minionPower = m.currentAttack + m.currentHealth;
+    if (m.taunt) minionPower += 2;
+    if (m.hasDivineShield) minionPower += 3;
+    if (m.windfury) minionPower += m.currentAttack;
+    if (m.isFrozen) minionPower -= m.currentAttack;
+    if (m.stealth || m.isStealth) minionPower += 1;
+    if (m.charge) minionPower += 1;
+    power += minionPower;
+  }
+  return power;
+}
+
+export function assessBoardAdvantage(state: GameState, playerIndex: 0 | 1): number {
+  const player = state.players[playerIndex];
+  const opponent = state.players[playerIndex === 0 ? 1 : 0];
+
+  const ownPower = calculateBoardPower(player.board);
+  const enemyPower = calculateBoardPower(opponent.board);
+
+  const boardDiff = ownPower - enemyPower;
+  const lifeDiff = (player.hero.health - opponent.hero.health) * 0.5;
+  const cardDiff = (player.hand.length - opponent.hand.length) * 0.3;
+
+  return boardDiff + lifeDiff + cardDiff;
+}
+
+export function determinePlayStyle(state: GameState, playerIndex: 0 | 1): PlayStyle {
+  const player = state.players[playerIndex];
+  const opponent = state.players[playerIndex === 0 ? 1 : 0];
+  const advantage = assessBoardAdvantage(state, playerIndex);
+
+  if (player.hero.health <= 10 && opponent.board.length > 0) return 'control';
+
+  if (advantage >= 5) return 'aggro';
+
+  if (advantage <= -5) return 'control';
+
+  if (player.hero.health > opponent.hero.health + 10) return 'aggro';
+
+  const enemyHasThreat = opponent.board.some(m =>
+    m.currentAttack >= 5 || m.windfury || (m.hasDivineShield && m.currentAttack >= 3)
+  );
+  if (enemyHasThreat) return 'control';
+
+  return 'aggro';
+}
+
 export function countFactionMinions(board: BoardMinion[], faction: Faction): number {
   return board.filter(m => m.faction === faction).length;
 }
@@ -357,12 +409,14 @@ export function findLethal(
   return totalDamage >= opponentHeroHealth;
 }
 
-export function getAIAttackDecisions(state: GameState): AttackDecision[] {
+export function getAIAttackDecisions(state: GameState, playStyle?: PlayStyle): AttackDecision[] {
   const aiIndex = state.activePlayer;
   const opponentIndex = aiIndex === 0 ? 1 : 0;
   const aiBoard = state.players[aiIndex].board;
   const opponentBoard = state.players[opponentIndex].board;
   const opponentHealth = state.players[opponentIndex].hero.health;
+
+  const style = playStyle ?? determinePlayStyle(state, aiIndex as 0 | 1);
 
   const available = aiBoard.filter(
     (m) => !m.summoningSickness && !(m.hasAttacked && m.windfuryAttacksLeft <= 0),
@@ -380,6 +434,8 @@ export function getAIAttackDecisions(state: GameState): AttackDecision[] {
     return decisions;
   }
 
+  const tradeThreshold = style === 'control' ? -3 : 0;
+
   const decisions: AttackDecision[] = [];
   const usedAttackers = new Set<number>();
   const usedDefenders = new Set<number>();
@@ -396,11 +452,13 @@ export function getAIAttackDecisions(state: GameState): AttackDecision[] {
         if (!reachable.includes(defender.lane)) continue;
         if (defender.isStealth) continue;
         if (hasTaunts && !defender.taunt) continue;
-        trades.push({
-          attackerIndex: a,
-          defenderIndex: d,
-          score: evaluateTrade(attacker, defender),
-        });
+        let score = evaluateTrade(attacker, defender);
+        if (style === 'control') {
+          if (defender.windfury) score += 4;
+          if (defender.hasDivineShield && defender.currentAttack >= 3) score += 3;
+          if (defender.currentAttack >= 5) score += 3;
+        }
+        trades.push({ attackerIndex: a, defenderIndex: d, score });
       }
     }
 
@@ -408,7 +466,7 @@ export function getAIAttackDecisions(state: GameState): AttackDecision[] {
 
     for (const trade of trades) {
       if (usedAttackers.has(trade.attackerIndex) || usedDefenders.has(trade.defenderIndex)) continue;
-      if (trade.score > 0) {
+      if (trade.score > tradeThreshold) {
         decisions.push({
           type: 'attack',
           attackerIndex: trade.attackerIndex,
@@ -432,6 +490,13 @@ export function getAIAttackDecisions(state: GameState): AttackDecision[] {
         usedDefenders.add(tauntIdx);
       }
       continue;
+    }
+    if (style === 'control') {
+      const hasWorthwhileTrade = opponentBoard.some((m, idx) =>
+        !usedDefenders.has(idx) && !m.isStealth && reachable.includes(m.lane) &&
+        evaluateTrade(minion, m) > tradeThreshold
+      );
+      if (hasWorthwhileTrade) continue;
     }
     const remainingAttacks = Math.max(minion.windfuryAttacksLeft, 0);
     for (let r = 0; r < remainingAttacks; r++) {
