@@ -1,13 +1,13 @@
-# Autopo execute Session
+# Autopo test Session
 
 ## Work Unit
-Test AI keyword-aware targeting — verify taunt priority, divine shield avoidance, stealth/enrage awareness in attack decisions
+AI keyword-aware card play — prioritize playing removal spells on high-value targets, use freeze on big threats, use buffs on minions that benefit most
 
 ## Acceptance Criteria
-- Tests for taunt targeting priority
-- Tests for divine shield avoidance
-- Tests for stealth/enrage interaction
-- vitest run passes
+- AI evaluates spell targets by keyword/threat value
+- AI prefers freezing high-attack minions
+- AI buffs minions with windfury/charge preferentially
+- Spell target selection uses threat scoring
 
 ## Rules
 # Rules

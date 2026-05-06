@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { evaluateBoard, getPlayableCards, getBestManaUsage, AIDecision, findLethal, evaluateTrade, getAIAttackDecisions, createAI, AIDifficulty, AIStrategy, evaluateCardForFaction, getOnCurvePlayDecisions, getOptimalPlayDecisions } from './ai';
+import { evaluateBoard, getPlayableCards, getBestManaUsage, AIDecision, findLethal, evaluateTrade, getAIAttackDecisions, createAI, AIDifficulty, AIStrategy, evaluateCardForFaction, getOnCurvePlayDecisions, getOptimalPlayDecisions, calculateMinionThreatScore, calculateFriendlyBuffScore } from './ai';
 import { GameState, PlayerState, Card, BoardMinion, Deck, Faction, Lane, TerrainType } from './types';
 
 function makeCard(overrides: Partial<Card> = {}): Card {
@@ -1264,5 +1264,202 @@ describe('AI lane system — attack respects lane adjacency', () => {
     const decisions = getOnCurvePlayDecisions(state);
     expect(decisions.length).toBe(1);
     expect(decisions[0].lane).toBe(Lane.Right);
+  });
+});
+
+describe('AI spell target threat scoring', () => {
+  it('freeze spells score higher on high-attack minions', () => {
+    const bigAttacker = makeMinion({ currentAttack: 8, currentHealth: 3 });
+    const smallAttacker = makeMinion({ currentAttack: 2, currentHealth: 3 });
+    expect(calculateMinionThreatScore(bigAttacker, 'freeze')).toBeGreaterThan(
+      calculateMinionThreatScore(smallAttacker, 'freeze')
+    );
+  });
+
+  it('freeze spells penalize already-frozen minions', () => {
+    const frozen = makeMinion({ currentAttack: 5, currentHealth: 3, isFrozen: true });
+    const unfrozen = makeMinion({ currentAttack: 5, currentHealth: 3, isFrozen: false });
+    expect(calculateMinionThreatScore(frozen, 'freeze')).toBeLessThan(
+      calculateMinionThreatScore(unfrozen, 'freeze')
+    );
+  });
+
+  it('freeze spells prefer windfury targets', () => {
+    const windfury = makeMinion({ currentAttack: 4, currentHealth: 3, windfury: true });
+    const normal = makeMinion({ currentAttack: 4, currentHealth: 3 });
+    expect(calculateMinionThreatScore(windfury, 'freeze')).toBeGreaterThan(
+      calculateMinionThreatScore(normal, 'freeze')
+    );
+  });
+
+  it('destroy spells prefer high-stat minions', () => {
+    const big = makeMinion({ currentAttack: 6, currentHealth: 8 });
+    const small = makeMinion({ currentAttack: 2, currentHealth: 2 });
+    expect(calculateMinionThreatScore(big, 'destroy')).toBeGreaterThan(
+      calculateMinionThreatScore(small, 'destroy')
+    );
+  });
+
+  it('destroy spells penalize divine shield targets', () => {
+    const shielded = makeMinion({ currentAttack: 4, currentHealth: 4, hasDivineShield: true });
+    const unshielded = makeMinion({ currentAttack: 4, currentHealth: 4 });
+    expect(calculateMinionThreatScore(shielded, 'destroy')).toBeLessThan(
+      calculateMinionThreatScore(unshielded, 'destroy')
+    );
+  });
+
+  it('damage spells penalize divine shield targets', () => {
+    const shielded = makeMinion({ currentAttack: 3, currentHealth: 3, hasDivineShield: true });
+    const unshielded = makeMinion({ currentAttack: 3, currentHealth: 3 });
+    expect(calculateMinionThreatScore(shielded, 'damage')).toBeLessThan(
+      calculateMinionThreatScore(unshielded, 'damage')
+    );
+  });
+
+  it('damage spells penalize enrage minions that have not triggered', () => {
+    const enrage = makeMinion({ currentAttack: 3, currentHealth: 5, enrage: ((s: any) => s) as any, enrageActive: false });
+    const normal = makeMinion({ currentAttack: 3, currentHealth: 5 });
+    expect(calculateMinionThreatScore(enrage, 'damage')).toBeLessThan(
+      calculateMinionThreatScore(normal, 'damage')
+    );
+  });
+
+  it('damage spells prioritize windfury targets', () => {
+    const windfury = makeMinion({ currentAttack: 4, currentHealth: 3, windfury: true });
+    const normal = makeMinion({ currentAttack: 4, currentHealth: 3 });
+    expect(calculateMinionThreatScore(windfury, 'damage')).toBeGreaterThan(
+      calculateMinionThreatScore(normal, 'damage')
+    );
+  });
+
+  it('damage spells prioritize taunt targets', () => {
+    const taunt = makeMinion({ currentAttack: 3, currentHealth: 4, taunt: true });
+    const normal = makeMinion({ currentAttack: 3, currentHealth: 4 });
+    expect(calculateMinionThreatScore(taunt, 'damage')).toBeGreaterThan(
+      calculateMinionThreatScore(normal, 'damage')
+    );
+  });
+
+  it('spell targeting integrates with play decisions — freeze targets highest attack', () => {
+    const freezeSpell = makeCard({
+      cost: 2, type: 'spell', faction: 'wei',
+      targetType: 'enemy_minion',
+      description: '使一个敌方随从冻结',
+    });
+    const state = makeGameState(
+      {
+        hand: [freezeSpell],
+        board: [makeMinion({ lane: Lane.Center })],
+        hero: { health: 30, mana: 5, heroPower: { name: '', cost: 2, description: '' } },
+      },
+      {
+        board: [
+          makeMinion({ currentAttack: 2, currentHealth: 3, lane: Lane.Center }),
+          makeMinion({ currentAttack: 7, currentHealth: 3, lane: Lane.Center }),
+        ],
+      },
+    );
+    const decisions = getOnCurvePlayDecisions(state);
+    expect(decisions.length).toBe(1);
+    expect(decisions[0].spellTarget).toBe(1);
+  });
+
+  it('spell targeting integrates with play decisions — damage avoids divine shield', () => {
+    const damageSpell = makeCard({
+      cost: 1, type: 'spell', faction: 'neutral',
+      targetType: 'enemy_minion',
+      description: '对一个敌方随从造成2点伤害',
+    });
+    const state = makeGameState(
+      {
+        hand: [damageSpell],
+        board: [makeMinion({ lane: Lane.Center })],
+        hero: { health: 30, mana: 5, heroPower: { name: '', cost: 2, description: '' } },
+      },
+      {
+        board: [
+          makeMinion({ currentAttack: 3, currentHealth: 3, hasDivineShield: true, lane: Lane.Center }),
+          makeMinion({ currentAttack: 3, currentHealth: 3, hasDivineShield: false, lane: Lane.Center }),
+        ],
+      },
+    );
+    const decisions = getOnCurvePlayDecisions(state);
+    expect(decisions.length).toBe(1);
+    expect(decisions[0].spellTarget).toBe(1);
+  });
+});
+
+describe('AI friendly buff scoring', () => {
+  it('windfury minions score highest for buffs', () => {
+    const windfury = makeMinion({ currentAttack: 4, currentHealth: 3, windfury: true });
+    const normal = makeMinion({ currentAttack: 4, currentHealth: 3 });
+    expect(calculateFriendlyBuffScore(windfury)).toBeGreaterThan(calculateFriendlyBuffScore(normal));
+  });
+
+  it('charge minions score higher than vanilla for buffs', () => {
+    const charge = makeMinion({ currentAttack: 3, currentHealth: 3, charge: true });
+    const normal = makeMinion({ currentAttack: 3, currentHealth: 3 });
+    expect(calculateFriendlyBuffScore(charge)).toBeGreaterThan(calculateFriendlyBuffScore(normal));
+  });
+
+  it('frozen minions score lower for buffs', () => {
+    const frozen = makeMinion({ currentAttack: 3, currentHealth: 3, isFrozen: true });
+    const normal = makeMinion({ currentAttack: 3, currentHealth: 3 });
+    expect(calculateFriendlyBuffScore(frozen)).toBeLessThan(calculateFriendlyBuffScore(normal));
+  });
+
+  it('summoning sick non-charge minions score lower', () => {
+    const sick = makeMinion({ currentAttack: 3, currentHealth: 3, summoningSickness: true });
+    const ready = makeMinion({ currentAttack: 3, currentHealth: 3 });
+    expect(calculateFriendlyBuffScore(sick)).toBeLessThan(calculateFriendlyBuffScore(ready));
+  });
+
+  it('taunt minions get buff score bonus', () => {
+    const taunt = makeMinion({ currentAttack: 3, currentHealth: 3, taunt: true });
+    const normal = makeMinion({ currentAttack: 3, currentHealth: 3 });
+    expect(calculateFriendlyBuffScore(taunt)).toBeGreaterThan(calculateFriendlyBuffScore(normal));
+  });
+
+  it('buff spells get higher evaluation score when board has windfury minion', () => {
+    const buffSpell = makeCard({ type: 'spell', attack: 0, health: 0, description: '使所有友方随从获得+1/+1' });
+    const playerWithWindfury = makePlayer({
+      board: [makeMinion({ currentAttack: 4, currentHealth: 3, windfury: true })],
+    });
+    const playerEmpty = makePlayer({ board: [] });
+    expect(evaluateCardForFaction(buffSpell, playerWithWindfury)).toBeGreaterThan(
+      evaluateCardForFaction(buffSpell, playerEmpty)
+    );
+  });
+
+  it('non-buff spells are not affected by friendly board', () => {
+    const damageSpell = makeCard({ type: 'spell', attack: 0, health: 0, description: '对一个敌方随从造成3点伤害' });
+    const playerWithBoard = makePlayer({
+      board: [makeMinion({ currentAttack: 5, currentHealth: 5, windfury: true })],
+    });
+    const playerEmpty = makePlayer({ board: [] });
+    expect(evaluateCardForFaction(damageSpell, playerWithBoard)).toBe(
+      evaluateCardForFaction(damageSpell, playerEmpty)
+    );
+  });
+
+  it('classifySpell detects buff spells correctly', () => {
+    const buffSpell = makeCard({ description: '使所有友方随从获得+1攻击力' });
+    const damageSpell = makeCard({ description: '对一个敌方随从造成3点伤害' });
+    const freezeSpell = makeCard({ description: '使一个敌方随从冻结' });
+    const playerWithBoard = makePlayer({
+      board: [makeMinion({ currentAttack: 3, currentHealth: 3, charge: true })],
+    });
+    const playerEmpty = makePlayer({ board: [] });
+    // Buff spell should score higher with board present
+    const buffWithBoard = evaluateCardForFaction({ ...buffSpell, type: 'spell' }, playerWithBoard);
+    const buffNoBoard = evaluateCardForFaction({ ...buffSpell, type: 'spell' }, playerEmpty);
+    expect(buffWithBoard).toBeGreaterThan(buffNoBoard);
+    // Damage/freeze spells should not change
+    expect(evaluateCardForFaction({ ...damageSpell, type: 'spell' }, playerWithBoard)).toBe(
+      evaluateCardForFaction({ ...damageSpell, type: 'spell' }, playerEmpty)
+    );
+    expect(evaluateCardForFaction({ ...freezeSpell, type: 'spell' }, playerWithBoard)).toBe(
+      evaluateCardForFaction({ ...freezeSpell, type: 'spell' }, playerEmpty)
+    );
   });
 });

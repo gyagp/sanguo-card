@@ -1,6 +1,69 @@
 import { GameState, PlayerState, Card, BoardMinion, Faction, FACTION_SYNERGIES, getEffectiveCardCost, Lane, ALL_LANES, getLaneCount, MAX_LANE_SIZE, getReachableLanes, getSpellReachableLanes, TerrainType } from './types';
 
 
+type SpellCategory = 'freeze' | 'destroy' | 'damage' | 'buff' | 'generic';
+
+function classifySpell(card: Card): SpellCategory {
+  const desc = card.description || '';
+  const hasDamage = desc.includes('伤害');
+  const hasFreeze = desc.includes('冻结');
+  const hasDestroy = desc.includes('消灭');
+  const hasBuff = desc.includes('友方') && (desc.includes('获得') || desc.includes('攻击力') || desc.includes('生命'));
+  if (hasDestroy && !hasDamage) return 'destroy';
+  if (hasFreeze && !hasDamage) return 'freeze';
+  if (hasDamage) return 'damage';
+  if (hasBuff) return 'buff';
+  return 'generic';
+}
+
+export function calculateMinionThreatScore(m: BoardMinion, spellCategory: SpellCategory): number {
+  let score = 0;
+  const effectiveAttack = m.windfury ? m.currentAttack * 2 : m.currentAttack;
+
+  if (spellCategory === 'freeze') {
+    score = effectiveAttack * 3;
+    if (m.isFrozen) score -= 20;
+    if (m.windfury) score += 8;
+    if (m.charge) score += 4;
+    if (m.taunt) score += 5;
+    if (m.hasDivineShield) score += 3;
+    if (m.enrage && !m.enrageActive) score += 3;
+    return score;
+  }
+
+  if (spellCategory === 'destroy') {
+    score = m.currentAttack + m.currentHealth;
+    if (m.windfury) score += 6;
+    if (m.taunt) score += 8;
+    if (m.hasDivineShield) score -= 15;
+    if (m.enrage && !m.enrageActive) score += 4;
+    if (m.isStealth) score -= 2;
+    return score;
+  }
+
+  score = effectiveAttack * 2;
+  if (m.taunt) score += 10;
+  if (m.hasDivineShield) score -= 12;
+  if (m.windfury) score += 6;
+  if (m.enrage && !m.enrageActive) score -= 5;
+  if (!m.isStealth && m.stealth) score += 4;
+  if (m.isFrozen) score -= 3;
+  if (m.charge && m.summoningSickness) score += 3;
+  return score;
+}
+
+export function calculateFriendlyBuffScore(m: BoardMinion): number {
+  let score = 0;
+  score = m.currentAttack + m.currentHealth;
+  if (m.windfury) score += 10;
+  if (m.charge) score += 6;
+  if (m.taunt) score += 4;
+  if (m.hasDivineShield) score += 3;
+  if (m.summoningSickness && !m.charge) score -= 5;
+  if (m.isFrozen) score -= 4;
+  return score;
+}
+
 function pickSpellTarget(card: Card, state: GameState): number | undefined {
   if (card.targetType !== 'enemy_minion') return undefined;
   const player = state.players[state.activePlayer];
@@ -8,13 +71,14 @@ function pickSpellTarget(card: Card, state: GameState): number | undefined {
   const opponentIndex = state.activePlayer === 0 ? 1 : 0;
   const enemyBoard = state.players[opponentIndex].board;
   if (enemyBoard.length === 0) return undefined;
+  const spellCategory = classifySpell(card);
   let bestIdx = -1;
   let bestScore = -Infinity;
   for (let i = 0; i < enemyBoard.length; i++) {
     const m = enemyBoard[i];
     if (m.spellImmune) continue;
     if (!reachableLanes.includes(m.lane)) continue;
-    const score = m.currentAttack * 2 + (m.taunt ? 10 : 0);
+    const score = calculateMinionThreatScore(m, spellCategory);
     if (score > bestScore) { bestScore = score; bestIdx = i; }
   }
   return bestIdx === -1 ? undefined : bestIdx;
@@ -24,13 +88,14 @@ function pickSpellTargetLane(card: Card, state: GameState): Lane | undefined {
   if (card.targetType !== 'lane_aoe') return undefined;
   const opponentIndex = state.activePlayer === 0 ? 1 : 0;
   const enemyBoard = state.players[opponentIndex].board;
+  const spellCategory = classifySpell(card);
   let bestLane: Lane | undefined;
   let bestScore = -Infinity;
   for (const lane of ALL_LANES) {
     let score = 0;
     for (const m of enemyBoard) {
       if (m.lane === lane) {
-        score += m.currentAttack + m.currentHealth + (m.taunt ? 5 : 0);
+        score += calculateMinionThreatScore(m, spellCategory);
       }
     }
     if (score > bestScore) { bestScore = score; bestLane = lane; }
@@ -463,6 +528,18 @@ export function evaluateCardForFaction(card: Card, player: PlayerState): number 
 
   if (player.deckFaction === "qun") {
     if (card.battlecry) score += QUN_VARIANCE_TOLERANCE;
+  }
+
+  if (card.type === "spell") {
+    const category = classifySpell(card);
+    if (category === 'buff' && player.board.length > 0) {
+      let bestBuffScore = 0;
+      for (const m of player.board) {
+        const buffScore = calculateFriendlyBuffScore(m);
+        if (buffScore > bestBuffScore) bestBuffScore = buffScore;
+      }
+      score += Math.floor(bestBuffScore / 3);
+    }
   }
 
   return score;
