@@ -10,6 +10,7 @@ import {
   playCard,
   createPlayerState,
   MAX_HAND_SIZE,
+  Lane,
 } from "./types";
 import { cards } from "./cards";
 
@@ -27,6 +28,7 @@ function makeState(): GameState {
     turnPhase: "play",
     activePlayer: 0,
     spellsPlayed: [[], []], wuComboCount: [0, 0],
+    terrain: { [Lane.Left]: null, [Lane.Center]: null, [Lane.Right]: null },
   };
 }
 
@@ -54,6 +56,9 @@ function makeMinion(card: typeof cards[number], overrides?: Partial<BoardMinion>
     enrageBonus: 0,
     factionAttackBonus: 0,
     factionHealthBonus: 0,
+    formationAtkBonus: 0, formationHpBonus: 0, brotherhoodAtkBonus: 0, brotherhoodHpBonus: 0,
+    wuChargeBonus: 0, wuWeaponBonus: 0, wuComboAtkBonus: 0, wuComboHpBonus: 0, qunDebuff: 0,
+    lane: Lane.Center, slotIndex: 0,
     ...overrides,
   };
 }

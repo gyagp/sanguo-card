@@ -47,6 +47,8 @@ import {
   MAX_LANE_SIZE,
   ALL_LANES,
   LaneBoard,
+  TerrainType,
+  TERRAIN_DEFINITIONS,
 } from "./types";
 
 function makeCard(overrides: Partial<Card> = {}): Card {
@@ -1031,16 +1033,11 @@ describe("Lane system types", () => {
     expect(pos.slotIndex).toBe(2);
   });
 
-  it("TerrainEffect has name, description, and modifiers", () => {
-    const terrain: TerrainEffect = {
-      name: "Forest",
-      description: "Grants stealth",
-      attackModifier: 0,
-      healthModifier: 1,
-    };
-    expect(terrain.name).toBe("Forest");
-    expect(terrain.attackModifier).toBe(0);
-    expect(terrain.healthModifier).toBe(1);
+  it("TerrainEffect has type, name, and description", () => {
+    const terrain = TERRAIN_DEFINITIONS[TerrainType.Fire];
+    expect(terrain.type).toBe(TerrainType.Fire);
+    expect(terrain.name).toBe("烈焰");
+    expect(terrain.description).toBeDefined();
   });
 
   it("BoardMinion has lane and slotIndex fields", () => {
@@ -1250,5 +1247,127 @@ describe("playCard with lane parameters", () => {
     expect(all.map(m => m.name)).toContain("L");
     expect(all.map(m => m.name)).toContain("C");
     expect(all.map(m => m.name)).toContain("R");
+  });
+});
+
+describe("Terrain effects", () => {
+  function setupWithTerrain(terrainType: TerrainType, lane: Lane = Lane.Left): GameState {
+    const state = initializeGame(makeDeck(), makeDeck());
+    state.terrain[lane] = TERRAIN_DEFINITIONS[terrainType];
+    state.activePlayer = 0;
+    state.players[0].maxMana = 10;
+    state.players[0].hero.mana = 10;
+    return state;
+  }
+
+  describe("Fire terrain", () => {
+    it("deals 1 damage to all minions in the fire lane at turn start", () => {
+      const state = setupWithTerrain(TerrainType.Fire, Lane.Left);
+      state.players[0].board = [
+        makeBoardMinion({ name: "A", currentHealth: 5, health: 5, lane: Lane.Left }),
+        makeBoardMinion({ name: "B", currentHealth: 3, health: 3, lane: Lane.Left }),
+      ];
+      startTurn(state);
+      expect(state.players[0].board[0].currentHealth).toBe(4);
+      expect(state.players[0].board[1].currentHealth).toBe(2);
+    });
+
+    it("does not damage minions in other lanes", () => {
+      const state = setupWithTerrain(TerrainType.Fire, Lane.Left);
+      state.players[0].board = [
+        makeBoardMinion({ name: "InFire", currentHealth: 3, health: 3, lane: Lane.Left }),
+        makeBoardMinion({ name: "Safe", currentHealth: 3, health: 3, lane: Lane.Center }),
+      ];
+      startTurn(state);
+      expect(state.players[0].board.find(m => m.name === "Safe")!.currentHealth).toBe(3);
+    });
+
+    it("kills minions at 1 health", () => {
+      const state = setupWithTerrain(TerrainType.Fire, Lane.Left);
+      state.players[0].board = [
+        makeBoardMinion({ name: "Doomed", currentHealth: 1, health: 1, lane: Lane.Left }),
+      ];
+      startTurn(state);
+      expect(state.players[0].board.find(m => m.name === "Doomed")).toBeUndefined();
+    });
+
+    it("does not damage immune minions", () => {
+      const state = setupWithTerrain(TerrainType.Fire, Lane.Left);
+      state.players[0].board = [
+        makeBoardMinion({ name: "Immune", currentHealth: 3, health: 3, lane: Lane.Left, isImmune: true }),
+      ];
+      startTurn(state);
+      expect(state.players[0].board[0].currentHealth).toBe(3);
+    });
+  });
+
+  describe("Healing Aura terrain", () => {
+    it("heals 1 to all minions in the healing lane at turn start", () => {
+      const state = setupWithTerrain(TerrainType.HealingAura, Lane.Center);
+      state.players[0].board = [
+        makeBoardMinion({ name: "Hurt", currentHealth: 2, health: 5, lane: Lane.Center }),
+      ];
+      startTurn(state);
+      expect(state.players[0].board[0].currentHealth).toBe(3);
+    });
+
+    it("does not heal above max health", () => {
+      const state = setupWithTerrain(TerrainType.HealingAura, Lane.Center);
+      state.players[0].board = [
+        makeBoardMinion({ name: "Full", currentHealth: 5, health: 5, lane: Lane.Center }),
+      ];
+      startTurn(state);
+      expect(state.players[0].board[0].currentHealth).toBe(5);
+    });
+
+    it("does not heal minions in other lanes", () => {
+      const state = setupWithTerrain(TerrainType.HealingAura, Lane.Center);
+      state.players[0].board = [
+        makeBoardMinion({ name: "Other", currentHealth: 2, health: 5, lane: Lane.Right }),
+      ];
+      startTurn(state);
+      expect(state.players[0].board[0].currentHealth).toBe(2);
+    });
+  });
+
+  describe("Stealth terrain", () => {
+    it("grants stealth to minions placed in the stealth lane", () => {
+      const state = setupWithTerrain(TerrainType.Stealth, Lane.Right);
+      const card = makeCard({ cost: 1, type: "minion", attack: 2, health: 3 });
+      state.players[0].hand = [card];
+      playCard(state, 0, undefined, Math.random, Lane.Right);
+      const placed = state.players[0].board.find(m => m.lane === Lane.Right);
+      expect(placed).toBeDefined();
+      expect(placed!.isStealth).toBe(true);
+    });
+
+    it("does not grant stealth to minions placed in other lanes", () => {
+      const state = setupWithTerrain(TerrainType.Stealth, Lane.Right);
+      const card = makeCard({ cost: 1, type: "minion", attack: 2, health: 3 });
+      state.players[0].hand = [card];
+      playCard(state, 0, undefined, Math.random, Lane.Center);
+      const placed = state.players[0].board.find(m => m.lane === Lane.Center);
+      expect(placed).toBeDefined();
+      expect(placed!.isStealth).toBe(false);
+    });
+  });
+
+  describe("PVE terrain definitions", () => {
+    it("GameState terrain initializes to all null", () => {
+      const state = initializeGame(makeDeck(), makeDeck());
+      for (const lane of ALL_LANES) {
+        expect(state.terrain[lane]).toBeNull();
+      }
+    });
+
+    it("terrain can be set per lane", () => {
+      const state = initializeGame(makeDeck(), makeDeck());
+      state.terrain[Lane.Left] = TERRAIN_DEFINITIONS[TerrainType.Fire];
+      state.terrain[Lane.Center] = TERRAIN_DEFINITIONS[TerrainType.HealingAura];
+      state.terrain[Lane.Right] = TERRAIN_DEFINITIONS[TerrainType.Stealth];
+      expect(state.terrain[Lane.Left]!.type).toBe(TerrainType.Fire);
+      expect(state.terrain[Lane.Center]!.type).toBe(TerrainType.HealingAura);
+      expect(state.terrain[Lane.Right]!.type).toBe(TerrainType.Stealth);
+    });
   });
 });

@@ -1,4 +1,4 @@
-import { GameState, PlayerState, Card, BoardMinion, Faction, FACTION_SYNERGIES, getEffectiveCardCost, Lane, ALL_LANES, getLaneCount, MAX_LANE_SIZE, getReachableLanes, getSpellReachableLanes } from './types';
+import { GameState, PlayerState, Card, BoardMinion, Faction, FACTION_SYNERGIES, getEffectiveCardCost, Lane, ALL_LANES, getLaneCount, MAX_LANE_SIZE, getReachableLanes, getSpellReachableLanes, TerrainType } from './types';
 
 
 function pickSpellTarget(card: Card, state: GameState): number | undefined {
@@ -349,7 +349,7 @@ function getRandomPlayDecisions(state: GameState): PlayCardDecision[] {
   for (const idx of shuffled) {
     const cost = getEffectiveCardCost(player.hand[idx], player);
     if (cost <= mana) {
-      decisions.push({ type: 'playCard', cardIndex: idx, spellTarget: pickSpellTarget(player.hand[idx], state), targetLane: pickSpellTargetLane(player.hand[idx], state), lane: pickLaneForMinion(player) });
+      decisions.push({ type: 'playCard', cardIndex: idx, spellTarget: pickSpellTarget(player.hand[idx], state), targetLane: pickSpellTargetLane(player.hand[idx], state), lane: pickLaneForMinion(player, player.hand[idx], state) });
       mana -= cost;
     }
   }
@@ -397,21 +397,21 @@ export function getOnCurvePlayDecisions(state: GameState): PlayCardDecision[] {
   for (const idx of sorted) {
     const cost = getEffectiveCardCost(player.hand[idx], player);
     if (cost <= mana) {
-      decisions.push({ type: 'playCard', cardIndex: idx, spellTarget: pickSpellTarget(player.hand[idx], state), targetLane: pickSpellTargetLane(player.hand[idx], state), lane: pickLaneForMinion(player) });
+      decisions.push({ type: 'playCard', cardIndex: idx, spellTarget: pickSpellTarget(player.hand[idx], state), targetLane: pickSpellTargetLane(player.hand[idx], state), lane: pickLaneForMinion(player, player.hand[idx], state) });
       mana -= cost;
     }
   }
   decisions = applyFactionPlayOrder(decisions, player, state);
-  decisions = applyFactionBoardPositions(decisions, player);
+  decisions = applyFactionBoardPositions(decisions, player, state);
   return decisions;
 }
 
 export function getOptimalPlayDecisions(state: GameState): PlayCardDecision[] {
   const player = state.players[state.activePlayer];
   const bestCombo = getBestManaUsage(player.hand, player.hero.mana, player.board, player);
-  let decisions: PlayCardDecision[] = bestCombo.map(idx => ({ type: 'playCard' as const, cardIndex: idx, spellTarget: pickSpellTarget(player.hand[idx], state), targetLane: pickSpellTargetLane(player.hand[idx], state) }));
+  let decisions: PlayCardDecision[] = bestCombo.map(idx => ({ type: 'playCard' as const, cardIndex: idx, spellTarget: pickSpellTarget(player.hand[idx], state), targetLane: pickSpellTargetLane(player.hand[idx], state), lane: pickLaneForMinion(player, player.hand[idx], state) }));
   decisions = applyFactionPlayOrder(decisions, player, state);
-  decisions = applyFactionBoardPositions(decisions, player);
+  decisions = applyFactionBoardPositions(decisions, player, state);
   return decisions;
 }
 
@@ -467,16 +467,39 @@ function applyFactionPlayOrder(decisions: PlayCardDecision[], player: PlayerStat
   return decisions;
 }
 
-function pickLaneForMinion(player: PlayerState): Lane {
-  for (const lane of ALL_LANES) {
-    if (getLaneCount(player, lane) < MAX_LANE_SIZE) {
-      return lane;
+function pickLaneForMinion(player: PlayerState, card?: Card, state?: GameState): Lane {
+  const available = ALL_LANES.filter(l => getLaneCount(player, l) < MAX_LANE_SIZE);
+  if (available.length === 0) return Lane.Center;
+  if (available.length === 1) return available[0];
+
+  let bestLane = available[0];
+  let bestScore = -Infinity;
+
+  for (const lane of available) {
+    let score = 0;
+
+    if (card && card.faction !== "neutral") {
+      const sameFactionInLane = player.board.filter(m => m.lane === lane && m.faction === card.faction).length;
+      if (sameFactionInLane >= 1) score += 5;
+    }
+
+    if (state?.terrain) {
+      const terrain = state.terrain[lane];
+      if (terrain?.type === TerrainType.Fire) score -= 8;
+      if (terrain?.type === TerrainType.HealingAura) score += 2;
+      if (terrain?.type === TerrainType.Stealth) score += 1;
+    }
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestLane = lane;
     }
   }
-  return Lane.Center;
+
+  return bestLane;
 }
 
-function applyLaneAssignments(decisions: PlayCardDecision[], player: PlayerState): PlayCardDecision[] {
+function applyLaneAssignments(decisions: PlayCardDecision[], player: PlayerState, state?: GameState): PlayCardDecision[] {
   const laneCounts = new Map<Lane, number>();
   for (const lane of ALL_LANES) {
     laneCounts.set(lane, getLaneCount(player, lane));
@@ -484,18 +507,36 @@ function applyLaneAssignments(decisions: PlayCardDecision[], player: PlayerState
   return decisions.map(d => {
     const card = player.hand[d.cardIndex];
     if (card.type !== "minion") return d;
-    for (const lane of ALL_LANES) {
-      if ((laneCounts.get(lane) ?? 0) < MAX_LANE_SIZE) {
-        laneCounts.set(lane, (laneCounts.get(lane) ?? 0) + 1);
-        return { ...d, lane };
+    const available = ALL_LANES.filter(l => (laneCounts.get(l) ?? 0) < MAX_LANE_SIZE);
+    if (available.length === 0) return d;
+
+    let bestLane = available[0];
+    let bestScore = -Infinity;
+    for (const lane of available) {
+      let score = 0;
+      if (card.faction !== "neutral") {
+        const sameFaction = player.board.filter(m => m.lane === lane && m.faction === card.faction).length;
+        if (sameFaction >= 1) score += 5;
+      }
+      if (state?.terrain) {
+        const terrain = state.terrain[lane];
+        if (terrain?.type === TerrainType.Fire) score -= 8;
+        if (terrain?.type === TerrainType.HealingAura) score += 2;
+        if (terrain?.type === TerrainType.Stealth) score += 1;
+      }
+      if (score > bestScore) {
+        bestScore = score;
+        bestLane = lane;
       }
     }
-    return d;
+
+    laneCounts.set(bestLane, (laneCounts.get(bestLane) ?? 0) + 1);
+    return { ...d, lane: bestLane };
   });
 }
 
-function applyFactionBoardPositions(decisions: PlayCardDecision[], player: PlayerState): PlayCardDecision[] {
-  decisions = applyLaneAssignments(decisions, player);
+function applyFactionBoardPositions(decisions: PlayCardDecision[], player: PlayerState, state?: GameState): PlayCardDecision[] {
+  decisions = applyLaneAssignments(decisions, player, state);
 
   if (player.deckFaction !== "shu") return decisions;
 

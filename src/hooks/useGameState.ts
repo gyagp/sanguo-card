@@ -16,6 +16,7 @@ import {
   AttackResult,
   HeroPowerResult,
   Lane,
+  TerrainEffect,
 } from "../game/types";
 import { AIDifficulty, createAI, AIDecision, AIStrategy } from "../game/ai";
 import { BossAI } from "../game/boss-ai";
@@ -30,6 +31,7 @@ export interface BossInitConfig {
   bossHp?: number;
   startingMinion?: { name: string; attack: number; health: number; faction?: string };
   spellDiscount?: number;
+  terrain?: Partial<Record<Lane, TerrainEffect>>;
 }
 
 function cloneState(state: GameState): GameState {
@@ -127,6 +129,11 @@ export function useGameState(deck1: Deck, deck2: Deck, aiDifficulty?: AIDifficul
       const deck = state.players[1].deck as unknown as import("../game/types").Card[];
       for (const card of deck) {
         if (card.type === "spell") card.cost = Math.max(0, card.cost - discount);
+      }
+    }
+    if (bossInit?.terrain) {
+      for (const [lane, effect] of Object.entries(bossInit.terrain)) {
+        state.terrain[lane as Lane] = effect;
       }
     }
     startTurn(state);

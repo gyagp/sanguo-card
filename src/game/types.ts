@@ -202,12 +202,23 @@ export interface LanePosition {
   slotIndex: number;
 }
 
+export enum TerrainType {
+  Fire = "fire",
+  HealingAura = "healingAura",
+  Stealth = "stealth",
+}
+
 export interface TerrainEffect {
+  type: TerrainType;
   name: string;
   description: string;
-  attackModifier: number;
-  healthModifier: number;
 }
+
+export const TERRAIN_DEFINITIONS: Record<TerrainType, TerrainEffect> = {
+  [TerrainType.Fire]: { type: TerrainType.Fire, name: "烈焰", description: "每回合开始对该路所有随从造成1点伤害" },
+  [TerrainType.HealingAura]: { type: TerrainType.HealingAura, name: "治愈光环", description: "每回合开始为该路所有随从恢复1点生命" },
+  [TerrainType.Stealth]: { type: TerrainType.Stealth, name: "隐匿地带", description: "放置在该路的随从获得潜行" },
+};
 
 export interface BoardMinion extends Card {
   currentAttack: number;
@@ -410,6 +421,26 @@ export function applyQunTurnStartDebuff(state: GameState, activePlayer: 0 | 1, r
   }
 }
 
+function applyTerrainTurnStart(state: GameState): void {
+  for (const lane of ALL_LANES) {
+    const terrain = state.terrain[lane];
+    if (!terrain) continue;
+    const minionsInLane = state.players[state.activePlayer].board.filter(m => m.lane === lane);
+    if (terrain.type === TerrainType.Fire) {
+      for (const minion of minionsInLane) {
+        if (!minion.isImmune) {
+          minion.currentHealth -= 1;
+        }
+      }
+      removeDeadMinions(state);
+    } else if (terrain.type === TerrainType.HealingAura) {
+      for (const minion of minionsInLane) {
+        minion.currentHealth = Math.min(minion.currentHealth + 1, minion.health + minion.enrageBonus + minion.factionHealthBonus + minion.formationHpBonus + minion.brotherhoodHpBonus + minion.wuComboHpBonus - minion.qunDebuff);
+      }
+    }
+  }
+}
+
 export function startTurn(state: GameState): DrawResult {
   state.turn++;
   state.turnPhase = "start";
@@ -446,6 +477,8 @@ export function startTurn(state: GameState): DrawResult {
   state.turnPhase = "play";
 
   gameEventBus.emit({ type: "turn_start", player: state.activePlayer });
+
+  applyTerrainTurnStart(state);
 
   applyQunTurnStartDebuff(state, state.activePlayer);
 
@@ -619,6 +652,10 @@ export function playCard(
       lane: lane, slotIndex: slotIndex ?? getLaneCount(player, lane),
     };
     player.board.push(minion);
+
+    if (state.terrain[lane]?.type === TerrainType.Stealth) {
+      minion.isStealth = true;
+    }
     recalculateFactionSynergies(player);
 
     if (card.faction === "wu" && card.charge && player.deckFaction === "wu" && player.hasDeckFactionBonus) {

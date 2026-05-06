@@ -57,6 +57,7 @@ function makeGameState(p0Board: BoardMinion[], p1Board: BoardMinion[]): GameStat
     turnPhase: 'play',
     activePlayer: 0,
     spellsPlayed: [[], []], wuComboCount: [0, 0],
+    terrain: { [Lane.Left]: null, [Lane.Center]: null, [Lane.Right]: null },
   };
 }
 

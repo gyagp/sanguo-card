@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { evaluateBoard, getPlayableCards, getBestManaUsage, AIDecision, findLethal, evaluateTrade, getAIAttackDecisions, createAI, AIDifficulty, AIStrategy, evaluateCardForFaction, getOnCurvePlayDecisions, getOptimalPlayDecisions } from './ai';
-import { GameState, PlayerState, Card, BoardMinion, Deck, Faction, Lane } from './types';
+import { GameState, PlayerState, Card, BoardMinion, Deck, Faction, Lane, TerrainType } from './types';
 
 function makeCard(overrides: Partial<Card> = {}): Card {
   return {
@@ -829,4 +829,184 @@ describe('AI responds within 2-second budget', () => {
       expect(elapsed).toBeLessThan(2000);
     });
   }
+});
+
+describe('AI lane system — minion placement', () => {
+  it('AI places minions in valid lane+slot positions', () => {
+    const state = makeGameState(
+      {
+        hand: [makeCard({ cost: 1, type: 'minion', faction: 'shu' }), makeCard({ cost: 2, type: 'minion', faction: 'wei' })],
+        hero: { health: 30, mana: 5, heroPower: { name: '', cost: 2, description: '' } },
+      },
+      {},
+    );
+    for (const difficulty of ['easy', 'normal', 'hard'] as AIDifficulty[]) {
+      const ai = createAI(difficulty);
+      const decisions = ai.getPlayDecisions(state);
+      for (const d of decisions) {
+        if (state.players[0].hand[d.cardIndex].type === 'minion') {
+          expect(d.lane).toBeDefined();
+          expect([Lane.Left, Lane.Center, Lane.Right]).toContain(d.lane);
+        }
+      }
+    }
+  });
+
+  it('AI picks lane with formation bonus (same faction already present)', () => {
+    const state = makeGameState(
+      {
+        hand: [makeCard({ cost: 2, type: 'minion', faction: 'shu', attack: 2, health: 2 })],
+        board: [makeMinion({ faction: 'shu', lane: Lane.Left, slotIndex: 0 })],
+        hero: { health: 30, mana: 5, heroPower: { name: '', cost: 2, description: '' } },
+        deckFaction: 'neutral',
+      },
+      {},
+    );
+    const decisions = getOnCurvePlayDecisions(state);
+    expect(decisions.length).toBe(1);
+    expect(decisions[0].lane).toBe(Lane.Left);
+  });
+
+  it('AI avoids fire terrain when possible', () => {
+    const state = makeGameState(
+      {
+        hand: [makeCard({ cost: 1, type: 'minion', faction: 'neutral', attack: 1, health: 1 })],
+        board: [],
+        hero: { health: 30, mana: 5, heroPower: { name: '', cost: 2, description: '' } },
+      },
+      {},
+    );
+    state.terrain[Lane.Left] = { type: TerrainType.Fire, name: '烈焰', description: '' };
+    state.terrain[Lane.Center] = { type: TerrainType.Fire, name: '烈焰', description: '' };
+    state.terrain[Lane.Right] = null;
+    const decisions = getOnCurvePlayDecisions(state);
+    expect(decisions.length).toBe(1);
+    expect(decisions[0].lane).toBe(Lane.Right);
+  });
+
+  it('AI prefers healing aura terrain', () => {
+    const state = makeGameState(
+      {
+        hand: [makeCard({ cost: 1, type: 'minion', faction: 'neutral', attack: 1, health: 1 })],
+        board: [],
+        hero: { health: 30, mana: 5, heroPower: { name: '', cost: 2, description: '' } },
+      },
+      {},
+    );
+    state.terrain[Lane.Left] = null;
+    state.terrain[Lane.Center] = { type: TerrainType.HealingAura, name: '治愈光环', description: '' };
+    state.terrain[Lane.Right] = null;
+    const decisions = getOnCurvePlayDecisions(state);
+    expect(decisions.length).toBe(1);
+    expect(decisions[0].lane).toBe(Lane.Center);
+  });
+
+  it('formation bonus outweighs terrain preference', () => {
+    const state = makeGameState(
+      {
+        hand: [makeCard({ cost: 2, type: 'minion', faction: 'shu', attack: 2, health: 2 })],
+        board: [makeMinion({ faction: 'shu', lane: Lane.Left, slotIndex: 0 })],
+        hero: { health: 30, mana: 5, heroPower: { name: '', cost: 2, description: '' } },
+      },
+      {},
+    );
+    state.terrain[Lane.Center] = { type: TerrainType.HealingAura, name: '治愈光环', description: '' };
+    const decisions = getOnCurvePlayDecisions(state);
+    expect(decisions.length).toBe(1);
+    // formation bonus (+5) > healing aura (+2)
+    expect(decisions[0].lane).toBe(Lane.Left);
+  });
+});
+
+describe('AI lane system — attack respects lane adjacency', () => {
+  it('AI only attacks targets in reachable lanes', () => {
+    const state = makeGameState(
+      { board: [makeMinion({ currentAttack: 3, currentHealth: 3, lane: Lane.Left })] },
+      {
+        hero: { health: 30, mana: 0, heroPower: { name: '', cost: 2, description: '' } },
+        board: [makeMinion({ currentAttack: 1, currentHealth: 1, lane: Lane.Right })],
+      },
+    );
+    state.activePlayer = 0;
+    const decisions = getAIAttackDecisions(state);
+    // Left lane can only reach Left+Center, not Right — should go face
+    const minionAttacks = decisions.filter(d => d.targetIndex !== 'hero');
+    expect(minionAttacks).toHaveLength(0);
+  });
+
+  it('AI attacks minion in same lane', () => {
+    const state = makeGameState(
+      { board: [makeMinion({ currentAttack: 5, currentHealth: 5, lane: Lane.Center })] },
+      {
+        hero: { health: 30, mana: 0, heroPower: { name: '', cost: 2, description: '' } },
+        board: [makeMinion({ currentAttack: 2, currentHealth: 3, lane: Lane.Center })],
+      },
+    );
+    state.activePlayer = 0;
+    const decisions = getAIAttackDecisions(state);
+    const trade = decisions.find(d => d.targetIndex === 0);
+    expect(trade).toBeDefined();
+  });
+
+  it('AI attacks minion in adjacent lane', () => {
+    const state = makeGameState(
+      { board: [makeMinion({ currentAttack: 5, currentHealth: 5, lane: Lane.Center })] },
+      {
+        hero: { health: 30, mana: 0, heroPower: { name: '', cost: 2, description: '' } },
+        board: [makeMinion({ currentAttack: 2, currentHealth: 3, lane: Lane.Left })],
+      },
+    );
+    state.activePlayer = 0;
+    const decisions = getAIAttackDecisions(state);
+    const trade = decisions.find(d => d.targetIndex === 0);
+    expect(trade).toBeDefined();
+  });
+
+  it('AI respects taunt only in reachable lanes', () => {
+    const state = makeGameState(
+      { board: [makeMinion({ currentAttack: 5, currentHealth: 5, lane: Lane.Left })] },
+      {
+        hero: { health: 30, mana: 0, heroPower: { name: '', cost: 2, description: '' } },
+        board: [makeMinion({ currentAttack: 1, currentHealth: 10, taunt: true, lane: Lane.Right })],
+      },
+    );
+    state.activePlayer = 0;
+    const decisions = getAIAttackDecisions(state);
+    // Taunt is in Right lane, unreachable from Left — AI should go face
+    expect(decisions.length).toBe(1);
+    expect(decisions[0].targetIndex).toBe('hero');
+  });
+
+  it('AI attacks reachable taunt instead of going face', () => {
+    const state = makeGameState(
+      { board: [makeMinion({ currentAttack: 5, currentHealth: 5, lane: Lane.Center })] },
+      {
+        hero: { health: 30, mana: 0, heroPower: { name: '', cost: 2, description: '' } },
+        board: [makeMinion({ currentAttack: 1, currentHealth: 3, taunt: true, lane: Lane.Left })],
+      },
+    );
+    state.activePlayer = 0;
+    const decisions = getAIAttackDecisions(state);
+    expect(decisions.length).toBe(1);
+    expect(decisions[0].targetIndex).toBe(0);
+  });
+
+  it('does not place in full lane', () => {
+    const state = makeGameState(
+      {
+        hand: [makeCard({ cost: 1, type: 'minion', faction: 'shu', attack: 1, health: 1 })],
+        board: [
+          makeMinion({ lane: Lane.Left, slotIndex: 0 }),
+          makeMinion({ lane: Lane.Left, slotIndex: 1 }),
+          makeMinion({ lane: Lane.Center, slotIndex: 0 }),
+          makeMinion({ lane: Lane.Center, slotIndex: 1 }),
+        ],
+        hero: { health: 30, mana: 5, heroPower: { name: '', cost: 2, description: '' } },
+      },
+      {},
+    );
+    const decisions = getOnCurvePlayDecisions(state);
+    expect(decisions.length).toBe(1);
+    expect(decisions[0].lane).toBe(Lane.Right);
+  });
 });

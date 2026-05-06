@@ -1,12 +1,13 @@
 # Autopo test Session
 
 ## Work Unit
-Implement formation bonus — adjacent same-faction minions in the same lane get +1/+1, update recalculateShuBonuses to work with lane system, add generic formation bonus calculation for all factions
+Update AI to use lane system — AI selects lane+slot when playing minions (prefer formation bonus lanes, avoid bad terrain), AI attack selection considers lane restrictions
 
 ## Acceptance Criteria
-- Two same-faction minions in same lane get +1/+1 each
-- Bonus recalculates on minion play/death/move
-- Existing Shu adjacency bonus migrated to new system
+- AI places minions in valid lane+slot positions
+- AI considers formation bonus when choosing lane
+- AI attack selection respects lane adjacency rules
+- AI avoids placing in fire terrain when possible
 - npm run build succeeds
 
 ## Rules

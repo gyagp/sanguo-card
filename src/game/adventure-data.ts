@@ -1,4 +1,5 @@
 import { Reward } from "./progression";
+import { Lane, TerrainEffect, TerrainType, TERRAIN_DEFINITIONS } from "./types";
 
 export interface StarThresholds {
   threeStarMinHpPercent: number;
@@ -27,6 +28,7 @@ export interface AdventureStage {
   isBoss: boolean;
   bossRules?: BossRule;
   tutorialHints?: string[];
+  terrain?: Partial<Record<Lane, TerrainEffect>>;
 }
 
 export interface AdventureChapter {
@@ -140,20 +142,30 @@ export const adventureChapters: AdventureChapter[] = [
         { gold: 25, xp: 45 },
         { threeStarMinHpPercent: 0.5, threeStarMaxTurns: 11, twoStarMinHpPercent: 0.25, twoStarMaxTurns: 15 },
       ),
-      stage("ch2-3", "西凉铁骑", "击败董卓的精锐骑兵",
-        ["长枪兵", "长枪兵", "许褚", "许褚", "夏侯惇", "赵云", "甘宁", "张飞", "辎重车", "辎重车",
-         "运粮车", "征兵令", "征兵令", "烽火", "伏兵", "伏兵", "草药", "草药", "铁剑", "黄忠"],
-        5,
-        { gold: 25, xp: 50 },
-        { threeStarMinHpPercent: 0.5, threeStarMaxTurns: 11, twoStarMinHpPercent: 0.25, twoStarMaxTurns: 15 },
-      ),
-      stage("ch2-4", "火烧洛阳", "在焚烧的洛阳城中战斗",
-        ["长枪兵", "长枪兵", "许褚", "许褚", "夏侯惇", "夏侯惇", "赵云", "甘宁", "张飞", "黄忠",
-         "辎重车", "运粮车", "征兵令", "烽火", "烽火", "伏兵", "伏兵", "草药", "草药", "铁剑"],
-        6,
-        { gold: 30, xp: 55 },
-        { threeStarMinHpPercent: 0.4, threeStarMaxTurns: 12, twoStarMinHpPercent: 0.2, twoStarMaxTurns: 16 },
-      ),
+      {
+        ...stage("ch2-3", "西凉铁骑", "击败董卓的精锐骑兵",
+          ["长枪兵", "长枪兵", "许褚", "许褚", "夏侯惇", "赵云", "甘宁", "张飞", "辎重车", "辎重车",
+           "运粮车", "征兵令", "征兵令", "烽火", "伏兵", "伏兵", "草药", "草药", "铁剑", "黄忠"],
+          5,
+          { gold: 25, xp: 50 },
+          { threeStarMinHpPercent: 0.5, threeStarMaxTurns: 11, twoStarMinHpPercent: 0.25, twoStarMaxTurns: 15 },
+        ),
+        terrain: { [Lane.Left]: TERRAIN_DEFINITIONS[TerrainType.Fire] },
+      },
+      {
+        ...stage("ch2-4", "火烧洛阳", "在焚烧的洛阳城中战斗",
+          ["长枪兵", "长枪兵", "许褚", "许褚", "夏侯惇", "夏侯惇", "赵云", "甘宁", "张飞", "黄忠",
+           "辎重车", "运粮车", "征兵令", "烽火", "烽火", "伏兵", "伏兵", "草药", "草药", "铁剑"],
+          6,
+          { gold: 30, xp: 55 },
+          { threeStarMinHpPercent: 0.4, threeStarMaxTurns: 12, twoStarMinHpPercent: 0.2, twoStarMaxTurns: 16 },
+        ),
+        terrain: {
+          [Lane.Left]: TERRAIN_DEFINITIONS[TerrainType.Fire],
+          [Lane.Center]: TERRAIN_DEFINITIONS[TerrainType.Fire],
+          [Lane.Right]: TERRAIN_DEFINITIONS[TerrainType.Fire],
+        },
+      },
       stage("ch2-5", "追击董卓", "追击逃亡的董卓军",
         ["许褚", "许褚", "夏侯惇", "夏侯惇", "赵云", "赵云", "甘宁", "甘宁", "张飞", "黄忠",
          "辎重车", "运粮车", "征兵令", "征兵令", "伏兵", "伏兵", "烽火", "烽火", "草药", "草药"],
@@ -185,13 +197,16 @@ export const adventureChapters: AdventureChapter[] = [
         { gold: 25, xp: 50 },
         { threeStarMinHpPercent: 0.5, threeStarMaxTurns: 11, twoStarMinHpPercent: 0.25, twoStarMaxTurns: 15 },
       ),
-      stage("ch3-2", "延津之战", "蜀国猛将出阵",
-        ["张飞", "张飞", "赵云", "赵云", "赵云", "黄忠", "黄忠", "长枪兵", "长枪兵", "辎重车",
-         "辎重车", "运粮车", "征兵令", "烽火", "烽火", "伏兵", "草药", "草药", "空城计", "铁剑"],
-        6,
-        { gold: 30, xp: 55 },
+      {
+        ...stage("ch3-2", "延津之战", "蜀国猛将出阵",
+          ["张飞", "张飞", "赵云", "赵云", "赵云", "黄忠", "黄忠", "长枪兵", "长枪兵", "辎重车",
+           "辎重车", "运粮车", "征兵令", "烽火", "烽火", "伏兵", "草药", "草药", "空城计", "铁剑"],
+          6,
+          { gold: 30, xp: 55 },
         { threeStarMinHpPercent: 0.5, threeStarMaxTurns: 11, twoStarMinHpPercent: 0.25, twoStarMaxTurns: 15 },
-      ),
+        ),
+        terrain: { [Lane.Center]: TERRAIN_DEFINITIONS[TerrainType.HealingAura] },
+      },
       stage("ch3-3", "江东之战", "东吴水军精锐",
         ["甘宁", "甘宁", "甘宁", "太史慈", "太史慈", "孙策", "孙策", "长枪兵", "长枪兵", "辎重车",
          "辎重车", "运粮车", "征兵令", "烽火", "烽火", "草船借箭", "草船借箭", "连环计", "草药", "草药"],
@@ -244,13 +259,16 @@ export const adventureChapters: AdventureChapter[] = [
         { gold: 35, xp: 65 },
         { threeStarMinHpPercent: 0.4, threeStarMaxTurns: 12, twoStarMinHpPercent: 0.2, twoStarMaxTurns: 16 },
       ),
-      stage("ch4-3", "草船借箭", "借箭十万",
-        ["赵云", "赵云", "甘宁", "甘宁", "典韦", "典韦", "辎重车", "运粮车", "征兵令", "征兵令",
-         "伏兵", "伏兵", "烽火", "烽火", "草药", "草药", "草船借箭", "草船借箭", "连环计", "空城计"],
-        8,
-        { gold: 35, xp: 70 },
-        { threeStarMinHpPercent: 0.3, threeStarMaxTurns: 13, twoStarMinHpPercent: 0.15, twoStarMaxTurns: 17 },
-      ),
+      {
+        ...stage("ch4-3", "草船借箭", "借箭十万",
+          ["赵云", "赵云", "甘宁", "甘宁", "典韦", "典韦", "辎重车", "运粮车", "征兵令", "征兵令",
+           "伏兵", "伏兵", "烽火", "烽火", "草药", "草药", "草船借箭", "草船借箭", "连环计", "空城计"],
+          8,
+          { gold: 35, xp: 70 },
+          { threeStarMinHpPercent: 0.3, threeStarMaxTurns: 13, twoStarMinHpPercent: 0.15, twoStarMaxTurns: 17 },
+        ),
+        terrain: { [Lane.Right]: TERRAIN_DEFINITIONS[TerrainType.Stealth] },
+      },
       stage("ch4-4", "连环计", "实施庞统的连环计",
         ["张飞", "张飞", "黄忠", "黄忠", "太史慈", "孙策", "辎重车", "运粮车", "征兵令", "征兵令",
          "伏兵", "伏兵", "烽火", "烽火", "草药", "草药", "连环计", "连环计", "草船借箭", "空城计"],

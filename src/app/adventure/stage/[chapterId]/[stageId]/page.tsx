@@ -321,15 +321,21 @@ function AdventureBattle({ stage, playerDeck, chapterId }: { stage: AdventureSta
   }, [stage.bossRules?.uniqueHeroPower]);
 
   const bossInit = useMemo((): BossInitConfig | undefined => {
-    if (!stage.isBoss || !stage.bossRules) return undefined;
-    const rules = stage.bossRules;
-    if (!rules.bossHp && !rules.startingMinion && !rules.spellDiscount) return undefined;
-    return {
-      bossHp: rules.bossHp,
-      startingMinion: rules.startingMinion,
-      spellDiscount: rules.spellDiscount,
-    };
-  }, [stage.isBoss, stage.bossRules]);
+    const hasTerrain = stage.terrain && Object.keys(stage.terrain).length > 0;
+    if (stage.isBoss && stage.bossRules) {
+      const rules = stage.bossRules;
+      return {
+        bossHp: rules.bossHp,
+        startingMinion: rules.startingMinion,
+        spellDiscount: rules.spellDiscount,
+        terrain: stage.terrain,
+      };
+    }
+    if (hasTerrain) {
+      return { terrain: stage.terrain };
+    }
+    return undefined;
+  }, [stage.isBoss, stage.bossRules, stage.terrain]);
 
   const { gameState, winner, isOpponentTurn, playCard, attack, attackHero, endTurn, useHeroPower } = useGameState(
     playerDeck,
