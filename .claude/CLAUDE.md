@@ -1,11 +1,10 @@
 # Autopo test Session
 
 ## Work Unit
-Add 5 Qun spells and 2 Qun weapons — design faction-themed spells (chaos/betrayal/sacrifice) and weapons
+Add 2 Qun trap cards — design traps fitting Qun chaotic identity (e.g., betrayal trap, chaos trap)
 
 ## Acceptance Criteria
-- 5 new Qun spells added
-- 2 new Qun weapons added
+- 2 Qun trap cards added
 - npm run build succeeds
 
 ## Rules

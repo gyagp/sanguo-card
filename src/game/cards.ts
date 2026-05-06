@@ -798,6 +798,31 @@ export const cards: Card[] = [
       return state;
     },
   },
+  {
+    name: "背刺陷阱", cost: 2, attack: 0, health: 0, description: "陷阱：当对手的随从攻击时，对攻击者造成2点伤害并对敌方英雄造成2点伤害",
+    rarity: "rare", type: "trap", faction: "qun",
+    trapTrigger: "on_attack",
+    trapEffect: (state: GameState, context) => {
+      if (context.triggeringMinion) {
+        context.triggeringMinion.currentHealth -= 2;
+      }
+      const enemy = context.player === 0 ? 1 : 0;
+      state.players[enemy].hero.health -= 2;
+      return state;
+    },
+  },
+  {
+    name: "混乱之阵", cost: 3, attack: 0, health: 0, description: "陷阱：当对手施放法术时，对敌方所有随从造成2点伤害",
+    rarity: "rare", type: "trap", faction: "qun",
+    trapTrigger: "on_spell",
+    trapEffect: (state: GameState, context) => {
+      const enemy = context.player === 0 ? 1 : 0;
+      for (const minion of state.players[enemy].board) {
+        minion.currentHealth -= 2;
+      }
+      return state;
+    },
+  },
 
   // === 魏国法术 (5) ===
   {

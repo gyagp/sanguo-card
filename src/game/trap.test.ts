@@ -299,6 +299,139 @@ describe("Trap triggering", () => {
   });
 });
 
+describe("背刺陷阱 (Backstab Trap)", () => {
+  it("triggers on opponent attack, deals 2 to attacker and 2 to enemy hero", () => {
+    const state = makeTestState();
+    const trapCard = getTrapCard("背刺陷阱");
+    state.players[1].activeTraps = [{
+      card: trapCard,
+      trigger: trapCard.trapTrigger!,
+      effect: trapCard.trapEffect!,
+    }];
+
+    const attacker = makeMinion("Attacker", 2, 5);
+    state.players[0].board = [attacker];
+    const defender = makeMinion("Defender", 1, 5);
+    state.players[1].board = [defender];
+
+    const heroHealthBefore = state.players[0].hero.health;
+    attackMinion(state, 0, 0);
+
+    // Attacker takes 2 from trap + 1 from defender = 3
+    expect(attacker.currentHealth).toBe(5 - 1 - 2);
+    // Enemy hero takes 2 damage from trap
+    expect(state.players[0].hero.health).toBe(heroHealthBefore - 2);
+  });
+
+  it("is removed after triggering", () => {
+    const state = makeTestState();
+    const trapCard = getTrapCard("背刺陷阱");
+    state.players[1].activeTraps = [{
+      card: trapCard,
+      trigger: trapCard.trapTrigger!,
+      effect: trapCard.trapEffect!,
+    }];
+
+    const attacker = makeMinion("Attacker", 2, 5);
+    state.players[0].board = [attacker];
+    const defender = makeMinion("Defender", 1, 5);
+    state.players[1].board = [defender];
+
+    attackMinion(state, 0, 0);
+
+    expect(state.players[1].activeTraps).toHaveLength(0);
+  });
+
+  it("has correct card properties", () => {
+    const card = getTrapCard("背刺陷阱");
+    expect(card.type).toBe("trap");
+    expect(card.faction).toBe("qun");
+    expect(card.rarity).toBe("rare");
+    expect(card.cost).toBe(2);
+    expect(card.trapTrigger).toBe("on_attack");
+    expect(card.trapEffect).toBeDefined();
+  });
+});
+
+describe("混乱之阵 (Chaos Formation Trap)", () => {
+  it("triggers on opponent spell and deals 2 damage to all enemy minions", () => {
+    const state = makeTestState();
+    const trapCard = getTrapCard("混乱之阵");
+    // Player 1 sets the trap
+    state.players[1].activeTraps = [{
+      card: trapCard,
+      trigger: trapCard.trapTrigger!,
+      effect: trapCard.trapEffect!,
+    }];
+
+    // Player 0 has minions on board
+    const m1 = makeMinion("M1", 2, 5);
+    const m2 = makeMinion("M2", 3, 3);
+    state.players[0].board = [m1, m2];
+
+    // Player 0 casts a spell
+    const spell = cards.find((c) => c.name === "草药")!;
+    state.players[0].hand = [{ ...spell }];
+    playCard(state, 0);
+
+    // Both enemy minions should take 2 damage
+    expect(m1.currentHealth).toBe(5 - 2);
+    expect(m2.currentHealth).toBe(3 - 2);
+  });
+
+  it("is removed after triggering", () => {
+    const state = makeTestState();
+    const trapCard = getTrapCard("混乱之阵");
+    state.players[1].activeTraps = [{
+      card: trapCard,
+      trigger: trapCard.trapTrigger!,
+      effect: trapCard.trapEffect!,
+    }];
+
+    state.players[0].board = [makeMinion("M1", 2, 5)];
+    const spell = cards.find((c) => c.name === "草药")!;
+    state.players[0].hand = [{ ...spell }];
+    playCard(state, 0);
+
+    expect(state.players[1].activeTraps).toHaveLength(0);
+  });
+
+  it("has correct card properties", () => {
+    const card = getTrapCard("混乱之阵");
+    expect(card.type).toBe("trap");
+    expect(card.faction).toBe("qun");
+    expect(card.rarity).toBe("rare");
+    expect(card.cost).toBe(3);
+    expect(card.trapTrigger).toBe("on_spell");
+    expect(card.trapEffect).toBeDefined();
+  });
+
+  it("does not damage trap owner's minions", () => {
+    const state = makeTestState();
+    const trapCard = getTrapCard("混乱之阵");
+    state.players[1].activeTraps = [{
+      card: trapCard,
+      trigger: trapCard.trapTrigger!,
+      effect: trapCard.trapEffect!,
+    }];
+
+    // Player 1 (trap owner) has minions too
+    const ownerMinion = makeMinion("OwnerM", 2, 5);
+    state.players[1].board = [ownerMinion];
+
+    const enemyMinion = makeMinion("EnemyM", 2, 5);
+    state.players[0].board = [enemyMinion];
+
+    const spell = cards.find((c) => c.name === "草药")!;
+    state.players[0].hand = [{ ...spell }];
+    playCard(state, 0);
+
+    // Enemy minions take 2 damage, owner's minions are unaffected
+    expect(enemyMinion.currentHealth).toBe(5 - 2);
+    expect(ownerMinion.currentHealth).toBe(5);
+  });
+});
+
 describe("Full trap lifecycle", () => {
   it("play trap from hand, opponent triggers it, trap is removed", () => {
     const state = makeTestState();
