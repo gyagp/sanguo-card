@@ -86,7 +86,7 @@ describe('Wu spells and weapons card data', () => {
   });
 
   // New Wu spells from current work unit
-  const newSpellNames = ['火攻', '水淹七军', '苦肉计', '反间计', '东风破'];
+  const newSpellNames = ['火攻', '水淹七军', '苦肉计', '冰寒刺骨', '东风破'];
   const newWeaponNames = ['古锭刀', '碧血剑'];
 
   for (const name of newSpellNames) {
@@ -132,8 +132,8 @@ describe('Wu spell effects', () => {
     expect(state.players[0].hand.length).toBe(2);
   });
 
-  it('反间计 deals 2 damage and freezes target, draws 1 card', () => {
-    const card = cards.find(c => c.name === '反间计' && c.faction === 'wu')!;
+  it('冰寒刺骨 deals 2 damage and freezes target, draws 1 card', () => {
+    const card = cards.find(c => c.name === '冰寒刺骨' && c.faction === 'wu')!;
     const state = makeGameState();
     const target = makeMinion({ currentHealth: 5, maxHealth: 5 });
     state.players[1].board.push(target);

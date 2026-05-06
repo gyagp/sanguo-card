@@ -739,6 +739,7 @@ export const cards: Card[] = [
   },
 
   // === 陷阱 (7) ===
+
   {
     name: "埋伏", cost: 2, attack: 0, health: 0, description: "陷阱：当对手的随从攻击时，对其造成3点伤害",
     rarity: "rare", type: "trap", faction: "shu",
@@ -1249,7 +1250,7 @@ export const cards: Card[] = [
     },
   },
   {
-    name: "反间计", cost: 3, attack: 0, health: 0, description: "对一个敌方随从造成2点伤害并使其冻结。抽1张牌",
+    name: "冰寒刺骨", cost: 3, attack: 0, health: 0, description: "对一个敌方随从造成2点伤害并使其冻结。抽1张牌",
     rarity: "rare", type: "spell", faction: "wu",
     targetType: "enemy_minion",
     effect: (state: GameState, context: EffectContext) => {
@@ -1308,6 +1309,357 @@ export const cards: Card[] = [
       return state;
     },
   },
+
+  // === 群雄随从 (20) ===
+  // Common (4)
+  {
+    name: "黄巾力士", cost: 1, attack: 2, health: 1, description: "亡语：对双方英雄各造成1点伤害",
+    rarity: "common", type: "minion", faction: "qun",
+    deathrattle: (state: GameState, context) => {
+      state.players[0].hero.health -= 1;
+      state.players[1].hero.health -= 1;
+      return state;
+    },
+  },
+  {
+    name: "山贼头目", cost: 2, attack: 3, health: 2, description: "战吼：弃一张牌，抽两张牌",
+    rarity: "common", type: "minion", faction: "qun",
+    battlecry: (state: GameState, context) => {
+      const player = state.players[context.player];
+      if (player.hand.length > 0) {
+        player.hand.splice(Math.floor(Math.random() * player.hand.length), 1);
+        drawCard(player);
+        drawCard(player);
+      }
+      return state;
+    },
+  },
+  {
+    name: "流浪剑客", cost: 2, attack: 2, health: 2, description: "冲锋。亡语：对自己英雄造成2点伤害",
+    rarity: "common", type: "minion", faction: "qun",
+    charge: true,
+    deathrattle: (state: GameState, context) => {
+      state.players[context.player].hero.health -= 2;
+      return state;
+    },
+  },
+  {
+    name: "雇佣弩手", cost: 3, attack: 4, health: 2, description: "战吼：对一个随机敌方随从造成2点伤害。亡语：对自己英雄造成1点伤害",
+    rarity: "common", type: "minion", faction: "qun",
+    battlecry: (state: GameState, context) => {
+      const enemy = context.player === 0 ? 1 : 0;
+      const targets = state.players[enemy].board;
+      if (targets.length > 0) {
+        const target = targets[Math.floor(Math.random() * targets.length)];
+        target.currentHealth -= 2;
+      }
+      return state;
+    },
+    deathrattle: (state: GameState, context) => {
+      state.players[context.player].hero.health -= 1;
+      return state;
+    },
+  },
+  // Rare (3)
+  {
+    name: "张角", cost: 3, attack: 2, health: 4, description: "战吼：对所有随从造成1点伤害",
+    rarity: "rare", type: "minion", faction: "qun",
+    battlecry: (state: GameState, context) => {
+      for (const p of state.players) {
+        for (const m of p.board) {
+          m.currentHealth -= 1;
+        }
+      }
+      return state;
+    },
+  },
+  {
+    name: "华雄", cost: 4, attack: 5, health: 4, description: "冲锋。回合结束时对自己英雄造成2点伤害",
+    rarity: "rare", type: "minion", faction: "qun",
+    charge: true,
+    endOfTurn: (state: GameState, context) => {
+      state.players[context.player].hero.health -= 2;
+      return state;
+    },
+  },
+  {
+    name: "李儒", cost: 4, attack: 3, health: 5, description: "战吼：双方各弃一张牌。亡语：双方各抽一张牌",
+    rarity: "rare", type: "minion", faction: "qun",
+    battlecry: (state: GameState, context) => {
+      for (const p of state.players) {
+        if (p.hand.length > 0) {
+          p.hand.splice(Math.floor(Math.random() * p.hand.length), 1);
+        }
+      }
+      return state;
+    },
+    deathrattle: (state: GameState, context) => {
+      for (const p of state.players) {
+        drawCard(p);
+      }
+      return state;
+    },
+  },
+  // Epic (3)
+  {
+    name: "董卓", cost: 6, attack: 6, health: 6, description: "嘲讽。战吼：摧毁一个友方随从，获得其攻击力",
+    rarity: "epic", type: "minion", faction: "qun",
+    taunt: true,
+    battlecry: (state: GameState, context) => {
+      const board = state.players[context.player].board;
+      const self = context.sourceCard as BoardMinion;
+      const others = board.filter(m => m !== self);
+      if (others.length > 0) {
+        const idx = Math.floor(Math.random() * others.length);
+        const target = others[idx];
+        self.currentAttack += target.currentAttack;
+        const boardIdx = board.indexOf(target);
+        board.splice(boardIdx, 1);
+      }
+      return state;
+    },
+  },
+  {
+    name: "貂蝉", cost: 5, attack: 4, health: 4, description: "战吼：使一个敌方随从攻击另一个敌方随从",
+    rarity: "epic", type: "minion", faction: "qun",
+    battlecry: (state: GameState, context) => {
+      const enemy = context.player === 0 ? 1 : 0;
+      const enemyBoard = state.players[enemy].board;
+      if (enemyBoard.length >= 2) {
+        const i = Math.floor(Math.random() * enemyBoard.length);
+        let j = Math.floor(Math.random() * (enemyBoard.length - 1));
+        if (j >= i) j++;
+        enemyBoard[i].currentHealth -= enemyBoard[j].currentAttack;
+        enemyBoard[j].currentHealth -= enemyBoard[i].currentAttack;
+      }
+      return state;
+    },
+  },
+  {
+    name: "张宝", cost: 5, attack: 4, health: 6, description: "战吼：对所有敌方随从造成2点伤害，对自己英雄造成3点伤害",
+    rarity: "epic", type: "minion", faction: "qun",
+    battlecry: (state: GameState, context) => {
+      const enemy = context.player === 0 ? 1 : 0;
+      for (const m of state.players[enemy].board) {
+        m.currentHealth -= 2;
+      }
+      state.players[context.player].hero.health -= 3;
+      return state;
+    },
+  },
+  // Common (4) - new Qun minions
+  {
+    name: "黄巾贼兵", cost: 1, attack: 2, health: 2, description: "亡语：随机弃一张手牌",
+    rarity: "common", type: "minion", faction: "qun",
+    deathrattle: (state: GameState, context) => {
+      const hand = state.players[context.player].hand;
+      if (hand.length > 0) {
+        hand.splice(Math.floor(Math.random() * hand.length), 1);
+      }
+      return state;
+    },
+  },
+  {
+    name: "马匪斥候", cost: 2, attack: 3, health: 1, description: "冲锋。亡语：对随机一个友方随从造成1点伤害",
+    rarity: "common", type: "minion", faction: "qun",
+    charge: true,
+    deathrattle: (state: GameState, context) => {
+      const board = state.players[context.player].board;
+      const alive = board.filter(m => m.currentHealth > 0);
+      if (alive.length > 0) {
+        const target = alive[Math.floor(Math.random() * alive.length)];
+        target.currentHealth -= 1;
+      }
+      return state;
+    },
+  },
+  {
+    name: "赏金猎人", cost: 3, attack: 4, health: 3, description: "战吼：对自己英雄造成2点伤害，抽一张牌",
+    rarity: "common", type: "minion", faction: "qun",
+    battlecry: (state: GameState, context) => {
+      state.players[context.player].hero.health -= 2;
+      drawCard(state.players[context.player]);
+      return state;
+    },
+  },
+  {
+    name: "草原骑兵", cost: 4, attack: 5, health: 3, description: "冲锋。亡语：对双方英雄各造成2点伤害",
+    rarity: "common", type: "minion", faction: "qun",
+    charge: true,
+    deathrattle: (state: GameState, context) => {
+      state.players[0].hero.health -= 2;
+      state.players[1].hero.health -= 2;
+      return state;
+    },
+  },
+  // Rare (3) - new Qun minions
+  {
+    name: "黑山贼将", cost: 3, attack: 4, health: 4, description: "战吼：对自己英雄造成3点伤害",
+    rarity: "rare", type: "minion", faction: "qun",
+    battlecry: (state: GameState, context) => {
+      state.players[context.player].hero.health -= 3;
+      return state;
+    },
+  },
+  {
+    name: "西凉铁骑", cost: 5, attack: 6, health: 4, description: "冲锋。回合结束时随机弃一张手牌",
+    rarity: "rare", type: "minion", faction: "qun",
+    charge: true,
+    endOfTurn: (state: GameState, context) => {
+      const hand = state.players[context.player].hand;
+      if (hand.length > 0) {
+        hand.splice(Math.floor(Math.random() * hand.length), 1);
+      }
+      return state;
+    },
+  },
+  {
+    name: "毒士贾诩", cost: 4, attack: 3, health: 4, description: "战吼：对所有其他随从造成1点伤害，对自己英雄造成2点伤害",
+    rarity: "rare", type: "minion", faction: "qun",
+    battlecry: (state: GameState, context) => {
+      const self = context.sourceCard as BoardMinion;
+      for (const p of state.players) {
+        for (const m of p.board) {
+          if (m !== self) {
+            m.currentHealth -= 1;
+          }
+        }
+      }
+      state.players[context.player].hero.health -= 2;
+      return state;
+    },
+  },
+  // Epic (3) - new Qun minions
+  {
+    name: "飞熊军统领", cost: 6, attack: 7, health: 5, description: "冲锋。风怒。回合结束时对自己英雄造成3点伤害",
+    rarity: "epic", type: "minion", faction: "qun",
+    charge: true,
+    windfury: true,
+    endOfTurn: (state: GameState, context) => {
+      state.players[context.player].hero.health -= 3;
+      return state;
+    },
+  },
+  {
+    name: "乱世枭雄", cost: 5, attack: 5, health: 5, description: "战吼：摧毁所有其他随从（包括友方），对自己英雄造成对方被摧毁随从数×2伤害",
+    rarity: "epic", type: "minion", faction: "qun",
+    battlecry: (state: GameState, context) => {
+      const self = context.sourceCard as BoardMinion;
+      const enemy = context.player === 0 ? 1 : 0;
+      const enemyCount = state.players[enemy].board.length;
+      state.players[enemy].board.length = 0;
+      state.players[context.player].board = state.players[context.player].board.filter(m => m === self);
+      state.players[context.player].hero.health -= enemyCount * 2;
+      return state;
+    },
+  },
+  {
+    name: "白波贼帅", cost: 4, attack: 3, health: 3, description: "战吼：召唤两个2/1黄巾小兵。亡语：对自己英雄造成2点伤害",
+    rarity: "epic", type: "minion", faction: "qun",
+    battlecry: (state: GameState, context) => {
+      const board = state.players[context.player].board;
+      for (let i = 0; i < 2 && board.length < MAX_BOARD_SIZE; i++) {
+        board.push(createTokenMinion("黄巾小兵"));
+      }
+      return state;
+    },
+    deathrattle: (state: GameState, context) => {
+      state.players[context.player].hero.health -= 2;
+      return state;
+    },
+  },
+
+  // === 群雄法术 (5) ===
+  {
+    name: "挑拨离间", cost: 2, attack: 0, health: 0, description: "使一个敌方随从攻击一个相邻友方随从",
+    rarity: "common", type: "spell", faction: "qun", targetType: "enemy_minion",
+    effect: (state: GameState, context) => {
+      const enemyPlayer = context.player === 0 ? 1 : 0;
+      const board = state.players[enemyPlayer].board;
+      if (context.targetIndex === undefined) return state;
+      const target = board[context.targetIndex];
+      if (!target) return state;
+      const adjacentIndex = context.targetIndex > 0 ? context.targetIndex - 1 : context.targetIndex + 1;
+      const adjacent = board[adjacentIndex];
+      if (!adjacent) return state;
+      adjacent.currentHealth -= target.currentAttack;
+      target.currentHealth -= adjacent.currentAttack;
+      return state;
+    },
+  },
+  {
+    name: "黄巾起义", cost: 4, attack: 0, health: 0, description: "召唤3个2/1黄巾小兵",
+    rarity: "common", type: "spell", faction: "qun",
+    effect: (state: GameState, context) => {
+      const board = state.players[context.player].board;
+      for (let i = 0; i < 3 && board.length < MAX_BOARD_SIZE; i++) {
+        board.push(createTokenMinion("黄巾小兵"));
+      }
+      return state;
+    },
+  },
+  {
+    name: "以命换命", cost: 3, attack: 0, health: 0, description: "对自己英雄造成5点伤害，对敌方英雄造成5点伤害",
+    rarity: "rare", type: "spell", faction: "qun",
+    effect: (state: GameState, context) => {
+      const enemyPlayer = context.player === 0 ? 1 : 0;
+      state.players[context.player].hero.health -= 5;
+      state.players[enemyPlayer].hero.health -= 5;
+      return state;
+    },
+  },
+  {
+    name: "群雄割据", cost: 5, attack: 0, health: 0, description: "对所有随从造成3点伤害（包括己方）",
+    rarity: "rare", type: "spell", faction: "qun",
+    effect: (state: GameState, context) => {
+      const spellDmg = context.spellDamage ?? 0;
+      const damage = 3 + spellDmg;
+      for (const player of state.players) {
+        for (const minion of player.board) {
+          minion.currentHealth -= damage;
+        }
+      }
+      return state;
+    },
+  },
+  {
+    name: "焚城之计", cost: 7, attack: 0, health: 0, description: "消灭所有随从，对双方英雄造成3点伤害",
+    rarity: "epic", type: "spell", faction: "qun",
+    effect: (state: GameState, context) => {
+      for (const player of state.players) {
+        for (const minion of player.board) {
+          minion.currentHealth = 0;
+        }
+        player.hero.health -= 3;
+      }
+      return state;
+    },
+  },
+
+  // === 群雄武器 (2) ===
+  {
+    name: "混铁蛇矛", cost: 3, attack: 4, health: 2, description: "战吼：对自己英雄造成2点伤害",
+    rarity: "common", type: "weapon", faction: "qun",
+    battlecry: (state: GameState, context) => {
+      state.players[context.player].hero.health -= 2;
+      return state;
+    },
+  },
+  {
+    name: "七星宝刀", cost: 5, attack: 5, health: 3, description: "装备时：对一个敌方随从造成3点伤害",
+    rarity: "epic", type: "weapon", faction: "qun", targetType: "enemy_minion",
+    battlecry: (state: GameState, context) => {
+      const enemyPlayer = context.player === 0 ? 1 : 0;
+      if (context.targetIndex !== undefined) {
+        const target = state.players[enemyPlayer].board[context.targetIndex];
+        if (target) {
+          target.currentHealth -= 3;
+        }
+      }
+      return state;
+    },
+  },
+
 ];
 
 const spellCardPool = cards.filter(c => c.type === "spell");

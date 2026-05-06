@@ -35,6 +35,7 @@ export const TOKEN_REGISTRY: Record<string, TokenDefinition> = {
   西凉精锐: defineToken("西凉精锐", 3, 2, "qun"),
   袁军精锐: defineToken("袁军精锐", 3, 3, "neutral"),
   蜀国伏兵: defineToken("蜀国伏兵", 2, 1, "shu"),
+  黄巾小兵: defineToken("黄巾小兵", 2, 1, "qun"),
 };
 
 export type TokenName = keyof typeof TOKEN_REGISTRY;

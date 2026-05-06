@@ -124,6 +124,7 @@ export interface Card {
   trapTrigger?: TrapTrigger;
   trapEffect?: Effect;
   heroSkill?: HeroSkill;
+  endOfTurn?: Effect;
 }
 
 export type HeroPowerEffect = (state: GameState, playerIndex: 0 | 1) => void;
@@ -525,6 +526,11 @@ export function startTurn(state: GameState): DrawResult {
 
 export function endTurn(state: GameState): void {
   state.turnPhase = "end";
+  for (const m of state.players[state.activePlayer].board) {
+    if (m.endOfTurn) {
+      m.endOfTurn(state, { player: state.activePlayer, sourceCard: m, event: { type: "turn_end", player: state.activePlayer, state } });
+    }
+  }
   triggerHeroSkills(state, state.activePlayer, "on_turn_end");
   gameEventBus.emit({ type: "turn_end", player: state.activePlayer, state });
   state.activePlayer = state.activePlayer === 0 ? 1 : 0;

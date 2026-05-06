@@ -1,11 +1,11 @@
 # Autopo test Session
 
 ## Work Unit
-Add 5 Wu spells and 2 Wu weapons — design faction-themed spells (fire/water/combo) and weapons
+Add 5 Qun spells and 2 Qun weapons — design faction-themed spells (chaos/betrayal/sacrifice) and weapons
 
 ## Acceptance Criteria
-- 5 new Wu spells added
-- 2 new Wu weapons added
+- 5 new Qun spells added
+- 2 new Qun weapons added
 - npm run build succeeds
 
 ## Rules
