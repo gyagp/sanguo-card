@@ -273,6 +273,74 @@ describe("Lane UI acceptance criteria", () => {
     expect(pageContent).toMatch(/terrain\??\s*:\s*Record<Lane,\s*TerrainEffect/);
   });
 
+  describe("attack UI lane restrictions", () => {
+    it("validTargetIndices filters by getReachableLanes for attacker", () => {
+      expect(pageContent).toMatch(/getReachableLanes\(attackerMinion\.lane\)/);
+      expect(pageContent).toMatch(/reachable\.includes\(m\.lane\)/);
+    });
+
+    it("valid targets get targetable prop (red border highlight)", () => {
+      expect(pageContent).toMatch(/targetable=\{.*validTargetIndices.*\.has\(/);
+    });
+
+    it("invalid targets get dimmed prop (opacity-50 + pointer-events-none)", () => {
+      expect(pageContent).toMatch(/dimmed=\{.*validTargetIndices.*!validTargetIndices\.has\(/);
+    });
+
+    it("dimmed minions have opacity-50 and cursor-not-allowed", () => {
+      expect(pageContent).toMatch(/exhausted \|\| dimmed \? "opacity-50"/);
+      expect(pageContent).toMatch(/exhausted \|\| dimmed \? "cursor-not-allowed pointer-events-none"/);
+    });
+
+    it("hero targetability respects lane-scoped taunt", () => {
+      expect(pageContent).toMatch(/isHeroTargetable/);
+      expect(pageContent).toMatch(/getReachableLanes\(attackerMinion\.lane\)/);
+      expect(pageContent).toMatch(/hasTaunt && !m\.taunt/);
+    });
+
+    it("spell targeting uses getSpellReachableLanes", () => {
+      expect(pageContent).toMatch(/getSpellReachableLanes\(player\)/);
+      expect(pageContent).toMatch(/m\.spellImmune/);
+    });
+  });
+
+  describe("lane AOE spell targeting", () => {
+    it("pendingLaneAoe state exists for lane AOE selection step", () => {
+      expect(pageContent).toMatch(/pendingLaneAoe/);
+      expect(pageContent).toMatch(/setPendingLaneAoe/);
+    });
+
+    it("lane_aoe cards trigger lane selection UI instead of immediate play", () => {
+      expect(pageContent).toMatch(/lane_aoe/);
+      expect(pageContent).toMatch(/setPendingLaneAoe\(/);
+    });
+
+    it("lane AOE prompt shows '选择目标战线' label", () => {
+      expect(pageContent).toMatch(/选择目标战线/);
+    });
+
+    it("lane AOE prompt renders a button per lane (左/中/右)", () => {
+      expect(pageContent).toMatch(/ALL_LANES\.map\(lane =>/);
+      expect(pageContent).toMatch(/pendingLaneAoe/);
+    });
+
+    it("clicking a lane button calls handlePlayCard with targetLane", () => {
+      expect(pageContent).toMatch(/handlePlayCard\(handIndex, cardEl, undefined, lane\)/);
+    });
+  });
+
+  describe("lane labels visible", () => {
+    it("LANE_LABELS maps Left/Center/Right to 左/中/右", () => {
+      expect(pageContent).toMatch(/\[Lane\.Left\]:\s*"左"/);
+      expect(pageContent).toMatch(/\[Lane\.Center\]:\s*"中"/);
+      expect(pageContent).toMatch(/\[Lane\.Right\]:\s*"右"/);
+    });
+
+    it("lane labels rendered in LaneBoardZone", () => {
+      expect(pageContent).toMatch(/LANE_LABELS\[lane\]/);
+    });
+  });
+
   it("drag-and-drop targets specific lane via dragOverLane state", () => {
     expect(pageContent).toMatch(/dragOverLane/);
     expect(pageContent).toMatch(/setDragOverLane/);

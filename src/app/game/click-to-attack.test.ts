@@ -102,7 +102,7 @@ describe("Click-to-attack: clicking enemy hero triggers attackHero", () => {
 
   it("HeroPortrait accepts onClick and targetable props", () => {
     expect(pageContent).toMatch(/<HeroPortrait\s+player=\{opponent\}[^>]*onClick=\{handleEnemyHeroClick\}/);
-    expect(pageContent).toMatch(/<HeroPortrait\s+player=\{opponent\}[^>]*targetable=\{selectedAttacker\s*!==\s*null\}/);
+    expect(pageContent).toMatch(/<HeroPortrait\s+player=\{opponent\}[^>]*targetable=\{isHeroTargetable\}/);
   });
 
   it("HeroPortrait shows targetable border when targetable", () => {
@@ -139,11 +139,11 @@ describe("Click-to-attack: exhausted minions are dimmed and not selectable", () 
   });
 
   it("exhausted minions have reduced opacity", () => {
-    expect(pageContent).toMatch(/exhausted\s*\?\s*"opacity-50"/);
+    expect(pageContent).toMatch(/exhausted \|\| dimmed \? "opacity-50"/);
   });
 
   it("exhausted minions show cursor-not-allowed", () => {
-    expect(pageContent).toMatch(/exhausted\s*\?\s*"cursor-not-allowed"/);
+    expect(pageContent).toMatch(/exhausted \|\| dimmed \? "cursor-not-allowed/);
   });
 
   it("friendly minions pass exhausted based on hasAttacked/windfury or summoningSickness", () => {

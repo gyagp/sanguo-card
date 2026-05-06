@@ -1,13 +1,13 @@
 # Autopo test Session
 
 ## Work Unit
-Redesign battlefield UI — render 3 lanes (left/center/right) each with 2 slots per player, show lane dividers, display terrain effect icons/overlays per lane, update drag-and-drop to target specific lane+slot
+Update attack UI for lane restrictions — highlight only valid attack targets (same/adjacent lane), show lane labels, update spell targeting UI to show lane selection for AOE spells
 
 ## Acceptance Criteria
-- Board renders as 3 distinct vertical lanes with clear dividers
-- Each lane shows 2 slots per player (total 12 slots visible)
-- Terrain effects displayed as visual indicators on lanes
-- Drag-and-drop targets specific lane+slot
+- Only valid targets highlight when selecting attacker
+- Invalid targets visually dimmed/unclickable
+- AOE spells show lane selection step before resolving
+- Lane labels visible (左/中/右)
 - npm run build succeeds
 
 ## Rules
