@@ -1,14 +1,13 @@
-# Autopo execute Session
+# Autopo test Session
 
 ## Work Unit
-Tests for lane system core — test lane-restricted attacks, formation bonus calculation, terrain effect application, spell lane targeting, and board migration helpers
+Add trap card type to the type system — extend CardType with 'trap', add TrapTrigger type (on_attack, on_spell, on_play, on_turn_start), add trap-related fields to Card interface, add trap state tracking to GameState
 
 ## Acceptance Criteria
-- Tests for attack lane validation (same lane OK, adjacent OK, far lane rejected)
-- Tests for formation bonus (+1/+1 same faction same lane)
-- Tests for each terrain effect (fire damage, healing, stealth)
-- Tests for lane AOE spell targeting
-- All tests pass with vitest run
+- CardType includes 'trap'
+- Card interface has trapTrigger and trapEffect fields
+- GameState tracks active traps per player
+- npm run build succeeds
 
 ## Rules
 # Rules

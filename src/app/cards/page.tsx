@@ -28,6 +28,7 @@ const typeLabels: Record<CardData["type"], string> = {
   minion: "随从",
   spell: "法术",
   weapon: "武器",
+  trap: "陷阱",
 };
 
 const rarityColors: Record<CardData["rarity"], string> = {

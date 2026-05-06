@@ -49,6 +49,8 @@ import {
   LaneBoard,
   TerrainType,
   TERRAIN_DEFINITIONS,
+  TrapTrigger,
+  ActiveTrap,
 } from "./types";
 
 function makeCard(overrides: Partial<Card> = {}): Card {
@@ -90,6 +92,7 @@ function makePlayerState(): PlayerState {
     heroWindfuryAttacksLeft: 0,
     deckFaction: "neutral" as Faction,
     hasDeckFactionBonus: false,
+    activeTraps: [],
   };
 }
 
@@ -113,7 +116,7 @@ describe("Card interface", () => {
   });
 
   it("accepts all card type values", () => {
-    const types: CardType[] = ["minion", "spell", "weapon"];
+    const types: CardType[] = ["minion", "spell", "weapon", "trap"];
     types.forEach((type) => {
       expect(makeCard({ type }).type).toBe(type);
     });
@@ -1369,5 +1372,65 @@ describe("Terrain effects", () => {
       expect(state.terrain[Lane.Center]!.type).toBe(TerrainType.HealingAura);
       expect(state.terrain[Lane.Right]!.type).toBe(TerrainType.Stealth);
     });
+  });
+});
+
+describe("Trap card type", () => {
+  it("CardType includes 'trap'", () => {
+    const card = makeCard({ type: "trap" });
+    expect(card.type).toBe("trap");
+  });
+
+  it("TrapTrigger accepts all valid values", () => {
+    const triggers: TrapTrigger[] = ["on_attack", "on_spell", "on_play", "on_turn_start"];
+    triggers.forEach((t) => {
+      const card = makeCard({ type: "trap", trapTrigger: t });
+      expect(card.trapTrigger).toBe(t);
+    });
+  });
+
+  it("Card interface has optional trapTrigger and trapEffect fields", () => {
+    const card = makeCard();
+    expect(card.trapTrigger).toBeUndefined();
+    expect(card.trapEffect).toBeUndefined();
+  });
+
+  it("Card accepts trapTrigger and trapEffect", () => {
+    const effect: Effect = (state, _ctx) => state;
+    const card = makeCard({ type: "trap", trapTrigger: "on_attack", trapEffect: effect });
+    expect(card.trapTrigger).toBe("on_attack");
+    expect(card.trapEffect).toBeTypeOf("function");
+  });
+
+  it("ActiveTrap interface has card and trigger fields", () => {
+    const trap: ActiveTrap = {
+      card: makeCard({ type: "trap", trapTrigger: "on_spell" }),
+      trigger: "on_spell",
+      effect: (state) => state,
+    };
+    expect(trap.card.type).toBe("trap");
+    expect(trap.trigger).toBe("on_spell");
+  });
+
+  it("PlayerState has activeTraps array", () => {
+    const player = makePlayerState();
+    expect(player.activeTraps).toEqual([]);
+  });
+
+  it("createPlayerState initializes activeTraps to empty array", () => {
+    const deck = makeDeck();
+    const player = createPlayerState(deck);
+    expect(player.activeTraps).toEqual([]);
+  });
+
+  it("activeTraps can hold multiple traps", () => {
+    const player = makePlayerState();
+    player.activeTraps.push(
+      { card: makeCard({ type: "trap", trapTrigger: "on_attack" }), trigger: "on_attack", effect: (state) => state },
+      { card: makeCard({ type: "trap", trapTrigger: "on_spell" }), trigger: "on_spell", effect: (state) => state },
+    );
+    expect(player.activeTraps).toHaveLength(2);
+    expect(player.activeTraps[0].trigger).toBe("on_attack");
+    expect(player.activeTraps[1].trigger).toBe("on_spell");
   });
 });

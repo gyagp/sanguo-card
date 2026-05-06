@@ -1,6 +1,8 @@
 export type Rarity = "common" | "rare" | "epic" | "legendary";
 
-export type CardType = "minion" | "spell" | "weapon";
+export type CardType = "minion" | "spell" | "weapon" | "trap";
+
+export type TrapTrigger = "on_attack" | "on_spell" | "on_play" | "on_turn_start";
 
 export type Faction = "wei" | "shu" | "wu" | "qun" | "neutral";
 
@@ -105,6 +107,8 @@ export interface Card {
   effect?: Effect;
   targetType?: SpellTargetType;
   onPlay?: OnPlayHook;
+  trapTrigger?: TrapTrigger;
+  trapEffect?: Effect;
 }
 
 export type HeroPowerEffect = (state: GameState, playerIndex: 0 | 1) => void;
@@ -271,6 +275,12 @@ export interface Weapon {
   windfury?: boolean;
 }
 
+export interface ActiveTrap {
+  card: Card;
+  trigger: TrapTrigger;
+  effect: Effect;
+}
+
 export interface PlayerState {
   hero: Hero;
   deck: Deck;
@@ -283,6 +293,7 @@ export interface PlayerState {
   heroWindfuryAttacksLeft: number;
   deckFaction: Faction;
   hasDeckFactionBonus: boolean;
+  activeTraps: ActiveTrap[];
 }
 
 export type TurnPhase = "start" | "play" | "combat" | "end";
@@ -374,6 +385,7 @@ export function createPlayerState(deck: Deck): PlayerState {
     heroWindfuryAttacksLeft: 0,
     deckFaction: "neutral",
     hasDeckFactionBonus: false,
+    activeTraps: [],
   };
 }
 
