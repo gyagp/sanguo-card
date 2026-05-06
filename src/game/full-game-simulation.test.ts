@@ -4,10 +4,10 @@ import {
   createDeck, initializeGame, startTurn, endTurn,
   playCard, attackMinion, attackHero, useHeroPower, heroAttack,
   checkWinCondition, STARTING_HP, MAX_BOARD_SIZE,
-  FACTION_HERO_POWERS, UPGRADED_FACTION_HERO_POWERS,
   gameEventBus, recalculateFactionSynergies,
   getEffectiveCardCost, applyQunTurnStartDebuff,
 } from './types';
+import { FACTION_HERO_POWERS, UPGRADED_FACTION_HERO_POWERS, getHeroPowerForPlayer } from './hero-powers';
 import { cards } from './cards';
 
 function makeCard(overrides: Partial<Card> & { faction: Faction }): Card {
@@ -79,7 +79,7 @@ function simulateGame(factionDeck: Card[], opponentDeck: Card[], maxTurns = 30):
 } {
   const deck1 = createDeck(factionDeck);
   const deck2 = createDeck(opponentDeck);
-  const state = initializeGame(deck1, deck2);
+  const state = initializeGame(deck1, deck2, getHeroPowerForPlayer);
 
   let turnsPlayed = 0;
   let factionPassiveTriggered = false;
@@ -126,7 +126,7 @@ function simulateGame(factionDeck: Card[], opponentDeck: Card[], maxTurns = 30):
     if (state.phase === 'ended') break;
 
     if (!player.heroPowerUsed && player.hero.mana >= player.hero.heroPower.cost) {
-      const hpResult = useHeroPower(state);
+      const hpResult = useHeroPower(state, { base: FACTION_HERO_POWERS, upgraded: UPGRADED_FACTION_HERO_POWERS });
       if (hpResult.success) heroPowerUsedCount++;
       if (state.phase === 'ended') break;
     }
@@ -215,7 +215,7 @@ describe('Full game simulation — faction integration', () => {
     it('has deck faction bonus and upgraded hero power', () => {
       const weiDeck = buildFactionDeck('wei');
       const deck = createDeck(weiDeck);
-      const state = initializeGame(deck, createDeck(buildNeutralDeck()));
+      const state = initializeGame(deck, createDeck(buildNeutralDeck()), getHeroPowerForPlayer);
 
       expect(state.players[0].deckFaction).toBe('wei');
       expect(state.players[0].hasDeckFactionBonus).toBe(true);
@@ -242,14 +242,14 @@ describe('Full game simulation — faction integration', () => {
       const weiDeck = buildFactionDeck('wei');
       const deck1 = createDeck(weiDeck);
       const deck2 = createDeck(buildNeutralDeck());
-      const state = initializeGame(deck1, deck2);
+      const state = initializeGame(deck1, deck2, getHeroPowerForPlayer);
 
       state.players[0].hero.mana = 2;
       state.activePlayer = 0;
       state.turnPhase = 'play';
 
       const hpBefore = state.players[1].hero.health;
-      useHeroPower(state);
+      useHeroPower(state, { base: FACTION_HERO_POWERS, upgraded: UPGRADED_FACTION_HERO_POWERS });
       expect(state.players[1].hero.health).toBe(hpBefore - 2);
     });
   });
@@ -268,7 +268,7 @@ describe('Full game simulation — faction integration', () => {
     it('has deck faction bonus and upgraded hero power', () => {
       const shuDeck = buildFactionDeck('shu');
       const deck = createDeck(shuDeck);
-      const state = initializeGame(deck, createDeck(buildNeutralDeck()));
+      const state = initializeGame(deck, createDeck(buildNeutralDeck()), getHeroPowerForPlayer);
 
       expect(state.players[0].deckFaction).toBe('shu');
       expect(state.players[0].hasDeckFactionBonus).toBe(true);
@@ -279,14 +279,14 @@ describe('Full game simulation — faction integration', () => {
       const shuDeck = buildFactionDeck('shu');
       const deck1 = createDeck(shuDeck);
       const deck2 = createDeck(buildNeutralDeck());
-      const state = initializeGame(deck1, deck2);
+      const state = initializeGame(deck1, deck2, getHeroPowerForPlayer);
 
       state.players[0].hero.health = 20;
       state.players[0].hero.mana = 2;
       state.activePlayer = 0;
       state.turnPhase = 'play';
 
-      useHeroPower(state);
+      useHeroPower(state, { base: FACTION_HERO_POWERS, upgraded: UPGRADED_FACTION_HERO_POWERS });
       expect(state.players[0].hero.health).toBe(23);
     });
 
@@ -306,7 +306,7 @@ describe('Full game simulation — faction integration', () => {
         factionAttackBonus: 0, factionHealthBonus: 0,
         formationAtkBonus: 0, formationHpBonus: 0,
         brotherhoodAtkBonus: 0, brotherhoodHpBonus: 0,
-        wuChargeBonus: 0, wuWeaponBonus: 0, wuComboAtkBonus: 0, wuComboHpBonus: 0, qunDebuff: 0,
+        wuChargeBonus: 0, wuWeaponBonus: 0, wuComboAtkBonus: 0, wuComboHpBonus: 0, qunDebuff: 0, heroSkillCooldownLeft: 0, heroSkillAtkBonus: 0, heroSkillHpBonus: 0, heroSkillCooldownLeft: 0, heroSkillAtkBonus: 0, heroSkillHpBonus: 0,
       };
       const shuMinion2 = { ...shuMinion1, name: '张飞' };
 
@@ -332,7 +332,7 @@ describe('Full game simulation — faction integration', () => {
     it('has deck faction bonus and upgraded hero power', () => {
       const wuDeck = buildFactionDeck('wu');
       const deck = createDeck(wuDeck);
-      const state = initializeGame(deck, createDeck(buildNeutralDeck()));
+      const state = initializeGame(deck, createDeck(buildNeutralDeck()), getHeroPowerForPlayer);
 
       expect(state.players[0].deckFaction).toBe('wu');
       expect(state.players[0].hasDeckFactionBonus).toBe(true);
@@ -343,13 +343,13 @@ describe('Full game simulation — faction integration', () => {
       const wuDeck = buildFactionDeck('wu');
       const deck1 = createDeck(wuDeck);
       const deck2 = createDeck(buildNeutralDeck());
-      const state = initializeGame(deck1, deck2);
+      const state = initializeGame(deck1, deck2, getHeroPowerForPlayer);
 
       state.players[0].hero.mana = 2;
       state.activePlayer = 0;
       state.turnPhase = 'play';
 
-      useHeroPower(state);
+      useHeroPower(state, { base: FACTION_HERO_POWERS, upgraded: UPGRADED_FACTION_HERO_POWERS });
       expect(state.players[0].board.length).toBe(1);
       expect(state.players[0].board[0].currentAttack).toBe(2);
       expect(state.players[0].board[0].currentHealth).toBe(1);
@@ -378,7 +378,7 @@ describe('Full game simulation — faction integration', () => {
     it('has deck faction bonus and upgraded hero power', () => {
       const qunDeck = buildFactionDeck('qun');
       const deck = createDeck(qunDeck);
-      const state = initializeGame(deck, createDeck(buildNeutralDeck()));
+      const state = initializeGame(deck, createDeck(buildNeutralDeck()), getHeroPowerForPlayer);
 
       expect(state.players[0].deckFaction).toBe('qun');
       expect(state.players[0].hasDeckFactionBonus).toBe(true);
@@ -389,13 +389,13 @@ describe('Full game simulation — faction integration', () => {
       const qunDeck = buildFactionDeck('qun');
       const deck1 = createDeck(qunDeck);
       const deck2 = createDeck(buildNeutralDeck());
-      const state = initializeGame(deck1, deck2);
+      const state = initializeGame(deck1, deck2, getHeroPowerForPlayer);
 
       state.players[0].hero.mana = 2;
       state.activePlayer = 0;
       state.turnPhase = 'play';
 
-      useHeroPower(state);
+      useHeroPower(state, { base: FACTION_HERO_POWERS, upgraded: UPGRADED_FACTION_HERO_POWERS });
       expect(state.players[0].weapon).not.toBeNull();
       expect(state.players[0].weapon!.attack).toBe(2);
       expect(state.players[0].weapon!.durability).toBe(2);
@@ -405,7 +405,7 @@ describe('Full game simulation — faction integration', () => {
       const qunDeck = buildFactionDeck('qun');
       const deck1 = createDeck(qunDeck);
       const deck2 = createDeck(buildNeutralDeck());
-      const state = initializeGame(deck1, deck2);
+      const state = initializeGame(deck1, deck2, getHeroPowerForPlayer);
 
       const makeQunMinion = (name: string): BoardMinion => ({
         name, cost: 1, attack: 3, health: 3, description: '',
@@ -418,7 +418,7 @@ describe('Full game simulation — faction integration', () => {
         factionAttackBonus: 0, factionHealthBonus: 0,
         formationAtkBonus: 0, formationHpBonus: 0,
         brotherhoodAtkBonus: 0, brotherhoodHpBonus: 0,
-        wuChargeBonus: 0, wuWeaponBonus: 0, wuComboAtkBonus: 0, wuComboHpBonus: 0, qunDebuff: 0,
+        wuChargeBonus: 0, wuWeaponBonus: 0, wuComboAtkBonus: 0, wuComboHpBonus: 0, qunDebuff: 0, heroSkillCooldownLeft: 0, heroSkillAtkBonus: 0, heroSkillHpBonus: 0,
       });
 
       state.players[0].board = [makeQunMinion('a'), makeQunMinion('b'), makeQunMinion('c')];
@@ -461,7 +461,7 @@ describe('Full game simulation — faction integration', () => {
       const weiDeck = buildFactionDeck('wei');
       const deck1 = createDeck(weiDeck);
       const deck2 = createDeck(buildFactionDeck('shu'));
-      const state = initializeGame(deck1, deck2);
+      const state = initializeGame(deck1, deck2, getHeroPowerForPlayer);
 
       state.players[0].hero.health = 0;
       state.players[1].hero.health = 0;

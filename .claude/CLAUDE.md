@@ -1,12 +1,12 @@
 # Autopo test Session
 
 ## Work Unit
-Add trap card UI — show face-down trap icons for opponent's traps, reveal animation on trigger, update hand rendering for trap cards, show trap count indicator
+Add 10 new Wei minion cards (common/rare/epic) — design balanced stats, battlecries, deathrattles fitting Wei identity (health/defense focus), add to cards.ts
 
 ## Acceptance Criteria
-- Opponent's traps shown as face-down icons
-- Trap trigger shows reveal animation
-- Trap cards render distinctly in hand
+- 10 new Wei minion cards added
+- Stats are balanced for their cost
+- Effects fit Wei faction identity
 - npm run build succeeds
 
 ## Rules

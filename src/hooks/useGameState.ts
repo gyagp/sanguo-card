@@ -20,6 +20,7 @@ import {
 } from "../game/types";
 import { AIDifficulty, createAI, AIDecision, AIStrategy } from "../game/ai";
 import { BossAI } from "../game/boss-ai";
+import { getHeroPowerForPlayer, FACTION_HERO_POWERS, UPGRADED_FACTION_HERO_POWERS } from "../game/hero-powers";
 
 export interface BossHeroPowerOverride {
   name: string;
@@ -50,7 +51,7 @@ function collectAIDecisions(state: GameState, difficulty: AIDifficulty, bossAI?:
 
   if (ai.shouldUseHeroPower(sim)) {
     decisions.push({ type: 'useHeroPower' });
-    engineUseHeroPower(sim);
+    engineUseHeroPower(sim, { base: FACTION_HERO_POWERS, upgraded: UPGRADED_FACTION_HERO_POWERS });
   }
 
   const playDecisions = ai.getPlayDecisions(sim);
@@ -81,7 +82,7 @@ function executeAIDecision(state: GameState, decision: AIDecision): GameState {
       }
       break;
     case 'useHeroPower':
-      engineUseHeroPower(next);
+      engineUseHeroPower(next, { base: FACTION_HERO_POWERS, upgraded: UPGRADED_FACTION_HERO_POWERS });
       break;
     case 'endTurn':
       engineEndTurn(next);
@@ -93,7 +94,7 @@ function executeAIDecision(state: GameState, decision: AIDecision): GameState {
 
 export function useGameState(deck1: Deck, deck2: Deck, aiDifficulty?: AIDifficulty, bossAI?: BossAI, extraMana?: number, bossHeroPower?: BossHeroPowerOverride, bossInit?: BossInitConfig) {
   const [gameState, setGameState] = useState<GameState>(() => {
-    const state = initializeGame(deck1, deck2);
+    const state = initializeGame(deck1, deck2, getHeroPowerForPlayer);
     if (bossHeroPower) {
       state.players[1].hero.heroPower = {
         ...state.players[1].hero.heroPower,
@@ -117,7 +118,7 @@ export function useGameState(deck1: Deck, deck2: Deck, aiDifficulty?: AIDifficul
         factionAttackBonus: 0, factionHealthBonus: 0,
         formationAtkBonus: 0, formationHpBonus: 0,
         brotherhoodAtkBonus: 0, brotherhoodHpBonus: 0,
-        wuChargeBonus: 0, wuWeaponBonus: 0, wuComboAtkBonus: 0, wuComboHpBonus: 0, qunDebuff: 0,
+        wuChargeBonus: 0, wuWeaponBonus: 0, wuComboAtkBonus: 0, wuComboHpBonus: 0, qunDebuff: 0, heroSkillCooldownLeft: 0, heroSkillAtkBonus: 0, heroSkillHpBonus: 0,
         lane: Lane.Center, slotIndex: 0,
       });
     }
@@ -249,14 +250,14 @@ export function useGameState(deck1: Deck, deck2: Deck, aiDifficulty?: AIDifficul
 
   const heroPower = useCallback((): HeroPowerResult => {
     const next = cloneState(gameState);
-    const result = engineUseHeroPower(next);
+    const result = engineUseHeroPower(next, { base: FACTION_HERO_POWERS, upgraded: UPGRADED_FACTION_HERO_POWERS });
     if (result.success) setGameState(next);
     return result;
   }, [gameState]);
 
   const resetGame = useCallback(() => {
     clearAITimers();
-    const state = initializeGame(deck1, deck2);
+    const state = initializeGame(deck1, deck2, getHeroPowerForPlayer);
     startTurn(state);
     setGameState(state);
     setIsOpponentTurn(false);

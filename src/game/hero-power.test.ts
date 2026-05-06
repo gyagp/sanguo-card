@@ -6,16 +6,15 @@ import {
   initializeGame,
   startTurn,
   useHeroPower,
-  FACTION_HERO_POWERS,
   STARTING_HP,
   MAX_BOARD_SIZE,
   GameState,
   getDeckFaction,
   getDeckFactionCount,
   removeDeadMinions,
-  UPGRADED_FACTION_HERO_POWERS,
   DECK_FACTION_THRESHOLD,
 } from "./types";
+import { FACTION_HERO_POWERS, UPGRADED_FACTION_HERO_POWERS, getHeroPowerForPlayer } from "./hero-powers";
 
 function makeCard(overrides: Partial<Card> = {}): Card {
   return {
@@ -50,7 +49,7 @@ function makeNeutralDeck(): Deck {
 function setupGame(faction1: "wei" | "shu" | "wu" | "qun" | "neutral", mana: number = 5): GameState {
   const deck1 = faction1 === "neutral" ? makeNeutralDeck() : makeBaseFactionDeck(faction1 as "wei" | "shu" | "wu" | "qun");
   const deck2 = makeNeutralDeck();
-  const state = initializeGame(deck1, deck2);
+  const state = initializeGame(deck1, deck2, getHeroPowerForPlayer);
   state.players[0].hero.mana = mana;
   return state;
 }
@@ -79,21 +78,21 @@ describe("Hero power effects", () => {
     it("heals the hero for 2", () => {
       const state = setupGame("shu");
       state.players[0].hero.health = 20;
-      useHeroPower(state);
+      useHeroPower(state, { base: FACTION_HERO_POWERS, upgraded: UPGRADED_FACTION_HERO_POWERS });
       expect(state.players[0].hero.health).toBe(22);
     });
 
     it("does not heal above STARTING_HP", () => {
       const state = setupGame("shu");
       state.players[0].hero.health = STARTING_HP - 1;
-      useHeroPower(state);
+      useHeroPower(state, { base: FACTION_HERO_POWERS, upgraded: UPGRADED_FACTION_HERO_POWERS });
       expect(state.players[0].hero.health).toBe(STARTING_HP);
     });
 
     it("does not heal above STARTING_HP when at full", () => {
       const state = setupGame("shu");
       state.players[0].hero.health = STARTING_HP;
-      useHeroPower(state);
+      useHeroPower(state, { base: FACTION_HERO_POWERS, upgraded: UPGRADED_FACTION_HERO_POWERS });
       expect(state.players[0].hero.health).toBe(STARTING_HP);
     });
   });
@@ -102,7 +101,7 @@ describe("Hero power effects", () => {
     it("deals 1 damage to enemy hero", () => {
       const state = setupGame("wei");
       const before = state.players[1].hero.health;
-      useHeroPower(state);
+      useHeroPower(state, { base: FACTION_HERO_POWERS, upgraded: UPGRADED_FACTION_HERO_POWERS });
       expect(state.players[1].hero.health).toBe(before - 1);
     });
   });
@@ -111,7 +110,7 @@ describe("Hero power effects", () => {
     it("summons a 1/1 token", () => {
       const state = setupGame("wu");
       const boardBefore = state.players[0].board.length;
-      useHeroPower(state);
+      useHeroPower(state, { base: FACTION_HERO_POWERS, upgraded: UPGRADED_FACTION_HERO_POWERS });
       expect(state.players[0].board.length).toBe(boardBefore + 1);
       const token = state.players[0].board[state.players[0].board.length - 1];
       expect(token.currentAttack).toBe(1);
@@ -130,10 +129,10 @@ describe("Hero power effects", () => {
           freezeTurnsLeft: 0,
           isImmune: false, windfuryAttacksLeft: 1,
           enrageActive: false, enrageBonus: 0,
-          factionAttackBonus: 0, factionHealthBonus: 0, formationAtkBonus: 0, formationHpBonus: 0, brotherhoodAtkBonus: 0, brotherhoodHpBonus: 0, wuChargeBonus: 0, wuWeaponBonus: 0, wuComboAtkBonus: 0, wuComboHpBonus: 0, qunDebuff: 0,
+          factionAttackBonus: 0, factionHealthBonus: 0, formationAtkBonus: 0, formationHpBonus: 0, brotherhoodAtkBonus: 0, brotherhoodHpBonus: 0, wuChargeBonus: 0, wuWeaponBonus: 0, wuComboAtkBonus: 0, wuComboHpBonus: 0, qunDebuff: 0, heroSkillCooldownLeft: 0, heroSkillAtkBonus: 0, heroSkillHpBonus: 0,
         });
       }
-      const result = useHeroPower(state);
+      const result = useHeroPower(state, { base: FACTION_HERO_POWERS, upgraded: UPGRADED_FACTION_HERO_POWERS });
       expect(result.success).toBe(true);
       expect(state.players[0].board.length).toBe(MAX_BOARD_SIZE);
     });
@@ -142,7 +141,7 @@ describe("Hero power effects", () => {
   describe("Qun (乱击) — equip 1/2 weapon", () => {
     it("equips a 1/2 weapon", () => {
       const state = setupGame("qun");
-      useHeroPower(state);
+      useHeroPower(state, { base: FACTION_HERO_POWERS, upgraded: UPGRADED_FACTION_HERO_POWERS });
       expect(state.players[0].weapon).not.toBeNull();
       expect(state.players[0].weapon!.attack).toBe(1);
       expect(state.players[0].weapon!.durability).toBe(2);
@@ -160,17 +159,17 @@ describe("Hero power effects", () => {
         freezeTurnsLeft: 0,
         isImmune: false, windfuryAttacksLeft: 1,
         enrageActive: false, enrageBonus: 0,
-        factionAttackBonus: 0, factionHealthBonus: 0, formationAtkBonus: 0, formationHpBonus: 0, brotherhoodAtkBonus: 0, brotherhoodHpBonus: 0, wuChargeBonus: 0, wuWeaponBonus: 0, wuComboAtkBonus: 0, wuComboHpBonus: 0, qunDebuff: 0,
+        factionAttackBonus: 0, factionHealthBonus: 0, formationAtkBonus: 0, formationHpBonus: 0, brotherhoodAtkBonus: 0, brotherhoodHpBonus: 0, wuChargeBonus: 0, wuWeaponBonus: 0, wuComboAtkBonus: 0, wuComboHpBonus: 0, qunDebuff: 0, heroSkillCooldownLeft: 0, heroSkillAtkBonus: 0, heroSkillHpBonus: 0,
       });
       const hpBefore = state.players[1].board[0].currentHealth;
-      useHeroPower(state);
+      useHeroPower(state, { base: FACTION_HERO_POWERS, upgraded: UPGRADED_FACTION_HERO_POWERS });
       expect(state.players[1].board[0].currentHealth).toBe(hpBefore - 1);
     });
 
     it("hits enemy hero when no enemy minions exist", () => {
       const state = setupGame("neutral");
       const before = state.players[1].hero.health;
-      useHeroPower(state);
+      useHeroPower(state, { base: FACTION_HERO_POWERS, upgraded: UPGRADED_FACTION_HERO_POWERS });
       expect(state.players[1].hero.health).toBe(before - 1);
     });
   });
@@ -185,7 +184,7 @@ describe("Hero power effect survives JSON clone", () => {
     cloned.players[0].hero.mana = 5;
 
     // After JSON clone, heroPower.effect is stripped. useHeroPower must still work.
-    const result = useHeroPower(cloned);
+    const result = useHeroPower(cloned, { base: FACTION_HERO_POWERS, upgraded: UPGRADED_FACTION_HERO_POWERS });
     expect(result.success).toBe(true);
     // If the effect didn't execute, health stays at 20
     expect(cloned.players[0].hero.health).toBe(22);
@@ -196,7 +195,7 @@ describe("Hero power effect survives JSON clone", () => {
     const cloned: GameState = JSON.parse(JSON.stringify(state));
     cloned.players[0].hero.mana = 5;
     const before = cloned.players[1].hero.health;
-    useHeroPower(cloned);
+    useHeroPower(cloned, { base: FACTION_HERO_POWERS, upgraded: UPGRADED_FACTION_HERO_POWERS });
     expect(cloned.players[1].hero.health).toBe(before - 1);
   });
 
@@ -205,7 +204,7 @@ describe("Hero power effect survives JSON clone", () => {
     const cloned: GameState = JSON.parse(JSON.stringify(state));
     cloned.players[0].hero.mana = 5;
     const boardBefore = cloned.players[0].board.length;
-    useHeroPower(cloned);
+    useHeroPower(cloned, { base: FACTION_HERO_POWERS, upgraded: UPGRADED_FACTION_HERO_POWERS });
     expect(cloned.players[0].board.length).toBe(boardBefore + 1);
   });
 });
@@ -259,28 +258,28 @@ describe("Deck faction bonus and hero power upgrade", () => {
 
   it("full faction deck gets upgraded hero power", () => {
     const deck = makeFactionDeck("wei");
-    const state = initializeGame(deck, makeNeutralDeck());
+    const state = initializeGame(deck, makeNeutralDeck(), getHeroPowerForPlayer);
     expect(state.players[0].hasDeckFactionBonus).toBe(true);
     expect(state.players[0].hero.heroPower.name).toBe("霸略·升级");
   });
 
   it("exactly 20 faction cards gets upgrade", () => {
     const deck = makeMixedDeck("shu", 20);
-    const state = initializeGame(deck, makeNeutralDeck());
+    const state = initializeGame(deck, makeNeutralDeck(), getHeroPowerForPlayer);
     expect(state.players[0].hasDeckFactionBonus).toBe(true);
     expect(state.players[0].hero.heroPower.name).toBe("仁德·升级");
   });
 
   it("19 faction cards does NOT get upgrade", () => {
     const deck = makeMixedDeck("shu", 19);
-    const state = initializeGame(deck, makeNeutralDeck());
+    const state = initializeGame(deck, makeNeutralDeck(), getHeroPowerForPlayer);
     expect(state.players[0].hasDeckFactionBonus).toBe(false);
     expect(state.players[0].hero.heroPower.name).toBe("仁德");
   });
 
   it("neutral deck gets no upgrade", () => {
     const deck = makeNeutralDeck();
-    const state = initializeGame(deck, makeNeutralDeck());
+    const state = initializeGame(deck, makeNeutralDeck(), getHeroPowerForPlayer);
     expect(state.players[0].hasDeckFactionBonus).toBe(true); // neutral 30 cards meets count threshold
     expect(state.players[0].hero.heroPower.name).toBe("策略"); // but no upgrade exists for neutral
   });
@@ -289,7 +288,7 @@ describe("Deck faction bonus and hero power upgrade", () => {
 describe("Upgraded hero power effects", () => {
   function setupUpgradedGame(faction: "wei" | "shu" | "wu" | "qun"): GameState {
     const deck = makeFactionDeck(faction);
-    const state = initializeGame(deck, makeNeutralDeck());
+    const state = initializeGame(deck, makeNeutralDeck(), getHeroPowerForPlayer);
     state.players[0].hero.mana = 5;
     state.players[0].heroPowerUsed = false;
     return state;
@@ -299,7 +298,7 @@ describe("Upgraded hero power effects", () => {
     it("deals 2 damage to enemy hero", () => {
       const state = setupUpgradedGame("wei");
       const before = state.players[1].hero.health;
-      useHeroPower(state);
+      useHeroPower(state, { base: FACTION_HERO_POWERS, upgraded: UPGRADED_FACTION_HERO_POWERS });
       expect(state.players[1].hero.health).toBe(before - 2);
     });
   });
@@ -308,14 +307,14 @@ describe("Upgraded hero power effects", () => {
     it("heals the hero for 3", () => {
       const state = setupUpgradedGame("shu");
       state.players[0].hero.health = 20;
-      useHeroPower(state);
+      useHeroPower(state, { base: FACTION_HERO_POWERS, upgraded: UPGRADED_FACTION_HERO_POWERS });
       expect(state.players[0].hero.health).toBe(23);
     });
 
     it("does not heal above STARTING_HP", () => {
       const state = setupUpgradedGame("shu");
       state.players[0].hero.health = STARTING_HP - 1;
-      useHeroPower(state);
+      useHeroPower(state, { base: FACTION_HERO_POWERS, upgraded: UPGRADED_FACTION_HERO_POWERS });
       expect(state.players[0].hero.health).toBe(STARTING_HP);
     });
   });
@@ -324,7 +323,7 @@ describe("Upgraded hero power effects", () => {
     it("summons a 2/1 token", () => {
       const state = setupUpgradedGame("wu");
       const boardBefore = state.players[0].board.length;
-      useHeroPower(state);
+      useHeroPower(state, { base: FACTION_HERO_POWERS, upgraded: UPGRADED_FACTION_HERO_POWERS });
       expect(state.players[0].board.length).toBe(boardBefore + 1);
       const token = state.players[0].board[state.players[0].board.length - 1];
       expect(token.currentAttack).toBe(2);
@@ -343,10 +342,10 @@ describe("Upgraded hero power effects", () => {
           freezeTurnsLeft: 0,
           isImmune: false, windfuryAttacksLeft: 1,
           enrageActive: false, enrageBonus: 0,
-          factionAttackBonus: 0, factionHealthBonus: 0, formationAtkBonus: 0, formationHpBonus: 0, brotherhoodAtkBonus: 0, brotherhoodHpBonus: 0, wuChargeBonus: 0, wuWeaponBonus: 0, wuComboAtkBonus: 0, wuComboHpBonus: 0, qunDebuff: 0,
+          factionAttackBonus: 0, factionHealthBonus: 0, formationAtkBonus: 0, formationHpBonus: 0, brotherhoodAtkBonus: 0, brotherhoodHpBonus: 0, wuChargeBonus: 0, wuWeaponBonus: 0, wuComboAtkBonus: 0, wuComboHpBonus: 0, qunDebuff: 0, heroSkillCooldownLeft: 0, heroSkillAtkBonus: 0, heroSkillHpBonus: 0,
         });
       }
-      const result = useHeroPower(state);
+      const result = useHeroPower(state, { base: FACTION_HERO_POWERS, upgraded: UPGRADED_FACTION_HERO_POWERS });
       expect(result.success).toBe(true);
       expect(state.players[0].board.length).toBe(MAX_BOARD_SIZE);
     });
@@ -355,7 +354,7 @@ describe("Upgraded hero power effects", () => {
   describe("Qun upgraded (乱击·升级) — equip 2/2 weapon", () => {
     it("equips a 2/2 weapon", () => {
       const state = setupUpgradedGame("qun");
-      useHeroPower(state);
+      useHeroPower(state, { base: FACTION_HERO_POWERS, upgraded: UPGRADED_FACTION_HERO_POWERS });
       expect(state.players[0].weapon).not.toBeNull();
       expect(state.players[0].weapon!.attack).toBe(2);
       expect(state.players[0].weapon!.durability).toBe(2);
@@ -368,7 +367,7 @@ describe("Upgraded hero power effects", () => {
       const cloned: GameState = JSON.parse(JSON.stringify(state));
       cloned.players[0].hero.mana = 5;
       const before = cloned.players[1].hero.health;
-      useHeroPower(cloned);
+      useHeroPower(cloned, { base: FACTION_HERO_POWERS, upgraded: UPGRADED_FACTION_HERO_POWERS });
       expect(cloned.players[1].hero.health).toBe(before - 2);
     });
 
@@ -377,7 +376,7 @@ describe("Upgraded hero power effects", () => {
       state.players[0].hero.health = 20;
       const cloned: GameState = JSON.parse(JSON.stringify(state));
       cloned.players[0].hero.mana = 5;
-      useHeroPower(cloned);
+      useHeroPower(cloned, { base: FACTION_HERO_POWERS, upgraded: UPGRADED_FACTION_HERO_POWERS });
       expect(cloned.players[0].hero.health).toBe(23);
     });
   });

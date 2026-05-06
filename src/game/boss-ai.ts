@@ -1,6 +1,5 @@
 import {
   GameState,
-  BoardMinion,
   Card,
   Lane,
   ALL_LANES,
@@ -13,6 +12,7 @@ import {
   MAX_HAND_SIZE,
 } from './types';
 import { BossRule } from './adventure-data';
+import { createTokenMinion } from './tokens';
 import {
   AIStrategy,
   AIDifficulty,
@@ -49,37 +49,6 @@ export function getCurrentPhase(boss: BossDefinition, currentHp: number, maxHp: 
   return activePhase;
 }
 
-function createToken(name: string, attack: number, health: number, faction: Card['faction'] = 'neutral'): BoardMinion {
-  return {
-    name,
-    cost: 0,
-    attack,
-    health,
-    description: '',
-    type: 'minion',
-    rarity: 'common',
-    faction,
-    currentAttack: attack,
-    currentHealth: health,
-    summoningSickness: true,
-    hasAttacked: false,
-    hasDivineShield: false,
-    isStealth: false,
-    isFrozen: false,
-    freezeTurnsLeft: 0,
-    isImmune: false,
-    windfuryAttacksLeft: 1,
-    enrageActive: false,
-    enrageBonus: 0,
-    factionAttackBonus: 0,
-    factionHealthBonus: 0,
-    formationAtkBonus: 0,
-    formationHpBonus: 0,
-    brotherhoodAtkBonus: 0,
-    brotherhoodHpBonus: 0, wuChargeBonus: 0, wuWeaponBonus: 0, wuComboAtkBonus: 0, wuComboHpBonus: 0, qunDebuff: 0,
-    lane: Lane.Center, slotIndex: 0,
-  };
-}
 
 export const BOSS_DONGZHUO: BossDefinition = {
   name: '董卓',
@@ -96,7 +65,7 @@ export const BOSS_DONGZHUO: BossDefinition = {
       turnStartEffect: (state: GameState, bossPlayer: 0 | 1): GameState => {
         const player = state.players[bossPlayer];
         if (player.board.length < MAX_BOARD_SIZE) {
-          addMinionToLane(player, createToken('西凉兵', 2, 1, 'qun'), Lane.Center);
+          addMinionToLane(player, createTokenMinion('西凉兵'), Lane.Center);
         }
         return state;
       },
@@ -112,7 +81,7 @@ export const BOSS_DONGZHUO: BossDefinition = {
         }
         removeDeadMinions(state);
         if (state.players[bossPlayer].board.length < MAX_BOARD_SIZE) {
-          addMinionToLane(state.players[bossPlayer], createToken('西凉精锐', 3, 2, 'qun'), Lane.Center);
+          addMinionToLane(state.players[bossPlayer], createTokenMinion('西凉精锐'), Lane.Center);
         }
         return state;
       },
@@ -129,7 +98,7 @@ export const BOSS_ZHANGJIAO: BossDefinition = {
       strategyOverride: { playStyle: 'curve', attackPriority: 'smart' },
       turnStartEffect: (state: GameState, bossPlayer: 0 | 1): GameState => {
         if (state.players[bossPlayer].board.length < MAX_BOARD_SIZE) {
-          addMinionToLane(state.players[bossPlayer], createToken('乡勇', 1, 1, 'neutral'), Lane.Center);
+          addMinionToLane(state.players[bossPlayer], createTokenMinion('乡勇'), Lane.Center);
         }
         return state;
       },
@@ -140,7 +109,7 @@ export const BOSS_ZHANGJIAO: BossDefinition = {
       strategyOverride: { playStyle: 'optimal', attackPriority: 'face' },
       turnStartEffect: (state: GameState, bossPlayer: 0 | 1): GameState => {
         if (state.players[bossPlayer].board.length < MAX_BOARD_SIZE) {
-          addMinionToLane(state.players[bossPlayer], createToken('乡勇', 1, 1, 'neutral'), Lane.Center);
+          addMinionToLane(state.players[bossPlayer], createTokenMinion('乡勇'), Lane.Center);
         }
         state.players[bossPlayer].hero.health = Math.min(30, state.players[bossPlayer].hero.health + 3);
         drawCard(state.players[bossPlayer]);
@@ -205,7 +174,7 @@ export const BOSS_YUANSHAO: BossDefinition = {
           minion.currentHealth += 1;
         }
         if (state.players[bossPlayer].board.length < MAX_BOARD_SIZE) {
-          addMinionToLane(state.players[bossPlayer], createToken('袁军精锐', 3, 3, 'neutral'), Lane.Center);
+          addMinionToLane(state.players[bossPlayer], createTokenMinion('袁军精锐'), Lane.Center);
         }
         return state;
       },

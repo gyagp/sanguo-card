@@ -68,6 +68,19 @@ export interface GameEvent {
   state?: GameState;
 }
 
+export type HeroSkillType = "passive" | "activated" | "triggered";
+
+export type HeroSkillTrigger = "on_play" | "on_death" | "on_attack" | "on_turn_start" | "on_turn_end";
+
+export interface HeroSkill {
+  type: HeroSkillType;
+  name: string;
+  description: string;
+  cooldown?: number;
+  trigger?: HeroSkillTrigger;
+  effect: (state: GameState, owner: BoardMinion, player: 0 | 1) => void;
+}
+
 export type SpellTargetType = "enemy_minion" | "lane_aoe";
 
 export interface EffectContext {
@@ -110,6 +123,7 @@ export interface Card {
   onPlay?: OnPlayHook;
   trapTrigger?: TrapTrigger;
   trapEffect?: Effect;
+  heroSkill?: HeroSkill;
 }
 
 export type HeroPowerEffect = (state: GameState, playerIndex: 0 | 1) => void;
@@ -249,6 +263,9 @@ export interface BoardMinion extends Card {
   wuComboAtkBonus: number;
   wuComboHpBonus: number;
   qunDebuff: number;
+  heroSkillCooldownLeft: number;
+  heroSkillAtkBonus: number;
+  heroSkillHpBonus: number;
   lane: Lane;
   slotIndex: number;
   registeredListeners?: RegisteredListener[];
@@ -390,7 +407,7 @@ export function createPlayerState(deck: Deck): PlayerState {
   };
 }
 
-export function initializeGame(deck1: Deck, deck2: Deck): GameState {
+export function initializeGame(deck1: Deck, deck2: Deck, heroPowerResolver?: (deck: Deck) => HeroPower): GameState {
   const state: GameState = {
     players: [createPlayerState(deck1), createPlayerState(deck2)],
     board: [[], []],
@@ -402,8 +419,10 @@ export function initializeGame(deck1: Deck, deck2: Deck): GameState {
     terrain: { [Lane.Left]: null, [Lane.Center]: null, [Lane.Right]: null },
   };
 
-  state.players[0].hero.heroPower = getHeroPowerForPlayer(deck1);
-  state.players[1].hero.heroPower = getHeroPowerForPlayer(deck2);
+  if (heroPowerResolver) {
+    state.players[0].hero.heroPower = heroPowerResolver(deck1);
+    state.players[1].hero.heroPower = heroPowerResolver(deck2);
+  }
 
   state.players[0].deckFaction = getDeckFaction(deck1);
   state.players[1].deckFaction = getDeckFaction(deck2);
@@ -446,7 +465,7 @@ function applyTerrainTurnStart(state: GameState): void {
       removeDeadMinions(state);
     } else if (terrain.type === TerrainType.HealingAura) {
       for (const minion of minionsInLane) {
-        minion.currentHealth = Math.min(minion.currentHealth + 1, minion.health + minion.enrageBonus + minion.factionHealthBonus + minion.formationHpBonus + minion.brotherhoodHpBonus + minion.wuComboHpBonus - minion.qunDebuff);
+        minion.currentHealth = Math.min(minion.currentHealth + 1, minion.health + minion.enrageBonus + minion.factionHealthBonus + minion.formationHpBonus + minion.brotherhoodHpBonus + minion.wuComboHpBonus + minion.heroSkillHpBonus - minion.qunDebuff);
       }
     }
   }
@@ -474,6 +493,9 @@ export function startTurn(state: GameState): DrawResult {
       }
     }
     minion.windfuryAttacksLeft = minion.windfury ? 2 : 1;
+    if (minion.heroSkillCooldownLeft > 0) {
+      minion.heroSkillCooldownLeft--;
+    }
   }
 
   player.hero.isImmune = false;
@@ -495,11 +517,15 @@ export function startTurn(state: GameState): DrawResult {
 
   checkAndTriggerTraps(state, "on_turn_start", state.activePlayer);
 
+  triggerHeroSkills(state, state.activePlayer, "on_turn_start");
+  applyPassiveHeroSkills(state, state.activePlayer);
+
   return result;
 }
 
 export function endTurn(state: GameState): void {
   state.turnPhase = "end";
+  triggerHeroSkills(state, state.activePlayer, "on_turn_end");
   gameEventBus.emit({ type: "turn_end", player: state.activePlayer, state });
   state.activePlayer = state.activePlayer === 0 ? 1 : 0;
 }
@@ -661,7 +687,7 @@ export function playCard(
       formationAtkBonus: 0,
       formationHpBonus: 0,
       brotherhoodAtkBonus: 0,
-      brotherhoodHpBonus: 0, wuChargeBonus: 0, wuWeaponBonus: 0, wuComboAtkBonus: 0, wuComboHpBonus: 0, qunDebuff: 0,
+      brotherhoodHpBonus: 0, wuChargeBonus: 0, wuWeaponBonus: 0, wuComboAtkBonus: 0, wuComboHpBonus: 0, qunDebuff: 0, heroSkillCooldownLeft: 0, heroSkillAtkBonus: 0, heroSkillHpBonus: 0,
       lane: lane, slotIndex: slotIndex ?? getLaneCount(player, lane),
     };
     player.board.push(minion);
@@ -693,6 +719,10 @@ export function playCard(
       card.onPlay(state, minion, state.activePlayer);
     }
 
+    if (card.heroSkill?.type === "passive") {
+      applyPassiveHeroSkills(state, state.activePlayer);
+    }
+
     if (card.battlecry) {
       const context: EffectContext = {
         event: { type: "minion_played", player: state.activePlayer, source: minion },
@@ -718,6 +748,8 @@ export function playCard(
     }
 
     checkAndTriggerTraps(state, "on_play", state.activePlayer, { triggeringMinion: minion });
+
+    triggerHeroSkills(state, state.activePlayer, "on_play");
 
     return { success: true };
   }
@@ -856,6 +888,12 @@ export function removeDeadMinions(state: GameState): void {
         minion.deathrattle(state, context);
       }
       gameEventBus.emit({ type: "minion_died", player: owner, source: minion });
+
+      for (const ally of state.players[owner].board) {
+        if (ally !== minion && ally.heroSkill?.type === "triggered" && ally.heroSkill.trigger === "on_death") {
+          ally.heroSkill.effect(state, ally, owner);
+        }
+      }
     }
 
     checkEnrage(state);
@@ -1005,6 +1043,7 @@ export function attackMinion(
 
   checkEnrage(state);
   removeDeadMinions(state);
+  triggerHeroSkills(state, state.activePlayer, "on_attack");
   checkAndTriggerTraps(state, "on_attack", state.activePlayer, { triggeringMinion: attackingMinion });
 
   return { success: true };
@@ -1289,179 +1328,62 @@ export function getDeckFactionCount(deck: Deck, faction: Faction): number {
   return count;
 }
 
-export const FACTION_HERO_POWERS: Record<Faction, HeroPower> = {
-  shu: {
-    name: "仁德",
-    cost: 2,
-    description: "恢复英雄2点生命值",
-    effect: (state, playerIndex) => {
-      state.players[playerIndex].hero.health = Math.min(
-        state.players[playerIndex].hero.health + 2,
-        STARTING_HP
-      );
-    },
-  },
-  wei: {
-    name: "霸略",
-    cost: 2,
-    description: "对敌方英雄造成1点伤害",
-    effect: (state, playerIndex) => {
-      const opponentIndex = (playerIndex === 0 ? 1 : 0) as 0 | 1;
-      state.players[opponentIndex].hero.health -= 1;
-    },
-  },
-  wu: {
-    name: "制衡",
-    cost: 2,
-    description: "召唤一个1/1的士兵",
-    effect: (state, playerIndex) => {
-      const player = state.players[playerIndex];
-      if (player.board.length >= MAX_BOARD_SIZE) return;
-      const token: BoardMinion = {
-        name: "士兵",
-        cost: 0,
-        type: "minion",
-        rarity: "common",
-        faction: "neutral",
-        attack: 1,
-        health: 1,
-        description: "",
-        currentAttack: 1,
-        currentHealth: 1,
-        summoningSickness: true,
-        hasAttacked: false,
-        hasDivineShield: false,
-        isStealth: false,
-        isFrozen: false,
-        freezeTurnsLeft: 0,
-        isImmune: false,
-        windfuryAttacksLeft: 1,
-        enrageActive: false,
-        enrageBonus: 0,
-        factionAttackBonus: 0,
-        factionHealthBonus: 0,
-        formationAtkBonus: 0,
-        formationHpBonus: 0,
-        brotherhoodAtkBonus: 0,
-        brotherhoodHpBonus: 0, wuChargeBonus: 0, wuWeaponBonus: 0, wuComboAtkBonus: 0, wuComboHpBonus: 0, qunDebuff: 0,
-        lane: Lane.Center, slotIndex: 0,
-      };
-      addMinionToLane(player, token, Lane.Center);
-    },
-  },
-  qun: {
-    name: "乱击",
-    cost: 2,
-    description: "装备一把1/2的短刀",
-    effect: (state, playerIndex) => {
-      state.players[playerIndex].weapon = { name: "短刀", attack: 1, durability: 2 };
-      state.players[playerIndex].heroHasAttacked = false;
-    },
-  },
-  neutral: {
-    name: "策略",
-    cost: 2,
-    description: "对随机一个敌方随从造成1点伤害",
-    effect: (state, playerIndex) => {
-      const opponentIndex = (playerIndex === 0 ? 1 : 0) as 0 | 1;
-      const targets = state.players[opponentIndex].board.filter(m => !m.isImmune);
-      if (targets.length === 0) {
-        state.players[opponentIndex].hero.health -= 1;
-        return;
-      }
-      const target = targets[Math.floor(Math.random() * targets.length)];
-      target.currentHealth -= 1;
-      removeDeadMinions(state);
-    },
-  },
-};
-
-export const UPGRADED_FACTION_HERO_POWERS: Partial<Record<Faction, HeroPower>> = {
-  wei: {
-    name: "霸略·升级",
-    cost: 2,
-    description: "对敌方英雄造成2点伤害",
-    effect: (state, playerIndex) => {
-      const opponentIndex = (playerIndex === 0 ? 1 : 0) as 0 | 1;
-      state.players[opponentIndex].hero.health -= 2;
-    },
-  },
-  shu: {
-    name: "仁德·升级",
-    cost: 2,
-    description: "恢复英雄3点生命值",
-    effect: (state, playerIndex) => {
-      state.players[playerIndex].hero.health = Math.min(
-        state.players[playerIndex].hero.health + 3,
-        STARTING_HP
-      );
-    },
-  },
-  wu: {
-    name: "制衡·升级",
-    cost: 2,
-    description: "召唤一个2/1的士兵",
-    effect: (state, playerIndex) => {
-      const player = state.players[playerIndex];
-      if (player.board.length >= MAX_BOARD_SIZE) return;
-      const token: BoardMinion = {
-        name: "精锐士兵",
-        cost: 0,
-        type: "minion",
-        rarity: "common",
-        faction: "neutral",
-        attack: 2,
-        health: 1,
-        description: "",
-        currentAttack: 2,
-        currentHealth: 1,
-        summoningSickness: true,
-        hasAttacked: false,
-        hasDivineShield: false,
-        isStealth: false,
-        isFrozen: false,
-        freezeTurnsLeft: 0,
-        isImmune: false,
-        windfuryAttacksLeft: 1,
-        enrageActive: false,
-        enrageBonus: 0,
-        factionAttackBonus: 0,
-        factionHealthBonus: 0,
-        formationAtkBonus: 0,
-        formationHpBonus: 0,
-        brotherhoodAtkBonus: 0,
-        brotherhoodHpBonus: 0, wuChargeBonus: 0, wuWeaponBonus: 0, wuComboAtkBonus: 0, wuComboHpBonus: 0, qunDebuff: 0,
-        lane: Lane.Center, slotIndex: 0,
-      };
-      addMinionToLane(player, token, Lane.Center);
-    },
-  },
-  qun: {
-    name: "乱击·升级",
-    cost: 2,
-    description: "装备一把2/2的短刀",
-    effect: (state, playerIndex) => {
-      state.players[playerIndex].weapon = { name: "精钢短刀", attack: 2, durability: 2 };
-      state.players[playerIndex].heroHasAttacked = false;
-    },
-  },
-};
-
-function getHeroPowerForPlayer(deck: Deck): HeroPower {
-  const faction = getDeckFaction(deck);
-  const count = getDeckFactionCount(deck, faction);
-  if (faction !== "neutral" && count >= DECK_FACTION_THRESHOLD && UPGRADED_FACTION_HERO_POWERS[faction]) {
-    return UPGRADED_FACTION_HERO_POWERS[faction]!;
-  }
-  return FACTION_HERO_POWERS[faction];
-}
 
 export interface HeroPowerResult {
   success: boolean;
   error?: string;
 }
 
-export function useHeroPower(state: GameState): HeroPowerResult {
+export interface HeroSkillResult {
+  success: boolean;
+  error?: string;
+}
+
+export function activateHeroSkill(state: GameState, minionIndex: number): HeroSkillResult {
+  const player = state.players[state.activePlayer];
+  if (minionIndex < 0 || minionIndex >= player.board.length) {
+    return { success: false, error: "Invalid minion index" };
+  }
+  const minion = player.board[minionIndex];
+  if (!minion.heroSkill || minion.heroSkill.type !== "activated") {
+    return { success: false, error: "Minion has no activated hero skill" };
+  }
+  if (minion.heroSkillCooldownLeft > 0) {
+    return { success: false, error: "Hero skill is on cooldown" };
+  }
+  minion.heroSkill.effect(state, minion, state.activePlayer);
+  if (minion.heroSkill.cooldown) {
+    minion.heroSkillCooldownLeft = minion.heroSkill.cooldown;
+  }
+  checkEnrage(state);
+  removeDeadMinions(state);
+  return { success: true };
+}
+
+export function applyPassiveHeroSkills(state: GameState, player: 0 | 1): void {
+  const board = state.players[player].board;
+  for (const minion of board) {
+    minion.currentAttack -= minion.heroSkillAtkBonus;
+    minion.currentHealth -= minion.heroSkillHpBonus;
+    minion.heroSkillAtkBonus = 0;
+    minion.heroSkillHpBonus = 0;
+  }
+  for (const minion of board) {
+    if (minion.heroSkill?.type === "passive") {
+      minion.heroSkill.effect(state, minion, player);
+    }
+  }
+}
+
+export function triggerHeroSkills(state: GameState, player: 0 | 1, trigger: HeroSkillTrigger): void {
+  for (const minion of state.players[player].board) {
+    if (minion.heroSkill?.type === "triggered" && minion.heroSkill.trigger === trigger) {
+      minion.heroSkill.effect(state, minion, player);
+    }
+  }
+}
+
+export function useHeroPower(state: GameState, heroPowerMaps?: { base: Record<string, HeroPower>; upgraded: Partial<Record<string, HeroPower>> }): HeroPowerResult {
   const player = state.players[state.activePlayer];
 
   if (player.heroPowerUsed) {
@@ -1477,9 +1399,9 @@ export function useHeroPower(state: GameState): HeroPowerResult {
   player.heroPowerUsed = true;
 
   let effect = player.hero.heroPower.effect;
-  if (!effect) {
-    const match = Object.values(FACTION_HERO_POWERS).find(p => p.name === player.hero.heroPower.name)
-      ?? Object.values(UPGRADED_FACTION_HERO_POWERS).find(p => p!.name === player.hero.heroPower.name);
+  if (!effect && heroPowerMaps) {
+    const match = Object.values(heroPowerMaps.base).find(p => p.name === player.hero.heroPower.name)
+      ?? Object.values(heroPowerMaps.upgraded).find(p => p!.name === player.hero.heroPower.name);
     if (match) effect = match.effect;
   }
   if (effect) {
