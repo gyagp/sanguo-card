@@ -1,12 +1,13 @@
-# Autopo test Session
+# Autopo execute Session
 
 ## Work Unit
-Add 5 Neutral spells and 2 Neutral trap cards — design faction-neutral utility spells and traps
+Write tests for trap card system — test trap play, trigger on each event type, trap removal after trigger, multiple traps active, interaction with other effects
 
 ## Acceptance Criteria
-- 5 Neutral spells added
-- 2 Neutral traps added
-- npm run build succeeds
+- Tests cover all trap triggers
+- Tests verify trap removal
+- Tests verify multi-trap scenarios
+- vitest run passes
 
 ## Rules
 # Rules

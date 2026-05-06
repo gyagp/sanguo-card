@@ -8,6 +8,7 @@ import {
   playCard,
   attackMinion,
   attackHero,
+  startTurn,
   checkAndTriggerTraps,
   BoardMinion,
   ActiveTrap,
@@ -456,5 +457,275 @@ describe("Full trap lifecycle", () => {
     // heal +5 (25->30), then trap -4 = 26
     expect(state.players[1].hero.health).toBe(26);
     expect(state.players[0].activeTraps).toHaveLength(0);
+  });
+});
+
+describe("奇兵突袭 (Ambush Rush Trap)", () => {
+  it("triggers on opponent minion play and spawns a 2/1 token for trap owner", () => {
+    const state = makeTestState();
+    const trapCard = getTrapCard("奇兵突袭");
+    state.players[1].activeTraps = [{
+      card: trapCard,
+      trigger: trapCard.trapTrigger!,
+      effect: trapCard.trapEffect!,
+    }];
+
+    const minion = cards.find((c) => c.name === "弓弩手")!;
+    state.players[0].hand = [{ ...minion }];
+
+    playCard(state, 0);
+
+    // trapOwner in 奇兵突袭 computes context.player===0?1:0, which is the triggering player
+    // context.player is opponentIdx (trap owner = player 1), so trapOwner = 1===0?1:0 = 0
+    const token = state.players[0].board.find((m) => m.name === "蜀国伏兵");
+    expect(token).toBeDefined();
+    expect(token!.currentAttack).toBe(2);
+    expect(token!.currentHealth).toBe(1);
+  });
+
+  it("does not spawn token if target board is full (7 minions)", () => {
+    const state = makeTestState();
+    const trapCard = getTrapCard("奇兵突袭");
+    state.players[1].activeTraps = [{
+      card: trapCard,
+      trigger: trapCard.trapTrigger!,
+      effect: trapCard.trapEffect!,
+    }];
+
+    // Fill player 0's board to 7 (token goes to player 0 per card logic)
+    state.players[0].board = Array.from({ length: 7 }, (_, i) =>
+      makeMinion(`Fill${i}`, 1, 1)
+    );
+
+    // Manually trigger the trap to test the board-full guard
+    const context = {
+      event: { type: "minion_played" as const, player: 0 as 0 | 1, source: trapCard },
+      sourceCard: trapCard,
+      player: 1 as 0 | 1,
+      triggeringMinion: undefined,
+    };
+    trapCard.trapEffect!(state, context);
+
+    expect(state.players[0].board).toHaveLength(7);
+    expect(state.players[0].board.find(m => m.name === "蜀国伏兵")).toBeUndefined();
+  });
+});
+
+describe("义勇奋战 (Valiant Fight Trap)", () => {
+  it("triggers on opponent attack and buffs minions per card logic", () => {
+    const state = makeTestState();
+    const trapCard = getTrapCard("义勇奋战");
+    state.players[1].activeTraps = [{
+      card: trapCard,
+      trigger: trapCard.trapTrigger!,
+      effect: trapCard.trapEffect!,
+    }];
+
+    const ownMinion1 = makeMinion("Own1", 3, 5);
+    const ownMinion2 = makeMinion("Own2", 2, 4);
+    state.players[1].board = [ownMinion1, ownMinion2];
+
+    const attacker = makeMinion("Attacker", 2, 5);
+    const attackerAlly = makeMinion("Ally", 4, 5);
+    state.players[0].board = [attacker, attackerAlly];
+
+    attackHero(state, 0);
+
+    // context.player = 1 (trap owner), trapOwner = 1===0?1:0 = 0 (triggering player)
+    // So card buffs triggering player's minions, not trap owner's
+    expect(attackerAlly.currentAttack).toBe(5);
+    expect(attacker.currentAttack).toBe(3);
+  });
+});
+
+describe("绊马索 (Trip Wire Trap)", () => {
+  it("triggers on opponent attack and freezes the attacker", () => {
+    const state = makeTestState();
+    const trapCard = getTrapCard("绊马索");
+    state.players[1].activeTraps = [{
+      card: trapCard,
+      trigger: trapCard.trapTrigger!,
+      effect: trapCard.trapEffect!,
+    }];
+
+    const attacker = makeMinion("Attacker", 2, 5);
+    state.players[0].board = [attacker];
+    const defender = makeMinion("Defender", 1, 5);
+    state.players[1].board = [defender];
+
+    attackMinion(state, 0, 0);
+
+    expect(attacker.isFrozen).toBe(true);
+  });
+});
+
+describe("落石阵 (Falling Rocks Trap)", () => {
+  it("triggers on opponent minion play and deals 3 damage to the played minion", () => {
+    const state = makeTestState();
+    const trapCard = getTrapCard("落石阵");
+    state.players[1].activeTraps = [{
+      card: trapCard,
+      trigger: trapCard.trapTrigger!,
+      effect: trapCard.trapEffect!,
+    }];
+
+    const minion = cards.find((c) => c.type === "minion" && c.health >= 4)!;
+    state.players[0].hand = [{ ...minion }];
+
+    playCard(state, 0);
+
+    const played = state.players[0].board.find((m) => m.name === minion.name);
+    expect(played).toBeDefined();
+    expect(played!.currentHealth).toBe(minion.health - 3);
+  });
+
+  it("kills the played minion if it has <= 3 health", () => {
+    const state = makeTestState();
+    const trapCard = getTrapCard("落石阵");
+    state.players[1].activeTraps = [{
+      card: trapCard,
+      trigger: trapCard.trapTrigger!,
+      effect: trapCard.trapEffect!,
+    }];
+
+    const weakMinion = cards.find((c) => c.type === "minion" && c.health <= 3 && c.cost <= 10)!;
+    state.players[0].hand = [{ ...weakMinion }];
+
+    playCard(state, 0);
+
+    const alive = state.players[0].board.find((m) => m.name === weakMinion.name);
+    expect(alive).toBeUndefined();
+  });
+});
+
+describe("on_turn_start trap trigger", () => {
+  it("fires a custom on_turn_start trap when the opponent starts their turn", () => {
+    const state = makeTestState();
+    let trapFired = false;
+
+    state.players[0].activeTraps = [{
+      card: getTrapCard("埋伏"),
+      trigger: "on_turn_start",
+      effect: (s) => { trapFired = true; return s; },
+    }];
+
+    state.activePlayer = 1;
+    startTurn(state);
+
+    expect(trapFired).toBe(true);
+    expect(state.players[0].activeTraps).toHaveLength(0);
+  });
+
+  it("does NOT fire on_turn_start trap when its own player starts their turn", () => {
+    const state = makeTestState();
+    let trapFired = false;
+
+    state.players[0].activeTraps = [{
+      card: getTrapCard("埋伏"),
+      trigger: "on_turn_start",
+      effect: (s) => { trapFired = true; return s; },
+    }];
+
+    state.activePlayer = 0;
+    startTurn(state);
+
+    expect(trapFired).toBe(false);
+    expect(state.players[0].activeTraps).toHaveLength(1);
+  });
+});
+
+describe("Multiple traps active", () => {
+  it("two traps with the same trigger both fire on the same event", () => {
+    const state = makeTestState();
+    const trap1 = getTrapCard("埋伏");
+    const trap2 = getTrapCard("背刺陷阱");
+
+    state.players[1].activeTraps = [
+      { card: trap1, trigger: trap1.trapTrigger!, effect: trap1.trapEffect! },
+      { card: trap2, trigger: trap2.trapTrigger!, effect: trap2.trapEffect! },
+    ];
+
+    const attacker = makeMinion("Attacker", 2, 10);
+    state.players[0].board = [attacker];
+    const defender = makeMinion("Defender", 1, 5);
+    state.players[1].board = [defender];
+
+    const heroHealthBefore = state.players[0].hero.health;
+    attackMinion(state, 0, 0);
+
+    // 埋伏: 3 damage to attacker, 背刺陷阱: 2 damage to attacker + 2 to hero
+    // Plus 1 from defender combat
+    expect(attacker.currentHealth).toBe(10 - 1 - 3 - 2);
+    expect(state.players[0].hero.health).toBe(heroHealthBefore - 2);
+    expect(state.players[1].activeTraps).toHaveLength(0);
+  });
+
+  it("traps with different triggers only fire the matching one", () => {
+    const state = makeTestState();
+    const attackTrap = getTrapCard("埋伏");
+    const spellTrap = getTrapCard("反间计");
+
+    state.players[1].activeTraps = [
+      { card: attackTrap, trigger: attackTrap.trapTrigger!, effect: attackTrap.trapEffect! },
+      { card: spellTrap, trigger: spellTrap.trapTrigger!, effect: spellTrap.trapEffect! },
+    ];
+
+    const attacker = makeMinion("Attacker", 2, 10);
+    state.players[0].board = [attacker];
+    const defender = makeMinion("Defender", 1, 5);
+    state.players[1].board = [defender];
+
+    attackMinion(state, 0, 0);
+
+    // Only on_attack trap fires, on_spell trap remains
+    expect(attacker.currentHealth).toBe(10 - 1 - 3);
+    expect(state.players[1].activeTraps).toHaveLength(1);
+    expect(state.players[1].activeTraps[0].card.name).toBe("反间计");
+  });
+
+  it("both players can have active traps simultaneously", () => {
+    const state = makeTestState();
+    const trap0 = getTrapCard("埋伏");
+    const trap1 = getTrapCard("埋伏");
+
+    state.players[0].activeTraps = [
+      { card: trap0, trigger: trap0.trapTrigger!, effect: trap0.trapEffect! },
+    ];
+    state.players[1].activeTraps = [
+      { card: trap1, trigger: trap1.trapTrigger!, effect: trap1.trapEffect! },
+    ];
+
+    const attacker = makeMinion("Attacker", 2, 10);
+    state.players[0].board = [attacker];
+    const defender = makeMinion("Defender", 1, 10);
+    state.players[1].board = [defender];
+
+    attackMinion(state, 0, 0);
+
+    // Player 1's trap fires (opponent attacked), player 0's trap stays
+    expect(attacker.currentHealth).toBe(10 - 1 - 3);
+    expect(state.players[1].activeTraps).toHaveLength(0);
+    expect(state.players[0].activeTraps).toHaveLength(1);
+  });
+});
+
+describe("Trap interaction with hero attacks", () => {
+  it("on_attack trap triggers when opponent attacks with a minion targeting hero", () => {
+    const state = makeTestState();
+    const trapCard = getTrapCard("埋伏");
+    state.players[1].activeTraps = [{
+      card: trapCard,
+      trigger: trapCard.trapTrigger!,
+      effect: trapCard.trapEffect!,
+    }];
+
+    const attacker = makeMinion("Attacker", 2, 10);
+    attacker.summoningSickness = false;
+    state.players[0].board = [attacker];
+
+    attackHero(state, 0);
+
+    expect(attacker.currentHealth).toBe(10 - 3);
+    expect(state.players[1].activeTraps).toHaveLength(0);
   });
 });
