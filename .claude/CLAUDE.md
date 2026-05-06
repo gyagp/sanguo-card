@@ -1,13 +1,13 @@
-# Autopo test Session
+# Autopo execute Session
 
 ## Work Unit
-Difficulty-based AI behavior scaling — hard AI gets bonus starting cards, better mulligan, and uses all keyword/synergy systems; easy AI ignores advanced tactics
+Test difficulty scaling — verify deck quality differences, behavior differences, and challenge level across easy/normal/hard
 
 ## Acceptance Criteria
-- Hard AI draws extra card on turn 1 or gets coin
-- Hard AI mulligans for curve; easy AI keeps random hand
-- Hard AI uses all keyword awareness and synergy; easy AI uses basic logic
-- Difficulty level gates which AI subsystems are active
+- Tests for deck quality at different difficulties
+- Tests for AI behavior differences across difficulties
+- Tests that hard AI makes strictly better decisions than easy AI
+- vitest run passes
 
 ## Rules
 # Rules
