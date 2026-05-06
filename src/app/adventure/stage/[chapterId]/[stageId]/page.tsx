@@ -6,7 +6,7 @@ import Link from "next/link";
 import { adventureChapters, AdventureStage, AdventureChapter } from "../../../../../game/adventure-data";
 import { cards } from "../../../../../game/cards";
 import { Card, createDeck, Deck } from "../../../../../game/types";
-import { useGameState } from "../../../../../hooks/useGameState";
+import { useGameState, BossInitConfig } from "../../../../../hooks/useGameState";
 import { AIDifficulty } from "../../../../../game/ai";
 import { createBossAIFromRule } from "../../../../../game/boss-ai";
 import { loadAdventureProgress, isStageUnlocked, completeStage, addGold, addXP, addCards } from "../../../../../game/player-store";
@@ -86,6 +86,15 @@ function StageInfoScreen({
               <h3 className="text-red-300 font-semibold mb-2">BOSS 特殊规则</h3>
               {stage.bossRules.extraMana && (
                 <p className="text-sm text-red-200/70">额外法力值: +{stage.bossRules.extraMana}</p>
+              )}
+              {stage.bossRules.bossHp && (
+                <p className="text-sm text-red-200/70">Boss 生命值: {stage.bossRules.bossHp}</p>
+              )}
+              {stage.bossRules.startingMinion && (
+                <p className="text-sm text-red-200/70">开局随从: {stage.bossRules.startingMinion.name} ({stage.bossRules.startingMinion.attack}/{stage.bossRules.startingMinion.health})</p>
+              )}
+              {stage.bossRules.spellDiscount && (
+                <p className="text-sm text-red-200/70">法术减费: -{stage.bossRules.spellDiscount}</p>
               )}
               {stage.bossRules.fieldEffect && (
                 <p className="text-sm text-red-200/70">场地效果: {stage.bossRules.fieldEffect}</p>
@@ -301,7 +310,8 @@ function AdventureBattle({ stage, playerDeck, chapterId }: { stage: AdventureSta
 
   const bossConfig = useMemo(() => {
     if (!stage.isBoss || !stage.bossRules) return null;
-    return createBossAIFromRule(stage.name, 1, 30, stage.bossRules.extraMana);
+    const maxHp = stage.bossRules.bossHp ?? 30;
+    return createBossAIFromRule(stage.name, 1, maxHp, stage.bossRules.extraMana);
   }, [stage.isBoss, stage.bossRules, stage.name]);
 
   const bossHeroPower = useMemo(() => {
@@ -310,6 +320,17 @@ function AdventureBattle({ stage, playerDeck, chapterId }: { stage: AdventureSta
     return { name: uhp.name, cost: uhp.cost, description: uhp.description };
   }, [stage.bossRules?.uniqueHeroPower]);
 
+  const bossInit = useMemo((): BossInitConfig | undefined => {
+    if (!stage.isBoss || !stage.bossRules) return undefined;
+    const rules = stage.bossRules;
+    if (!rules.bossHp && !rules.startingMinion && !rules.spellDiscount) return undefined;
+    return {
+      bossHp: rules.bossHp,
+      startingMinion: rules.startingMinion,
+      spellDiscount: rules.spellDiscount,
+    };
+  }, [stage.isBoss, stage.bossRules]);
+
   const { gameState, winner, isOpponentTurn, playCard, attack, attackHero, endTurn, useHeroPower } = useGameState(
     playerDeck,
     paddedEnemy,
@@ -317,6 +338,7 @@ function AdventureBattle({ stage, playerDeck, chapterId }: { stage: AdventureSta
     bossConfig?.bossAI,
     bossConfig?.extraMana,
     bossHeroPower,
+    bossInit,
   );
 
   const [earnedStars, setEarnedStars] = useState(0);
@@ -348,6 +370,8 @@ function AdventureBattle({ stage, playerDeck, chapterId }: { stage: AdventureSta
       }
     }
   }, [winner, gameState, stage]);
+
+  const enemyMaxHp = stage.bossRules?.bossHp ?? 30;
 
   if (!gameState) return null;
 
@@ -455,7 +479,7 @@ function AdventureBattle({ stage, playerDeck, chapterId }: { stage: AdventureSta
             }}
             className="hover:text-red-200 transition-colors"
           >
-            敌方英雄 ❤️{e.hero.health}/30
+            敌方英雄 ❤️{e.hero.health}/{enemyMaxHp}
             {selectedAttacker !== null && " ← 点击攻击"}
           </button>
         </div>

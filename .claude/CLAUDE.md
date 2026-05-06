@@ -1,13 +1,14 @@
 # Autopo test Session
 
 ## Work Unit
-Chapter 1 黄巾之乱 polish — tutorial hints for first 2 stages, balanced enemy decks for new players, verify smooth difficulty curve
+Chapters 2-5 enemy deck balancing and boss special rules — ensure faction-themed decks, unique boss mechanics per chapter, and escalating difficulty
 
 ## Acceptance Criteria
-- Stage 1-1 and 1-2 show brief gameplay hints (play cards, attack)
-- Chapter 1 enemy decks use only common/neutral cards with low cost curve
-- Boss 董卓 uses existing boss-ai.ts phases
-- All 6 stages in Chapter 1 are playable start to finish
+- Chapter 2 群雄逐鹿: mixed faction decks, boss has +1 mana per turn
+- Chapter 3 三足鼎立: faction-focused decks (wei/shu/wu), boss starts with a minion on board
+- Chapter 4 赤壁之战: strategy puzzle decks with synergies, boss has field effect (e.g. all spells cost 1 less)
+- Chapter 5 天下归一: legendary-heavy decks, final boss has 40 HP + 3 phases
+- All 30 stages playable
 - npm run build succeeds
 
 ## Rules

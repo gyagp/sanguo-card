@@ -25,6 +25,12 @@ export interface BossHeroPowerOverride {
   description: string;
 }
 
+export interface BossInitConfig {
+  bossHp?: number;
+  startingMinion?: { name: string; attack: number; health: number; faction?: string };
+  spellDiscount?: number;
+}
+
 function cloneState(state: GameState): GameState {
   return JSON.parse(JSON.stringify(state));
 }
@@ -82,7 +88,7 @@ function executeAIDecision(state: GameState, decision: AIDecision): GameState {
   return next;
 }
 
-export function useGameState(deck1: Deck, deck2: Deck, aiDifficulty?: AIDifficulty, bossAI?: BossAI, extraMana?: number, bossHeroPower?: BossHeroPowerOverride) {
+export function useGameState(deck1: Deck, deck2: Deck, aiDifficulty?: AIDifficulty, bossAI?: BossAI, extraMana?: number, bossHeroPower?: BossHeroPowerOverride, bossInit?: BossInitConfig) {
   const [gameState, setGameState] = useState<GameState>(() => {
     const state = initializeGame(deck1, deck2);
     if (bossHeroPower) {
@@ -92,6 +98,34 @@ export function useGameState(deck1: Deck, deck2: Deck, aiDifficulty?: AIDifficul
         cost: bossHeroPower.cost,
         description: bossHeroPower.description,
       };
+    }
+    if (bossInit?.bossHp) {
+      state.players[1].hero.health = bossInit.bossHp;
+    }
+    if (bossInit?.startingMinion) {
+      const m = bossInit.startingMinion;
+      state.players[1].board.push({
+        name: m.name, cost: 0, attack: m.attack, health: m.health, description: "",
+        rarity: "common" as const, type: "minion" as const, faction: (m.faction ?? "neutral") as "neutral",
+        currentAttack: m.attack, currentHealth: m.health,
+        summoningSickness: false, hasAttacked: false, hasDivineShield: false,
+        isStealth: false, isFrozen: false, freezeTurnsLeft: 0, isImmune: false,
+        windfuryAttacksLeft: 1, enrageActive: false, enrageBonus: 0,
+        factionAttackBonus: 0, factionHealthBonus: 0,
+        shuAdjacencyAtkBonus: 0, shuAdjacencyHpBonus: 0,
+        brotherhoodAtkBonus: 0, brotherhoodHpBonus: 0,
+        wuChargeBonus: 0, wuWeaponBonus: 0, wuComboAtkBonus: 0, wuComboHpBonus: 0, qunDebuff: 0,
+      });
+    }
+    if (bossInit?.spellDiscount) {
+      const discount = bossInit.spellDiscount;
+      for (const card of state.players[1].hand) {
+        if (card.type === "spell") card.cost = Math.max(0, card.cost - discount);
+      }
+      const deck = state.players[1].deck as unknown as import("../game/types").Card[];
+      for (const card of deck) {
+        if (card.type === "spell") card.cost = Math.max(0, card.cost - discount);
+      }
     }
     startTurn(state);
     return state;
