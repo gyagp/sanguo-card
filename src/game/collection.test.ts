@@ -22,7 +22,7 @@ beforeEach(() => {
 
 describe('Collection data integrity', () => {
   it('has correct number of cards', () => {
-    expect(cards).toHaveLength(73);
+    expect(cards).toHaveLength(93);
   });
 
   it('every card has faction and rarity', () => {

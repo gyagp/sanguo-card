@@ -1,10 +1,11 @@
 # Autopo test Session
 
 ## Work Unit
-Add 2 Shu trap cards — design traps fitting Shu aggressive identity (e.g., ambush trap, reinforcement trap)
+Add 10 new Wu minion cards (common/rare/epic) — design balanced stats fitting Wu identity (balanced/naval theme)
 
 ## Acceptance Criteria
-- 2 Shu trap cards added
+- 10 new Wu minion cards added
+- Stats balanced
 - npm run build succeeds
 
 ## Rules

@@ -980,6 +980,231 @@ export const cards: Card[] = [
       return state;
     },
   },
+
+  // === 吴国随从 (20) ===
+  // Common (4)
+  {
+    name: "吴营水兵", cost: 1, attack: 1, health: 2, description: "圣盾。吴国水军基础兵",
+    rarity: "common", type: "minion", faction: "wu",
+    divineShield: true,
+  },
+  {
+    name: "丹阳劲卒", cost: 2, attack: 2, health: 3, description: "战吼：获得潜行",
+    rarity: "common", type: "minion", faction: "wu",
+    battlecry: (state: GameState, context) => {
+      const board = state.players[context.player].board;
+      const self = board[board.length - 1];
+      self.stealth = true;
+      return state;
+    },
+  },
+  {
+    name: "楼船射手", cost: 2, attack: 3, health: 2, description: "战吼：从楼船上射击，对一个随机敌方随从造成1点伤害",
+    rarity: "common", type: "minion", faction: "wu",
+    battlecry: (state: GameState, context) => {
+      const enemy = context.player === 0 ? 1 : 0;
+      const targets = state.players[enemy].board;
+      if (targets.length > 0) {
+        const target = targets[Math.floor(Math.random() * targets.length)];
+        target.currentHealth -= 1;
+      }
+      return state;
+    },
+  },
+  {
+    name: "水寨哨兵", cost: 3, attack: 2, health: 4, description: "嘲讽。亡语：从水寨中传递情报，抽一张牌",
+    rarity: "common", type: "minion", faction: "wu",
+    taunt: true,
+    deathrattle: (state: GameState, context) => {
+      drawCard(state.players[context.player]);
+      return state;
+    },
+  },
+  // Rare (3)
+  {
+    name: "凌统", cost: 3, attack: 3, health: 4, description: "圣盾。战吼：使一个友方随从获得圣盾",
+    rarity: "rare", type: "minion", faction: "wu",
+    divineShield: true,
+    battlecry: (state: GameState, context) => {
+      const board = state.players[context.player].board;
+      const others = board.filter(m => m !== board[board.length - 1]);
+      if (others.length > 0) {
+        const target = others[Math.floor(Math.random() * others.length)];
+        target.divineShield = true;
+      }
+      return state;
+    },
+  },
+  {
+    name: "黄盖", cost: 4, attack: 5, health: 3, description: "冲锋。亡语：对你的英雄造成3点伤害",
+    rarity: "rare", type: "minion", faction: "wu",
+    charge: true,
+    deathrattle: (state: GameState, context) => {
+      state.players[context.player].hero.health -= 3;
+      return state;
+    },
+  },
+  {
+    name: "程普", cost: 4, attack: 3, health: 5, description: "嘲讽。激怒：老将之怒，获得+2攻击力",
+    rarity: "rare", type: "minion", faction: "wu",
+    taunt: true,
+    enrage: (state: GameState, context) => {
+      const self = context.sourceCard as BoardMinion;
+      self.currentAttack += 2;
+      self.enrageBonus = 2;
+      self.enrageActive = true;
+      return state;
+    },
+  },
+  // Epic (3)
+  {
+    name: "吕蒙", cost: 5, attack: 4, health: 5, description: "潜行。战吼：抽一张牌",
+    rarity: "epic", type: "minion", faction: "wu",
+    stealth: true,
+    battlecry: (state: GameState, context) => {
+      drawCard(state.players[context.player]);
+      return state;
+    },
+  },
+  {
+    name: "陆逊", cost: 6, attack: 4, health: 6, description: "战吼：冻结所有敌方随从",
+    rarity: "epic", type: "minion", faction: "wu",
+    battlecry: (state: GameState, context) => {
+      const enemy = context.player === 0 ? 1 : 0;
+      for (const minion of state.players[enemy].board) {
+        applyFreeze(minion, state.players[context.player]);
+      }
+      return state;
+    },
+  },
+  {
+    name: "鲁肃", cost: 5, attack: 3, health: 6, description: "战吼：双方各抽2张牌。亡语：为所有友方随从恢复2点生命值",
+    rarity: "epic", type: "minion", faction: "wu",
+    battlecry: (state: GameState, context) => {
+      for (let i = 0; i < 2; i++) {
+        drawCard(state.players[0]);
+        drawCard(state.players[1]);
+      }
+      return state;
+    },
+    deathrattle: (state: GameState, context) => {
+      for (const m of state.players[context.player].board) {
+        m.currentHealth = Math.min(m.currentHealth + 2, m.health);
+      }
+      return state;
+    },
+  },
+  // === 吴国随从 追加 (10) ===
+  // Common (4)
+  {
+    name: "江东斥候", cost: 1, attack: 2, health: 1, description: "潜行",
+    rarity: "common", type: "minion", faction: "wu",
+    stealth: true,
+  },
+  {
+    name: "水营弓手", cost: 2, attack: 2, health: 2, description: "战吼：对敌方英雄造成1点伤害",
+    rarity: "common", type: "minion", faction: "wu",
+    battlecry: (state: GameState, context) => {
+      const enemy = context.player === 0 ? 1 : 0;
+      state.players[enemy].hero.health -= 1;
+      return state;
+    },
+  },
+  {
+    name: "巡江水手", cost: 2, attack: 1, health: 3, description: "嘲讽。亡语：为你的英雄恢复1点生命值",
+    rarity: "common", type: "minion", faction: "wu",
+    taunt: true,
+    deathrattle: (state: GameState, context) => {
+      const hero = state.players[context.player].hero;
+      hero.health = Math.min(hero.health + 1, STARTING_HP);
+      return state;
+    },
+  },
+  {
+    name: "吴郡游侠", cost: 3, attack: 3, health: 3, description: "圣盾",
+    rarity: "common", type: "minion", faction: "wu",
+    divineShield: true,
+  },
+  // Rare (3)
+  {
+    name: "韩当", cost: 3, attack: 4, health: 3, description: "冲锋。亡语：为己方英雄恢复2点生命值",
+    rarity: "rare", type: "minion", faction: "wu",
+    charge: true,
+    deathrattle: (state: GameState, context) => {
+      const hero = state.players[context.player].hero;
+      hero.health = Math.min(hero.health + 2, 30);
+      return state;
+    },
+  },
+  {
+    name: "蒋钦", cost: 4, attack: 3, health: 5, description: "战吼：使一个随机友方随从获得+1/+1",
+    rarity: "rare", type: "minion", faction: "wu",
+    battlecry: (state: GameState, context) => {
+      const board = state.players[context.player].board;
+      const others = board.filter(m => m !== board[board.length - 1]);
+      if (others.length > 0) {
+        const target = others[Math.floor(Math.random() * others.length)];
+        target.currentAttack += 1;
+        target.currentHealth += 1;
+        target.health += 1;
+      }
+      return state;
+    },
+  },
+  {
+    name: "朱然", cost: 5, attack: 4, health: 4, description: "嘲讽。战吼：冻结一个随机敌方随从",
+    rarity: "rare", type: "minion", faction: "wu",
+    taunt: true,
+    battlecry: (state: GameState, context) => {
+      const enemy = context.player === 0 ? 1 : 0;
+      const targets = state.players[enemy].board;
+      if (targets.length > 0) {
+        const target = targets[Math.floor(Math.random() * targets.length)];
+        applyFreeze(target, state.players[context.player]);
+      }
+      return state;
+    },
+  },
+  // Epic (3)
+  {
+    name: "潘璋", cost: 5, attack: 5, health: 4, description: "冲锋。战吼：对所有敌方随从造成1点伤害",
+    rarity: "epic", type: "minion", faction: "wu",
+    charge: true,
+    battlecry: (state: GameState, context) => {
+      const enemy = context.player === 0 ? 1 : 0;
+      for (const minion of state.players[enemy].board) {
+        minion.currentHealth -= 1;
+      }
+      return state;
+    },
+  },
+  {
+    name: "丁奉", cost: 6, attack: 5, health: 6, description: "战吼：使所有友方随从获得圣盾",
+    rarity: "epic", type: "minion", faction: "wu",
+    battlecry: (state: GameState, context) => {
+      const board = state.players[context.player].board;
+      for (const minion of board) {
+        minion.divineShield = true;
+      }
+      return state;
+    },
+  },
+  {
+    name: "徐盛", cost: 7, attack: 5, health: 7, description: "嘲讽。战吼：为你的英雄恢复5点生命值。亡语：抽2张牌",
+    rarity: "epic", type: "minion", faction: "wu",
+    taunt: true,
+    battlecry: (state: GameState, context) => {
+      const hero = state.players[context.player].hero;
+      hero.health = Math.min(hero.health + 5, STARTING_HP);
+      return state;
+    },
+    deathrattle: (state: GameState, context) => {
+      for (let i = 0; i < 2; i++) {
+        drawCard(state.players[context.player]);
+      }
+      return state;
+    },
+  },
 ];
 
 const spellCardPool = cards.filter(c => c.type === "spell");
